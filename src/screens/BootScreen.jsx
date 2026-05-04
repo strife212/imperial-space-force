@@ -34,7 +34,7 @@ export default function BootScreen({ onComplete }) {
     <div id="boot-screen" className={exiting ? 'fade-out' : ''}>
       <div className="boot-inner">
         <div className="boot-header">
-          <img className="boot-emblem" src="/logo.png" alt="Imperial Space Force Emblem" />
+          <img className="boot-emblem" src={`${import.meta.env.BASE_URL}logo.png`} alt="Imperial Space Force Emblem" />
           <div className="boot-title">IMPERIAL SPACE FORCE</div>
           <div className="boot-subtitle">
             TACTICAL COMMAND INTERFACE // HMSS &quot;HER ANNUNCIATOR&quot; // FIRE CONTROL SYSTEM v6.2.41
