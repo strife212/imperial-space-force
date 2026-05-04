@@ -36,8 +36,9 @@
 .login-form {
   width: 100%;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  flex-direction: row;
+  align-items: center;
+  gap: 24px;
   margin-bottom: 40px;
 }
 .login-field-row {
@@ -45,6 +46,47 @@
   flex-direction: column;
   gap: 4px;
   text-align: left;
+}
+.login-fields {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.login-portrait-wrap {
+  flex: 0 0 auto;
+  width: 130px;
+  height: 160px;
+  border: 2px solid var(--c-cardinal);
+  box-shadow: 0 0 12px rgba(20,96,208,0.4);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-portrait {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.login-portrait.visible {
+  opacity: 1;
+}
+.login-portrait-empty {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--c-ash-dim);
+}
+.login-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 .login-label {
   font-size: 10px;
