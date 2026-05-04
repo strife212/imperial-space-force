@@ -69,12 +69,6 @@ export default function LoginScreen({ onComplete }) {
             We are the chord,<br />
             O Star-Hearèr, we are the chord beneath thy hand.
           </p>
-          <p>
-            And should a world forget its part<br />
-            Or lose the chord that holds the art<br />
-            Thy hand shall send the lance of light<br />
-            A single tone to set it right.
-          </p>
         </div>
       </div>
     </div>
