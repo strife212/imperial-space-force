@@ -1268,15 +1268,15 @@ body {
   background: #020a18;
   border: 1px solid var(--c-cardinal);
   box-shadow: 0 0 40px rgba(20,96,208,0.35), inset 0 0 60px rgba(0,0,0,0.5);
-  padding: 32px 36px 28px;
+  padding: 40px 45px 35px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 25px;
 }
 .code-verify-title {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.35em;
   color: var(--c-pink);
@@ -1285,16 +1285,16 @@ body {
 }
 .code-verify-boxes {
   display: flex;
-  gap: 5px;
+  gap: 6px;
 }
 .code-box {
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0;
   border: 1px solid var(--c-line-2);
@@ -1310,13 +1310,13 @@ body {
 }
 .code-verify-status {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.2em;
   color: var(--c-ash-dim);
   text-transform: uppercase;
 }
 .code-verify-status.verified {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--c-ash);
   text-shadow: 0 0 12px rgba(100,180,255,0.4);
@@ -1328,11 +1328,25 @@ body {
   position: fixed;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   pointer-events: none;
   z-index: 500;
-  animation: warning-pulse 1s ease-in-out infinite;
+}
+.launch-warning-overlay.fired {
+  animation: warning-pulse 1s step-end infinite;
+}
+.launch-warning-cd {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #ff2020;
+  text-shadow: 0 0 20px rgba(255,0,0,0.7);
+  background: rgba(0,0,0,0.45);
+  padding: 6px 20px;
 }
 .launch-warning-overlay span {
   font-family: var(--font-mono);

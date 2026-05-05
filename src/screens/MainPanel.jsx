@@ -48,6 +48,7 @@ export default function MainPanel() {
   const [launchStatus,    setLaunchStatus]    = useState({ text: 'SYSTEM READY // AWAITING ARM', cls: 'launch-status' })
   const [launchLabel,     setLaunchLabel]     = useState('INITIATE LAUNCH SEQUENCE')
   const [launchCdText,    setLaunchCdText]    = useState('')
+  const [cdVisible,       setCdVisible]       = useState(true)
   const [authCActive,     setAuthCActive]     = useState(false)
 
   // ── Refs mirroring state (for use inside RAF closure) ─────────────────────
@@ -105,6 +106,7 @@ export default function MainPanel() {
   const logBufRef     = useRef([])
   const rafRef        = useRef(null)
   const cdTimerRef    = useRef(null)
+  const codetickSfx  = useRef(null)
 
   // ── Log helper ────────────────────────────────────────────────────────────
   const addLog = useCallback((level, msg) => {
@@ -142,6 +144,7 @@ export default function MainPanel() {
     setLaunchStatus({ text: 'SYSTEM READY // AWAITING ARM', cls: 'launch-status' })
     setLaunchLabel('INITIATE LAUNCH SEQUENCE')
     setLaunchCdText('')
+    setCdVisible(true)
     setAuthCActive(false)
   }, [])
 
@@ -174,11 +177,17 @@ export default function MainPanel() {
     let val = 10
     const tick = () => {
       if (val > 0) {
-        setLaunchCdText(`T− ${String(val).padStart(2, '0')}`)
-        addLog('CRIT', `LAUNCH T-${val} // ${PKG_NAMES[selectedPkgRef.current]}`)
-        val--
-        cdTimerRef.current = setTimeout(tick, 1000)
+        // Hide, update number while invisible, then show
+        setCdVisible(false)
+        cdTimerRef.current = setTimeout(() => {
+          setLaunchCdText(`T− ${String(val).padStart(2, '0')}`)
+          addLog('CRIT', `LAUNCH T-${val} // ${PKG_NAMES[selectedPkgRef.current]}`)
+          setCdVisible(true)
+          val--
+          cdTimerRef.current = setTimeout(tick, 500)
+        }, 500)
       } else {
+        setCdVisible(true)
         launchPhaseRef.current = 'fired'
         setLaunchPhase('fired')
         setLaunchCdText('LAUNCHED')
@@ -200,6 +209,21 @@ export default function MainPanel() {
     selectedPkgRef.current = pkg
     setSelectedPkgState(pkg)
     setLaunchStatus({ text: 'SYSTEM READY // AWAITING ARM', cls: 'launch-status' })
+  }, [])
+
+  // ── Audio preload ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const audio = new Audio(`${import.meta.env.BASE_URL}codetick.wav`)
+    audio.preload = 'auto'
+    codetickSfx.current = audio
+  }, [])
+
+  const playTick = useCallback(() => {
+    if (codetickSfx.current) {
+      codetickSfx.current.currentTime = 0
+      codetickSfx.current.volume = 0.1
+      codetickSfx.current.play().catch(() => {})
+    }
   }, [])
 
   // ── Main RAF effect ───────────────────────────────────────────────────────
@@ -846,12 +870,18 @@ export default function MainPanel() {
 
       {showCodeVerify && <div className="code-verify-dim" />}
       {showCodeVerify && (
-        <LaunchCodeVerifier onComplete={handleVerifyComplete} />
+        <LaunchCodeVerifier onComplete={handleVerifyComplete} onTick={playTick} />
       )}
 
-      {(launchPhase === 'countdown' || launchPhase === 'fired') && (
+      {launchPhase === 'countdown' && cdVisible && (
         <div className="launch-warning-overlay" aria-live="assertive">
-          <span>{launchPhase === 'fired' ? '⚠ PACKAGE AWAY ⚠' : '⚠ WARNING — LAUNCH INITIATED ⚠'}</span>
+          <span>⚠ WARNING — LAUNCH INITIATED ⚠</span>
+          <span className="launch-warning-cd">! {launchCdText} !</span>
+        </div>
+      )}
+      {launchPhase === 'fired' && (
+        <div className="launch-warning-overlay fired" aria-live="assertive">
+          <span>⚠ PACKAGE AWAY ⚠</span>
         </div>
       )}
 

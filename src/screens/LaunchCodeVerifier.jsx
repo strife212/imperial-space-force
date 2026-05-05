@@ -8,7 +8,7 @@ const LOCK_INTERVAL_MS = 260
 
 const randChar = () => CHARS[Math.floor(Math.random() * CHARS.length)]
 
-export default function LaunchCodeVerifier({ onComplete }) {
+export default function LaunchCodeVerifier({ onComplete, onTick }) {
   const [symbols,     setSymbols]     = useState(() => Array.from({ length: BOX_COUNT }, randChar))
   const [lockedCount, setLockedCount] = useState(0)
   const lockedRef  = useRef(0)
@@ -27,6 +27,7 @@ export default function LaunchCodeVerifier({ onComplete }) {
       timers.current.push(setTimeout(() => {
         lockedRef.current = i + 1
         setLockedCount(i + 1)
+        onTick?.()
         if (i === BOX_COUNT - 1) {
           timers.current.push(setTimeout(onComplete, 500))
         }
