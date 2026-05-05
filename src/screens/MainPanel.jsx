@@ -198,7 +198,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
         addLog('CRIT', `*** ${PKG_NAMES[selectedPkgRef.current]} // PACKAGE AWAY ***`)
         addLog('CRIT', 'GEODESIC INTERCEPT SOLUTION COMMITTED')
         cdTimerRef.current = setTimeout(() => {
-          onLaunchCompleteRef.current?.()
+          onLaunchCompleteRef.current?.(PKG_NAMES[selectedPkgRef.current])
         }, 4000)
       }
     }
@@ -638,11 +638,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
               <div className="weapon-meta">a = 0.998 M ⋅ Q = 0.043 M</div>
               <div className="bar"><div className="bar-fill" style={{ width: '96%' }} /></div>
             </div>
-            <div className="weapon" data-weapon="vac">
-              <div className="weapon-row"><span className="weapon-name">FALSE-VACUUM SEED Ψ-7</span><span className="weapon-state lockout">LOCKOUT</span></div>
-              <div className="weapon-meta">METASTABILITY Δφ = 1.21 × 10¹⁹ GeV</div>
-              <div className="bar"><div className="bar-fill warn" style={{ width: '18%' }} /></div>
-            </div>
+
             <div className="weapon" data-weapon="exotic">
               <div className="weapon-row"><span className="weapon-name">EXOTIC-MATTER LANCE (ρ &lt; 0)</span><span className="weapon-state ready">READY</span></div>
               <div className="weapon-meta">CASIMIR FLUX 4.7 × 10⁻⁹ N·m⁻²</div>
@@ -822,7 +818,6 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
                     { key: 'exotic', label: 'EXOTIC-MATTER LANCE',      st: 'ready',    stLabel: 'RDY' },
                     { key: 'grb',    label: 'COLLIMATED GRB EMITTER',   st: 'charging', stLabel: 'CHG' },
                     { key: 'rkv',    label: 'RELATIVISTIC KINETIC SLUG',st: 'ready',    stLabel: 'RDY' },
-                    { key: 'vac',    label: 'FALSE-VACUUM SEED Ψ-7',    st: 'lockout',  stLabel: 'LCK', disabled: true },
                   ].map(({ key, label, st, stLabel, disabled }) => (
                     <li
                       key={key}

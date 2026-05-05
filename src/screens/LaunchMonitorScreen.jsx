@@ -90,6 +90,7 @@ const OBJECTS = {
       { key: 'RA (J2000)',         value: '18h 21m 33.7s'  },
       { key: 'DEC (J2000)',        value: '+02° 58\' 14"'  },
       { key: 'REL. VELOCITY',      value: '0.894c'         },
+      { key: 'PACKAGE TYPE',       value: '__PKG__'        },
     ],
   },
 }
@@ -130,7 +131,7 @@ const mkTimestamp = () => {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function LaunchMonitorScreen({ onReturn, onLogout }) {
+export default function LaunchMonitorScreen({ onReturn, onLogout, packageName }) {
   const canvasRef      = useRef(null)
   const rotRef         = useRef({ x: 0.518, y: -1.240 })
   const rotDisplayRef  = useRef(null)
@@ -464,7 +465,7 @@ export default function LaunchMonitorScreen({ onReturn, onLogout }) {
                 {OBJECTS[hovered].stats.map(({ key, value }) => (
                   <div key={key} className="mib-row">
                     <span className="mib-key">{key}</span>
-                    <span className="mib-val">{value}</span>
+                    <span className="mib-val">{value === '__PKG__' ? (packageName || 'CLASSIFIED') : value}</span>
                   </div>
                 ))}
               </div>

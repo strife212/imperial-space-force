@@ -7,7 +7,8 @@ import DebugScreen from './screens/DebugScreen'
 import MenuScreen from './screens/MenuScreen'
 
 export default function App() {
-  const [screen, setScreen] = useState('login')
+  const [screen,        setScreen]        = useState('login')
+  const [launchPackage, setLaunchPackage] = useState('')
 
   return (
     <>
@@ -17,8 +18,8 @@ export default function App() {
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onDebug={() => setScreen('debug')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}
-      {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={() => setScreen('monitor')} />}
-      {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => setScreen('main')} onLogout={() => setScreen('login')} />}
+      {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setScreen('monitor') }} />}
+      {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => setScreen('main')} onLogout={() => setScreen('login')} packageName={launchPackage} />}
       {screen === 'debug'   && <DebugScreen onNavigate={setScreen} />}
     </>
   )
