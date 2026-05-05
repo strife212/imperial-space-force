@@ -133,7 +133,7 @@ const mkTimestamp = () => {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function LaunchMonitorScreen({ onReturn, onLogout, packageName }) {
+export default function LaunchMonitorScreen({ onReturn, onLogout, packageName, unreadCount = 0, onMailOpen }) {
   const canvasRef      = useRef(null)
   const rotRef         = useRef({ x: 0.518, y: -1.240 })
   const rotDisplayRef  = useRef(null)
@@ -380,7 +380,12 @@ export default function LaunchMonitorScreen({ onReturn, onLogout, packageName })
     <div id="monitor-screen">
       <HudHeader
         onLogout={onLogout}
-        center={<span className="status-pill armed">DEFCON-2 // WEAPONS HOT</span>}
+        center={
+          <span className="status-pill mail-pill" onClick={onMailOpen}>
+            {unreadCount > 0 && <span className="mail-unread-dot" />}
+            ✉ IMPERIAL MESSAGING SERVICE // UNREAD: {unreadCount}
+          </span>
+        }
         right={<><span className="label">MISSION CLOCK T+</span><span className="mono big">{clock}</span></>}
       />
 

@@ -39,7 +39,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel({ onLogout, onLaunchComplete, onReactor, reactorPlasma = 75 }) {
+export default function MainPanel({ onLogout, onLaunchComplete, onReactor, reactorPlasma = 75, unreadCount = 0, onMailOpen }) {
 
   // ── Panel init animation ──────────────────────────────────────────────────
   const [litPanels, setLitPanels] = useState(new Set())
@@ -569,7 +569,12 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
     <>
       <HudHeader
         onLogout={onLogout}
-        center={<span className="status-pill armed" id="readiness">DEFCON-2 // WEAPONS HOT</span>}
+        center={
+          <span className="status-pill mail-pill" onClick={onMailOpen}>
+            {unreadCount > 0 && <span className="mail-unread-dot" />}
+            ✉ IMPERIAL MESSAGING SERVICE // UNREAD: {unreadCount}
+          </span>
+        }
         right={<><span className="label">MISSION CLOCK T+</span><span className="mono big" ref={clockRef}>000:00:00:00</span></>}
       />
 
