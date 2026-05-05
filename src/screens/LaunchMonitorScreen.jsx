@@ -12,6 +12,16 @@ const fmtClk = (ms) => {
   return `${pad(Math.floor(s/86400),3)}:${pad(Math.floor((s%86400)/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`
 }
 const fmtDist = (n) => Math.round(n).toLocaleString('en-US')
+const fmtTTI  = (secs) => {
+  if (secs <= 0) return '-- IMPACT --'
+  const d = Math.floor(secs / 86400)
+  const h = Math.floor((secs % 86400) / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  const s = secs % 60
+  return d > 0
+    ? `${pad(d)}d ${pad(h)}h ${pad(m)}m ${pad(s)}s`
+    : `${pad(h)}:${pad(m)}:${pad(s)}`
+}
 
 // ── Vec3 math ─────────────────────────────────────────────────────────────────
 const cross  = ([ax,ay,az],[bx,by,bz]) => [ay*bz-az*by, az*bx-ax*bz, ax*by-ay*bx]
@@ -90,30 +100,72 @@ const CANVAS_LABELS = {
   projectile:   'PHYSICS PROJECTILE',
 }
 
+// ── Chronicle messages ────────────────────────────────────────────────────────
+const CHRONICLE_MSGS = [
+  'GEODESIC LOCK CONFIRMED — KERR METRIC SOLUTION STABLE',
+  'APHELION CROSSING // TRAJECTORY NOMINAL',
+  'RELATIVISTIC DRIFT WITHIN TOLERANCE — Δθ = 0.0003 rad',
+  'TACHYON SHADOW NOMINAL — TELEMETRY UNINTERRUPTED',
+  'LORENTZ CONTRACTION FACTOR γ = 4.21 — CONFIRMED',
+  'GRAVITATIONAL LENS CORRECTION APPLIED',
+  'SOLAR WIND PERTURBATION COMPENSATED // Δv = 0.12 m·s⁻¹',
+  'SHAPIRO DELAY LOGGED — +412 µs',
+  'FRAME-DRAGGING PRECESSION NOMINAL',
+  'PHASE-SPACE TRAJECTORY LOCKED',
+  'IMPACT PARAMETER b WITHIN KILL RADIUS',
+  'CAUSALITY PRESERVATION CONFIRMED',
+  'SCHWARZSCHILD RADIUS CLEARANCE: NOMINAL',
+  'THERMAL SIGNATURE ACQUISITION STABLE',
+  'GEODESIC SOLUTION VERIFIED — 98.7% CONFIDENCE',
+  'RELATIVISTIC KE: 4.21 × 10⁴² J — NOMINAL',
+  'LORENTZ BOOST STABLE — NO FRAME VIOLATION',
+  'GR TIME DILATION FACTOR: 0.994 — WITHIN SPEC',
+  'COURSE CORRECTION WINDOW: CLOSED',
+  'HOSTILE INTERCEPT PROBABILITY: NEGLIGIBLE',
+]
+
+const mkTimestamp = () => {
+  const d = new Date()
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function LaunchMonitorScreen({ onReturn }) {
-  const canvasRef   = useRef(null)
-  const rotRef      = useRef({ x: 0.35, y: -0.4 })
-  const dragging    = useRef(false)
-  const lastMPos    = useRef({ x: 0, y: 0 })
-  const distRef     = useRef(INITIAL_DIST)
-  const rafRef      = useRef(null)
-  const projPosRef  = useRef({})
-  const blinkOn     = useRef(true)
-  const lastBlinkT  = useRef(0)
-  const onLaunchCompleteRef = useRef(onReturn)
-  useEffect(() => { onLaunchCompleteRef.current = onReturn }, [onReturn])
+  const canvasRef      = useRef(null)
+  const rotRef         = useRef({ x: 0.518, y: -1.240 })
+  const rotDisplayRef  = useRef(null)
+  const dragging       = useRef(false)
+  const lastMPos       = useRef({ x: 0, y: 0 })
+  const distRef        = useRef(INITIAL_DIST)
+  const rafRef         = useRef(null)
+  const projPosRef     = useRef({})
+  const blinkOn        = useRef(true)
+  const lastBlinkT     = useRef(0)
+  const chronicleLogRef = useRef(null)
+  const impactProbRef  = useRef(97.4)
+  const onReturnRef    = useRef(onReturn)
+  useEffect(() => { onReturnRef.current = onReturn }, [onReturn])
 
-  const [distance, setDistance] = useState(INITIAL_DIST)
-  const [clock,    setClock]    = useState(fmtClk(Date.now() - t0))
-  const [hovered,  setHovered]  = useState(null)
-  const [hoverXY,  setHoverXY]  = useState({ x: 0, y: 0 })
+  const [distance,    setDistance]    = useState(INITIAL_DIST)
+  const [clock,       setClock]       = useState(fmtClk(Date.now() - t0))
+  const [hovered,     setHovered]     = useState(null)
+  const [hoverXY,     setHoverXY]     = useState({ x: 0, y: 0 })
+  const [impactProb,  setImpactProb]  = useState(97.4)
+  const [chronicle,   setChronicle]   = useState([
+    { ts: mkTimestamp(), msg: 'GEODESIC INTERCEPT SOLUTION COMMITTED' },
+    { ts: mkTimestamp(), msg: 'PHYSICS PROJECTILE // PACKAGE AWAY' },
+    { ts: mkTimestamp(), msg: 'TRAJECTORY ACQUISITION NOMINAL' },
+  ])
 
-  // Distance countdown
+  // Distance countdown + impact prob drift
   useEffect(() => {
     const iv = setInterval(() => {
       distRef.current = Math.max(0, distRef.current - DIST_PER_SEC)
       setDistance(distRef.current)
+      impactProbRef.current = Math.min(99.9, Math.max(94.0,
+        impactProbRef.current + (Math.random() - 0.48) * 0.06
+      ))
+      setImpactProb(impactProbRef.current)
     }, 1000)
     return () => clearInterval(iv)
   }, [])
@@ -123,6 +175,33 @@ export default function LaunchMonitorScreen({ onReturn }) {
     const iv = setInterval(() => setClock(fmtClk(Date.now() - t0)), 1000)
     return () => clearInterval(iv)
   }, [])
+
+  // Chronicle log
+  useEffect(() => {
+    const used = new Set([0, 1, 2]) // indices already shown as initial msgs
+    const remaining = CHRONICLE_MSGS.filter((_, i) => !used.has(i))
+    let pool = [...remaining]
+    let timeoutId
+    const scheduleNext = () => {
+      const delay = 5000 + Math.random() * 6000
+      timeoutId = setTimeout(() => {
+        if (pool.length === 0) pool = [...CHRONICLE_MSGS]
+        const idx = Math.floor(Math.random() * pool.length)
+        const msg = pool.splice(idx, 1)[0]
+        setChronicle(prev => [...prev.slice(-29), { ts: mkTimestamp(), msg }])
+        scheduleNext()
+      }, delay)
+    }
+    scheduleNext()
+    return () => clearTimeout(timeoutId)
+  }, [])
+
+  // Auto-scroll chronicle log
+  useEffect(() => {
+    if (chronicleLogRef.current) {
+      chronicleLogRef.current.scrollTop = chronicleLogRef.current.scrollHeight
+    }
+  }, [chronicle])
 
   // Canvas draw loop
   useEffect(() => {
@@ -151,6 +230,12 @@ export default function LaunchMonitorScreen({ onReturn }) {
 
       ctx.clearRect(0, 0, W, H)
 
+      // Update rotation display
+      if (rotDisplayRef.current) {
+        const fmt = (v) => (v >= 0 ? '+' : '') + v.toFixed(3)
+        rotDisplayRef.current.textContent = `X ${fmt(rx)}  Y ${fmt(ry)}  rad`
+      }
+
       // Reference sphere
       SPHERE_NORMALS.forEach(n => {
         const pts = gcPoints(n)
@@ -159,7 +244,7 @@ export default function LaunchMonitorScreen({ onReturn }) {
           const [sx, sy] = project(rotXY(p, rx, ry), cx, cy, s)
           if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy)
         })
-        ctx.strokeStyle = 'rgba(40,100,220,0.65)'
+        ctx.strokeStyle = 'rgba(100,180,255,0.40)'
         ctx.lineWidth   = 1.2
         ctx.stroke()
       })
@@ -188,8 +273,8 @@ export default function LaunchMonitorScreen({ onReturn }) {
       ctx.beginPath()
       ctx.moveTo(pInst[0], pInst[1])
       ctx.lineTo(pTarg[0], pTarg[1])
-      ctx.strokeStyle = 'rgba(255,255,255,0.13)'
-      ctx.lineWidth   = 1
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)'
+      ctx.lineWidth   = 1.8
       ctx.setLineDash([4, 7])
       ctx.stroke()
       ctx.setLineDash([])
@@ -256,7 +341,9 @@ export default function LaunchMonitorScreen({ onReturn }) {
     if (found) setHoverXY({ x: e.clientX, y: e.clientY })
   }, [])
 
-  const onMouseUp   = useCallback(() => { dragging.current = false }, [])
+  const onMouseUp = useCallback(() => { dragging.current = false }, [])
+
+  const ttiSecs = Math.round(distance / DIST_PER_SEC)
 
   return (
     <div id="monitor-screen">
@@ -276,41 +363,116 @@ export default function LaunchMonitorScreen({ onReturn }) {
       <main className="monitor-main">
         <div className="monitor-title">LAUNCH MONITORING // TRAJECTORY TRACKING ACTIVE</div>
 
-        <div
-          className="monitor-canvas-wrap"
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-          onMouseLeave={onMouseUp}
-        >
-          <canvas ref={canvasRef} className="monitor-canvas" />
+        <div className="monitor-middle">
 
-          <div className="monitor-canvas-hint">Click &amp; drag to rotate</div>
-
-          {hovered && OBJECTS[hovered] && (
-            <div className="monitor-infobox" style={{ left: hoverXY.x + 18, top: hoverXY.y - 16 }}>
-              <div className="mib-title" style={{ color: OBJECTS[hovered].color }}>
-                {OBJECTS[hovered].label}
+          {/* ── Intercept solution panel ── */}
+          <div className="monitor-side-panel">
+            <div className="msp-header">INTERCEPT SOLUTION</div>
+            <div className="msp-body">
+              <div className="msp-row">
+                <span className="msp-key">TIME TO INTERCEPT</span>
+                <span className="msp-val tti">{fmtTTI(ttiSecs)}</span>
               </div>
-              <div className="mib-divider" />
-              {OBJECTS[hovered].stats.map(({ key, value }) => (
-                <div key={key} className="mib-row">
-                  <span className="mib-key">{key}</span>
-                  <span className="mib-val">{value}</span>
+              <div className="msp-divider" />
+              <div className="msp-row">
+                <span className="msp-key">CLOSING VELOCITY</span>
+                <span className="msp-val">269,813 km/s</span>
+              </div>
+              <div className="msp-row">
+                <span className="msp-key">REL. VELOCITY</span>
+                <span className="msp-val">0.9003c</span>
+              </div>
+              <div className="msp-divider" />
+              <div className="msp-row">
+                <span className="msp-key">IMPACT PROB.</span>
+                <span className="msp-val ok">{impactProb.toFixed(1)}%</span>
+              </div>
+              <div className="msp-row">
+                <span className="msp-key">GEODESIC TYPE</span>
+                <span className="msp-val">TIMELIKE / UNBOUND</span>
+              </div>
+              <div className="msp-divider" />
+              <div className="msp-row">
+                <span className="msp-key">IMPACT PARAMETER b</span>
+                <span className="msp-val">2.84 r_s</span>
+              </div>
+              <div className="msp-row">
+                <span className="msp-key">SCHW. CORRECTION</span>
+                <span className="msp-val">+0.003°</span>
+              </div>
+              <div className="msp-row">
+                <span className="msp-key">LORENTZ FACTOR γ</span>
+                <span className="msp-val">4.214</span>
+              </div>
+              <div className="msp-row">
+                <span className="msp-key">FIRING SOLUTION</span>
+                <span className="msp-val ok">CONVERGED</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Canvas ── */}
+          <div
+            className="monitor-canvas-wrap"
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={onMouseUp}
+          >
+            <canvas ref={canvasRef} className="monitor-canvas" />
+
+            <div className="monitor-rot-display" ref={rotDisplayRef} />
+            <div className="monitor-canvas-hint">Click &amp; drag to rotate</div>
+
+            <div className="monitor-legend">
+              {Object.entries(OBJECTS).map(([key, def]) => (
+                <div key={key} className="monitor-legend-row">
+                  <span className="monitor-legend-dot" style={{ background: def.color, boxShadow: `0 0 6px ${def.color}` }} />
+                  <span className="monitor-legend-label">{CANVAS_LABELS[key]}</span>
                 </div>
               ))}
             </div>
-          )}
+
+            {hovered && OBJECTS[hovered] && (
+              <div className="monitor-infobox" style={{ left: hoverXY.x + 18, top: hoverXY.y - 16 }}>
+                <div className="mib-title" style={{ color: OBJECTS[hovered].color }}>
+                  {OBJECTS[hovered].label}
+                </div>
+                <div className="mib-divider" />
+                {OBJECTS[hovered].stats.map(({ key, value }) => (
+                  <div key={key} className="mib-row">
+                    <span className="mib-key">{key}</span>
+                    <span className="mib-val">{value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Chronicle log panel ── */}
+          <div className="monitor-side-panel">
+            <div className="msp-header">PROJECTILE TELEMETRY LOG</div>
+            <div className="msp-body chronicle-body" ref={chronicleLogRef}>
+              {chronicle.map((entry, i) => (
+                <div key={i} className="chronicle-row">
+                  <span className="chronicle-ts">{entry.ts}</span>
+                  <span className="chronicle-msg">{entry.msg}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
 
-        <div className="monitor-dist-section">
-          <div className="monitor-dist-label">DISTANCE TO TARGET</div>
-          <div className="monitor-dist-value">{fmtDist(distance)} <span className="monitor-dist-unit">km</span></div>
+        <div className="monitor-bottom">
+          <div className="monitor-dist-section">
+            <div className="monitor-dist-label">DISTANCE TO TARGET</div>
+            <div className="monitor-dist-value">{fmtDist(distance)} <span className="monitor-dist-unit">km</span></div>
+          </div>
+          <button className="monitor-return-btn" onClick={onReturn}>
+            RETURN TO INSTALLATION VIEW
+          </button>
         </div>
-
-        <button className="monitor-return-btn" onClick={onReturn}>
-          RETURN TO INSTALLATION VIEW
-        </button>
       </main>
     </div>
   )

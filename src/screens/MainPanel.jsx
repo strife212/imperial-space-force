@@ -540,7 +540,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
   const showDisarm    = launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown'
   const showLaunch    = launchPhase === 'armed' || launchPhase === 'fired'
   const launchFiring  = launchPhase === 'fired'
-  const showCodeVerify= launchPhase === 'verifying' || launchPhase === 'armed'
+  const showCodeVerify= launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown' || launchPhase === 'fired'
 
   return (
     <>
@@ -869,20 +869,11 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
           launchPhase={launchPhase}
           launchLabel={launchLabel}
           launchFiring={launchFiring}
+          launchCdText={launchCdText}
+          cdVisible={cdVisible}
         />
       )}
 
-      {launchPhase === 'countdown' && cdVisible && (
-        <div className="launch-warning-overlay" aria-live="assertive">
-          <span>⚠ WARNING — LAUNCH INITIATED ⚠</span>
-          <span className="launch-warning-cd">! {launchCdText} !</span>
-        </div>
-      )}
-      {launchPhase === 'fired' && (
-        <div className="launch-warning-overlay fired" aria-live="assertive">
-          <span>⚠ PACKAGE AWAY ⚠</span>
-        </div>
-      )}
 
       <footer className="hud-footer">
         <span>HMSS / FCS v6.2.41 / GR-CORRECTED FIRE-CONTROL</span>

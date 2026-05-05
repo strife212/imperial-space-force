@@ -8,7 +8,7 @@ const LOCK_INTERVAL_MS = 260
 
 const randChar = () => CHARS[Math.floor(Math.random() * CHARS.length)]
 
-export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchPhase, launchLabel, launchFiring }) {
+export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchPhase, launchLabel, launchFiring, launchCdText, cdVisible }) {
   const [symbols,     setSymbols]     = useState(() => Array.from({ length: BOX_COUNT }, randChar))
   const [lockedCount, setLockedCount] = useState(0)
   const lockedRef  = useRef(0)
@@ -40,34 +40,56 @@ export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchP
     }
   }, [onComplete])
 
-  const allLocked = lockedCount === BOX_COUNT
+  const allLocked      = lockedCount === BOX_COUNT
+  const isVerifying    = launchPhase === 'verifying' || launchPhase === 'armed'
+  const isCountdown    = launchPhase === 'countdown'
+  const isFired        = launchPhase === 'fired'
 
   return (
     <div className="code-verify-overlay">
       <div className="code-verify-dialog">
-        <div className="code-verify-title">VERIFYING LAUNCH CODES</div>
-        <div className="code-verify-boxes">
-          {symbols.map((sym, i) => (
-            <div key={i} className={`code-box${i < lockedCount ? ' locked' : ''}`}>
-              {i < lockedCount ? finalChars.current[i] : sym}
+
+        {isVerifying && (
+          <>
+            <div className="code-verify-title">VERIFYING LAUNCH CODES</div>
+            <div className="code-verify-boxes">
+              {symbols.map((sym, i) => (
+                <div key={i} className={`code-box${i < lockedCount ? ' locked' : ''}`}>
+                  {i < lockedCount ? finalChars.current[i] : sym}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className={`code-verify-status${allLocked ? ' verified' : ''}`}>
-          {allLocked
-            ? 'CODES VERIFIED — LAUNCH ENABLED'
-            : `AUTHENTICATING — ${lockedCount} / ${BOX_COUNT}`}
-        </div>
-        {launchPhase === 'armed' && (
-          <button
-            className={`launch-btn cvl-launch-btn${launchFiring ? ' firing-anim' : ''}`}
-            onClick={onFire}
-          >
-            <span className="launch-btn-inner">
-              <span className="launch-btn-label">{launchLabel}</span>
-            </span>
-          </button>
+            <div className={`code-verify-status${allLocked ? ' verified' : ''}`}>
+              {allLocked
+                ? 'CODES VERIFIED — LAUNCH ENABLED'
+                : `AUTHENTICATING — ${lockedCount} / ${BOX_COUNT}`}
+            </div>
+            {launchPhase === 'armed' && (
+              <button
+                className={`launch-btn cvl-launch-btn${launchFiring ? ' firing-anim' : ''}`}
+                onClick={onFire}
+              >
+                <span className="launch-btn-inner">
+                  <span className="launch-btn-label">{launchLabel}</span>
+                </span>
+              </button>
+            )}
+          </>
         )}
+
+        {isCountdown && (
+          <div className="cvl-warning-body" style={{ opacity: cdVisible ? 1 : 0 }}>
+            <div className="cvl-warning-text">⚠ WARNING — LAUNCH INITIATED ⚠</div>
+            <div className="cvl-warning-cd">! {launchCdText} !</div>
+          </div>
+        )}
+
+        {isFired && (
+          <div className={`cvl-warning-body cvl-fired${launchFiring ? ' firing-anim' : ''}`}>
+            <div className="cvl-warning-text">⚠ PACKAGE AWAY ⚠</div>
+          </div>
+        )}
+
       </div>
     </div>
   )
