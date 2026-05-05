@@ -576,7 +576,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
       <main className="grid">
 
         {/* GEODETIC TELEMETRY */}
-        <section className={`panel${lit('panel-geodetic')}`} id="panel-geodetic">
+        <section className={`panel${lit('panel-geodetic')}${lowPower ? ' panel--low-power' : ''}`} id="panel-geodetic">
           <header className="panel-header">
             <span className="bullet" /><h2>GEODETIC TELEMETRY</h2>
             <span className="panel-id">PNL-001 / WGS-84</span>
@@ -597,6 +597,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
               <span className="mono v" ref={ltDragRef} />
             </div>
           </div>
+          {lowPower && <div className="low-power-overlay" />}
         </section>
 
         {/* MINKOWSKI RADAR / INSTALLATION VIEW */}
@@ -644,7 +645,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
         </section>
 
         {/* PHYSICS PACKAGE LOADOUT */}
-        <section className={`panel${lit('panel-loadout')}`} id="panel-loadout">
+        <section className={`panel${lit('panel-loadout')}${lowPower ? ' panel--low-power' : ''}`} id="panel-loadout">
           <header className="panel-header">
             <span className="bullet" /><h2>PHYSICS PACKAGE LOADOUT</h2>
             <span className="panel-id">PNL-003 / ORDNANCE</span>
@@ -672,10 +673,11 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
               <div className="bar"><div className="bar-fill" style={{ width: '100%' }} /></div>
             </div>
           </div>
+          {lowPower && <div className="low-power-overlay" />}
         </section>
 
         {/* SPACETIME DIAGNOSTICS */}
-        <section className={`panel${lit('panel-spacetime')}`} id="panel-spacetime">
+        <section className={`panel${lit('panel-spacetime')}${lowPower ? ' panel--low-power' : ''}`} id="panel-spacetime">
           <header className="panel-header">
             <span className="bullet" /><h2>LOCAL SPACETIME DIAGNOSTICS</h2>
             <span className="panel-id">PNL-004 / METRIC TENSOR</span>
@@ -691,10 +693,11 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
               <pre className="tensor mono" ref={tensorRef} />
             </div>
           </div>
+          {lowPower && <div className="low-power-overlay" />}
         </section>
 
         {/* CAUSALITY / CHRONOLOGY MONITOR */}
-        <section className={`panel${lit('panel-causality')}`} id="panel-causality">
+        <section className={`panel${lit('panel-causality')}${lowPower ? ' panel--low-power' : ''}`} id="panel-causality">
           <header className="panel-header">
             <span className="bullet pulse" /><h2>CHRONOLOGY PROTECTION MONITOR</h2>
             <span className="panel-id">PNL-005 / HAWKING CONJECTURE</span>
@@ -733,6 +736,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
               </div>
             </div>
           </div>
+          {lowPower && <div className="low-power-overlay" />}
         </section>
 
         {/* TARGETING SOLUTION */}
@@ -769,7 +773,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
         {/* POWER / REACTOR */}
         <section className={`panel panel--clickable${lit('panel-power')}`} id="panel-power" onClick={onReactor} title="Open Reactor Control">
           <header className="panel-header">
-            <span className="bullet" /><h2>REACTOR // PHASE-SPACE</h2>
+            <span className={`bullet${lowPower ? ' bullet--alert' : ''}`} /><h2>REACTOR // PHASE-SPACE</h2>
             <span className="panel-id">PNL-007 / D-³He FUSOR + ZPE TAP</span>
           </header>
           <div className="panel-body">
@@ -805,7 +809,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
         <div className="bottom-row">
 
           {/* EVENT LOG */}
-          <section className={`panel${lit('panel-log')}`} id="panel-log">
+          <section className={`panel${lit('panel-log')}${lowPower ? ' panel--low-power' : ''}`} id="panel-log">
             <header className="panel-header">
               <span className="bullet pulse" /><h2>EVENT LOG // T-STREAM</h2>
               <span className="panel-id">PNL-008 / RING BUFFER</span>
@@ -821,6 +825,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
                 ))}
               </ul>
             </div>
+            {lowPower && <div className="low-power-overlay" />}
           </section>
 
           {/* LAUNCH CONTROL */}

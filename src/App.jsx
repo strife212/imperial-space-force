@@ -10,7 +10,7 @@ import ReactorScreen from './screens/ReactorScreen'
 export default function App() {
   const [screen,        setScreen]        = useState('login')
   const [launchPackage, setLaunchPackage] = useState('')
-  const [plasmaLevel,   setPlasmaLevel]   = useState(75)
+  const [plasmaLevel,   setPlasmaLevel]   = useState(0)
 
   return (
     <>

@@ -148,7 +148,7 @@ function drawReactor(ctx, w, h, rx, ry, plasma) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 75 }) {
+export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0 }) {
   const canvasRef         = useRef(null)
   const rafRef            = useRef(null)
   const rotRef            = useRef({ x: 0.38, y: 0.3 })
@@ -289,11 +289,33 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 75 }
               </div>
 
               <div className="plasma-track-outer">
-                {/* Redline zone — top 20% */}
+                {/* Redline zone — top 20% (80–100%) */}
                 <div className={`plasma-redline-zone${redlineActive ? ' rl-active' : ''}`}>
                   <span className="plasma-redline-label">⚠ REDLINE</span>
                 </div>
                 <div className="plasma-80-line" />
+
+                {/* Safe zone — middle 70% (10–80%) */}
+                <div className="plasma-safe-zone" />
+
+                {/* Low-power threshold line at 10% */}
+                <div className="plasma-10-line" />
+
+                {/* Low-power zone — bottom 10% (0–10%) */}
+                <div className="plasma-lowpower-zone">
+                  <span className="plasma-lowpower-label">LOW</span>
+                </div>
+
+                {/* Zone labels to the left of the track */}
+                <div className="plasma-zone-label plasma-zone-label--danger" style={{ top: '10%' }}>
+                  DANGER ZONE
+                </div>
+                <div className="plasma-zone-label plasma-zone-label--ideal" style={{ top: '55%' }}>
+                  IDEAL POWER
+                </div>
+                <div className="plasma-zone-label plasma-zone-label--low" style={{ top: '95%' }}>
+                  LOW POWER
+                </div>
 
                 <input
                   type="range"
@@ -316,7 +338,13 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 75 }
                   <span>0</span>
                 </div>
               </div>
+              <div className={`plasma-adjust-label${plasmaDensity >= 10 && plasmaDensity < 80 ? ' plasma-adjust-label--ideal' : ''}`}>
+                ADJUST
+              </div>
             </div>
+          </div>
+          <div className={`reactor-status-label${redlineActive ? ' rsl--overload' : plasmaDensity < 10 ? ' rsl--low' : ' rsl--nominal'}`}>
+            {redlineActive ? 'OVERLOAD' : plasmaDensity < 10 ? 'LOW POWER — INCREASE PLASMA' : 'STATUS NOMINAL'}
           </div>
           <button className="monitor-return-btn" onClick={() => onReturn(plasmaRef.current)} disabled={redlineActive}>RETURN TO INSTALLATION VIEW</button>
         </div>
