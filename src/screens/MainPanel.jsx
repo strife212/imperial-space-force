@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { LOG_MESSAGES, PKG_NAMES, SECTION_INFO } from '../lib/constants'
+import LaunchCodeVerifier from './LaunchCodeVerifier'
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 const t0      = Date.now() - 86400_000 * 17 - 3600_000 * 4 - 60_000 * 22
@@ -144,14 +145,21 @@ export default function MainPanel() {
     setAuthCActive(false)
   }, [])
 
+  const handleVerifyComplete = useCallback(() => {
+    if (launchPhaseRef.current !== 'verifying') return
+    launchPhaseRef.current = 'armed'
+    setLaunchPhase('armed')
+    setLaunchStatus({ text: '⚠ ARMED — LAUNCH ENABLED', cls: 'launch-status armed' })
+  }, [])
+
   const handleArm = useCallback(() => {
     if (launchPhaseRef.current === 'idle') {
-      launchPhaseRef.current = 'armed'
-      setLaunchPhase('armed')
-      setLaunchStatus({ text: '⚠ ARMED — LAUNCH ENABLED', cls: 'launch-status armed' })
+      launchPhaseRef.current = 'verifying'
+      setLaunchPhase('verifying')
+      setLaunchStatus({ text: '⚠ VERIFYING LAUNCH CODES', cls: 'launch-status armed' })
       setAuthCActive(true)
       addLog('CRIT', `PHYSICS PACKAGE ARMED // ${PKG_NAMES[selectedPkgRef.current]}`)
-    } else if (launchPhaseRef.current === 'armed') {
+    } else if (launchPhaseRef.current === 'verifying' || launchPhaseRef.current === 'armed' || launchPhaseRef.current === 'countdown') {
       handleReset()
       addLog('WARN', 'LAUNCH SEQUENCE ABORTED // DISARMED BY OPERATOR')
     }
@@ -503,10 +511,11 @@ export default function MainPanel() {
   }, [addLog])
 
   // ── JSX ───────────────────────────────────────────────────────────────────
-  const showArm     = launchPhase === 'idle'
-  const showDisarm  = launchPhase === 'armed' || launchPhase === 'countdown'
-  const showLaunch  = launchPhase === 'armed' || launchPhase === 'fired'
-  const launchFiring= launchPhase === 'fired'
+  const showArm       = launchPhase === 'idle'
+  const showDisarm    = launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown'
+  const showLaunch    = launchPhase === 'armed' || launchPhase === 'fired'
+  const launchFiring  = launchPhase === 'fired'
+  const showCodeVerify= launchPhase === 'verifying' || launchPhase === 'armed'
 
   return (
     <>
@@ -773,7 +782,7 @@ export default function MainPanel() {
           </section>
 
           {/* LAUNCH CONTROL */}
-          <section className="panel" id="panel-launch">
+          <section className={`panel${showCodeVerify ? ' elevated' : ''}`} id="panel-launch">
             <header className="panel-header">
               <span className="bullet pulse" /><h2>PHYSICS PACKAGE LAUNCH CONTROL</h2>
               <span className="panel-id">PNL-009 / AUTHORIZATION REQUIRED</span>
@@ -816,7 +825,7 @@ export default function MainPanel() {
                     <button className="arm-btn" onClick={handleArm}>ARM</button>
                   )}
                   {showDisarm && (
-                    <button className="disarm-btn" disabled={launchPhase === 'countdown'} onClick={handleArm}>DISARM</button>
+                    <button className="disarm-btn" onClick={handleArm}>DISARM</button>
                   )}
                   {showLaunch && (
                     <button className={`launch-btn${launchFiring ? ' firing-anim' : ''}`} disabled={launchPhase !== 'armed'} onClick={handleFire}>
@@ -834,6 +843,17 @@ export default function MainPanel() {
 
         </div>
       </main>
+
+      {showCodeVerify && <div className="code-verify-dim" />}
+      {showCodeVerify && (
+        <LaunchCodeVerifier onComplete={handleVerifyComplete} />
+      )}
+
+      {(launchPhase === 'countdown' || launchPhase === 'fired') && (
+        <div className="launch-warning-overlay" aria-live="assertive">
+          <span>{launchPhase === 'fired' ? '⚠ PACKAGE AWAY ⚠' : '⚠ WARNING — LAUNCH INITIATED ⚠'}</span>
+        </div>
+      )}
 
       <footer className="hud-footer">
         <span>HMSS / FCS v6.2.41 / GR-CORRECTED FIRE-CONTROL</span>
