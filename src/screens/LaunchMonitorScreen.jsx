@@ -130,7 +130,7 @@ const mkTimestamp = () => {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function LaunchMonitorScreen({ onReturn }) {
+export default function LaunchMonitorScreen({ onReturn, onLogout }) {
   const canvasRef      = useRef(null)
   const rotRef         = useRef({ x: 0.518, y: -1.240 })
   const rotDisplayRef  = useRef(null)
@@ -361,7 +361,7 @@ export default function LaunchMonitorScreen({ onReturn }) {
     <div id="monitor-screen">
       <header className="hud-header">
         <div className="header-left">
-          <span className="brand">⬢ IMPERIAL SPACE FORCE // HMSS &quot;HER ANNUNCIATOR&quot;</span>
+          <span className="brand brand-link" onClick={onLogout} title="Return to login">⬢ IMPERIAL SPACE FORCE // HMSS &quot;HER ANNUNCIATOR&quot;</span>
         </div>
         <div className="header-center">
           <span className="status-pill armed">DEFCON-2 // WEAPONS HOT</span>

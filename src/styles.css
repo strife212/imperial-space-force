@@ -1366,6 +1366,12 @@ body {
   height: 60px;
   position: relative;
 }
+.cvl-launch-btn--locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: saturate(0);
+  animation: none !important;
+}
 
 /* warning content inside the verifier dialog */
 .cvl-warning-body {

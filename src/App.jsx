@@ -16,7 +16,7 @@ export default function App() {
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('boot')} onDebug={() => setScreen('debug')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}
       {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={() => setScreen('monitor')} />}
-      {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => setScreen('main')} />}
+      {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => setScreen('main')} onLogout={() => setScreen('login')} />}
       {screen === 'debug'   && <DebugScreen onNavigate={setScreen} />}
     </>
   )

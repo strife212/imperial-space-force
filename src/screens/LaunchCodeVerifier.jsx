@@ -64,16 +64,15 @@ export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchP
                 ? 'CODES VERIFIED — LAUNCH ENABLED'
                 : `AUTHENTICATING — ${lockedCount} / ${BOX_COUNT}`}
             </div>
-            {launchPhase === 'armed' && (
-              <button
-                className={`launch-btn cvl-launch-btn${launchFiring ? ' firing-anim' : ''}`}
-                onClick={onFire}
-              >
-                <span className="launch-btn-inner">
-                  <span className="launch-btn-label">{launchLabel}</span>
-                </span>
-              </button>
-            )}
+            <button
+              className={`launch-btn cvl-launch-btn${launchFiring ? ' firing-anim' : ''}${!allLocked ? ' cvl-launch-btn--locked' : ''}`}
+              onClick={allLocked ? onFire : undefined}
+              disabled={!allLocked}
+            >
+              <span className="launch-btn-inner">
+                <span className="launch-btn-label">{launchLabel}</span>
+              </span>
+            </button>
           </>
         )}
 
