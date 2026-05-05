@@ -28,9 +28,11 @@ export default function HudFooter({ children }) {
           <div className="empress-dim" onClick={() => setOpen(false)} />
           <div className="empress-modal-wrap">
             <div className="empress-modal">
-              <div className="empress-motto">✦ CAELUM CANIT ✦ ILLA AVDIT ✦</div>
-              <div className="empress-translation">
-                <em>The heavens sing; she hears.</em>
+              <div className="empress-motto-group">
+                <div className="empress-motto">✦ CAELUM CANIT ✦ ILLA AVDIT ✦</div>
+                <div className="empress-translation">
+                  <em>The heavens sing; she hears.</em>
+                </div>
               </div>
               <img
                 className="empress-img"
