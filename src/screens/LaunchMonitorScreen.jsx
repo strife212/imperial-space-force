@@ -142,6 +142,7 @@ export default function LaunchMonitorScreen({ onReturn, onLogout }) {
   const blinkOn        = useRef(true)
   const lastBlinkT     = useRef(0)
   const chronicleLogRef = useRef(null)
+  const utcRef          = useRef(null)
   const impactProbRef  = useRef(97.4)
   const onReturnRef    = useRef(onReturn)
   useEffect(() => { onReturnRef.current = onReturn }, [onReturn])
@@ -170,9 +171,18 @@ export default function LaunchMonitorScreen({ onReturn, onLogout }) {
     return () => clearInterval(iv)
   }, [])
 
-  // Mission clock
+  // Mission clock + UTC
   useEffect(() => {
-    const iv = setInterval(() => setClock(fmtClk(Date.now() - t0)), 1000)
+    const tick = () => {
+      setClock(fmtClk(Date.now() - t0))
+      if (utcRef.current) {
+        const d = new Date()
+        const iso = d.toISOString()
+        utcRef.current.textContent = `UTC ${iso.slice(0, 10)} ${iso.slice(11, 23)}`
+      }
+    }
+    const iv = setInterval(tick, 1000)
+    tick()
     return () => clearInterval(iv)
   }, [])
 
@@ -495,6 +505,17 @@ export default function LaunchMonitorScreen({ onReturn, onLogout }) {
           </button>
         </div>
       </main>
+
+      <footer className="hud-footer">
+        <span>HMSS / FCS v6.2.41 / GR-CORRECTED FIRE-CONTROL</span>
+        <span className="sep">│</span>
+        <span>UPLINK: <em className="ok">SECURE 256-QKD</em></span>
+        <span className="sep">│</span>
+        <span>OPERATOR: <em>HIH V. ASTRAIA // CLR-Ω</em></span>
+        <span className="sep">│</span>
+        <span ref={utcRef} />
+        <span className="footer-motto">✦ CAELUM CANIT ✦ ILLA AVDIT ✦</span>
+      </footer>
     </div>
   )
 }
