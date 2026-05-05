@@ -6,13 +6,20 @@ const ID_SPEED    = 38   // ms per character
 const PW_SPEED    = 60   // ms per character
 
 export default function LoginScreen({ onComplete }) {
-  const [exiting,      setExiting]      = useState(false)
-  const [phase,        setPhase]        = useState('idle')  // idle | typing | ready
-  const [operatorText, setOperatorText] = useState('')
-  const [passwordText, setPasswordText] = useState('')
-  const timers = useRef([])
+  const [exiting,        setExiting]        = useState(false)
+  const [phase,          setPhase]          = useState('idle')  // idle | typing | ready
+  const [operatorText,   setOperatorText]   = useState('')
+  const [passwordText,   setPasswordText]   = useState('')
+  const [portraitHover,  setPortraitHover]  = useState(false)
+  const timers   = useRef([])
+  const clickSfx = useRef(null)
 
-  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+  useEffect(() => {
+    const audio = new Audio(`${import.meta.env.BASE_URL}click.wav`)
+    audio.preload = 'auto'
+    clickSfx.current = audio
+    return () => timers.current.forEach(clearTimeout)
+  }, [])
 
   const startFill = () => {
     if (phase !== 'idle') return
@@ -40,12 +47,15 @@ export default function LoginScreen({ onComplete }) {
   }
 
   const handleLogin = () => {
+    if (clickSfx.current) { clickSfx.current.currentTime = 0; clickSfx.current.play().catch(() => {}) }
+    if (phase === 'idle') { startFill(); return }
+    if (phase !== 'ready' || exiting) return
     setExiting(true)
     setTimeout(onComplete, 700)
   }
 
-  const portraitVisible = phase !== 'idle'
-  const btnDisabled     = phase !== 'ready' || exiting
+  const portraitVisible = operatorText.length >= OPERATOR_ID.length
+  const btnDim          = phase !== 'ready' || exiting
 
   return (
     <div id="login-screen" className={exiting ? 'fade-out' : ''}>
@@ -60,7 +70,12 @@ export default function LoginScreen({ onComplete }) {
         </div>
 
         <div className="login-form">
-          <div className="login-portrait-wrap">
+          <div
+            className={`login-portrait-wrap${phase === 'idle' ? ' clickable' : ''}`}
+            onClick={startFill}
+            onMouseEnter={() => portraitVisible && setPortraitHover(true)}
+            onMouseLeave={() => setPortraitHover(false)}
+          >
             <img
               className={`login-portrait${portraitVisible ? ' visible' : ''}`}
               src={`${import.meta.env.BASE_URL}portrait.png`}
@@ -68,33 +83,67 @@ export default function LoginScreen({ onComplete }) {
             />
             {!portraitVisible && <span className="login-portrait-empty">[NO USER]</span>}
           </div>
-          <div className="login-fields">
+          <div className="login-fields" aria-hidden={portraitHover}>
             <div className="login-field-row">
               <label className="login-label">OPERATOR ID</label>
-              <input
-                className="login-input"
-                type="text"
-                value={operatorText}
-                onFocus={startFill}
-                onChange={() => {}}
-                readOnly
-              />
+              <div className="login-input-wrap">
+                <input
+                  className="login-input"
+                  type="text"
+                  value={operatorText}
+                  onFocus={startFill}
+                  onChange={() => {}}
+                  readOnly
+                />
+                {(phase === 'idle' || (phase === 'typing' && operatorText.length < OPERATOR_ID.length)) && (
+                  <span
+                    className="login-cursor"
+                    style={{ left: `calc(12px + ${operatorText.length} * 1ch + ${operatorText.length * 0.08}em)` }}
+                    aria-hidden
+                  >▌</span>
+                )}
+              </div>
             </div>
             <div className="login-field-row">
               <label className="login-label">ACCESS CODE</label>
-              <input
-                className="login-input"
-                type="password"
-                value={passwordText}
-                onFocus={startFill}
-                onChange={() => {}}
-                readOnly
-              />
+              <div className="login-input-wrap">
+                <input
+                  className="login-input"
+                  type="password"
+                  value={passwordText}
+                  onFocus={startFill}
+                  onChange={() => {}}
+                  readOnly
+                />
+                {phase === 'typing' && operatorText.length >= OPERATOR_ID.length && passwordText.length < PASSWORD.length && (
+                  <span
+                    className="login-cursor"
+                    style={{ left: `calc(12px + ${passwordText.length} * 1ch + ${passwordText.length * 0.08}em)` }}
+                    aria-hidden
+                  >▌</span>
+                )}
+              </div>
             </div>
-            <button className="login-btn" onClick={handleLogin} disabled={btnDisabled}>
+            <button className={`login-btn${btnDim ? ' dim' : ''}`} onClick={handleLogin}>
               AUTHENTICATE &amp; ENTER
             </button>
           </div>
+
+          {portraitVisible && (
+            <div className={`login-info-panel${portraitHover ? ' visible' : ''}`}>
+              <div className="lip-heading">OPERATOR DOSSIER</div>
+              <div className="lip-divider" />
+              <div className="lip-row"><span className="lip-label">DESIGNATION</span><span className="lip-value">HIH V. ASTRAIA</span></div>
+              <div className="lip-row"><span className="lip-label">CLEARANCE</span><span className="lip-value">CLR-Ω // IMPERIAL</span></div>
+              <div className="lip-row"><span className="lip-label">POSTING</span><span className="lip-value">HMSS HER ANNUNCIATOR</span></div>
+              <div className="lip-row"><span className="lip-label">RANK</span><span className="lip-value">O-10: ADMIRAL</span></div>
+              <div className="lip-row"><span className="lip-label">STATUS</span><span className="lip-value lip-value--ok">ACTIVE // VERIFIED</span></div>
+              <div className="lip-divider" />
+              <div className="lip-body">
+                Imperial Princess — 11th in line to the Royal and Imperial Throne.
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="login-anthem">

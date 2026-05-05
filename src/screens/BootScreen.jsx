@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { BOOT_LINES } from '../lib/constants'
 
 export default function BootScreen({ onComplete }) {
@@ -6,6 +6,15 @@ export default function BootScreen({ onComplete }) {
   const [barPct, setBarPct] = useState(0)
   const [showBar, setShowBar] = useState(false)
   const [exiting, setExiting] = useState(false)
+  const processingSfx  = useRef(null)
+  const linesOuterRef  = useRef(null)
+
+  useEffect(() => {
+    const audio = new Audio(`${import.meta.env.BASE_URL}processing.wav`)
+    audio.preload = 'auto'
+    audio.loop = true
+    processingSfx.current = audio
+  }, [])
 
   useEffect(() => {
     const timers = []
@@ -15,10 +24,14 @@ export default function BootScreen({ onComplete }) {
       delay += entry.ms
       timers.push(setTimeout(() => {
         setLines(prev => [...prev, entry])
-        if (i === 0) setShowBar(true)
+        if (i === 0) {
+          setShowBar(true)
+          processingSfx.current?.play().catch(() => {})
+        }
         setBarPct(((i + 1) / BOOT_LINES.length) * 100)
 
         if (i === BOOT_LINES.length - 1) {
+          processingSfx.current?.pause()
           timers.push(setTimeout(() => {
             setExiting(true)
             setTimeout(onComplete, 850)
@@ -27,8 +40,17 @@ export default function BootScreen({ onComplete }) {
       }, delay))
     })
 
-    return () => timers.forEach(clearTimeout)
+    return () => {
+      timers.forEach(clearTimeout)
+      processingSfx.current?.pause()
+    }
   }, [onComplete])
+
+  useEffect(() => {
+    if (linesOuterRef.current) {
+      linesOuterRef.current.scrollTop = linesOuterRef.current.scrollHeight
+    }
+  }, [lines])
 
   return (
     <div id="boot-screen" className={exiting ? 'fade-out' : ''}>
@@ -44,23 +66,25 @@ export default function BootScreen({ onComplete }) {
 
         <div className="boot-motto">✦ CAELUM CANIT ✦ ILLA AVDIT ✦</div>
 
-        <ul className="boot-lines">
-          {lines.map((entry, i) => {
-            const tagClass = entry.tag === 'OK' ? 'ok' : entry.tag === 'WARN' ? 'warn' : 'fail'
-            return (
-              <li key={i} className="boot-line">
-                <span className="bl-text">{entry.text}</span>
-                <span className={`bl-tag ${tagClass}`}>[ {entry.tag} ]</span>
-              </li>
-            )
-          })}
-        </ul>
+        <div className="boot-lines-outer" ref={linesOuterRef}>
+          <ul className="boot-lines">
+            {lines.map((entry, i) => {
+              const tagClass = entry.tag === 'OK' ? 'ok' : entry.tag === 'WARN' ? 'warn' : 'fail'
+              return (
+                <li key={i} className="boot-line">
+                  <span className="bl-text">{entry.text}</span>
+                  <span className={`bl-tag ${tagClass}`}>[ {entry.tag} ]</span>
+                </li>
+              )
+            })}
+          </ul>
 
-        {showBar && (
-          <div className="boot-bar-wrap">
-            <div className="boot-bar" style={{ width: `${barPct}%` }} />
-          </div>
-        )}
+          {showBar && (
+            <div className="boot-bar-wrap">
+              <div className="boot-bar" style={{ width: `${barPct}%` }} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
