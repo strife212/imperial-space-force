@@ -49,9 +49,8 @@ export default function LoginScreen({ onComplete, onDebug }) {
   const handleLogin = () => {
     if (clickSfx.current) { clickSfx.current.currentTime = 0; clickSfx.current.play().catch(() => {}) }
     if (phase === 'idle') { startFill(); return }
-    if (phase !== 'ready' || exiting) return
-    setExiting(true)
-    setTimeout(onComplete, 700)
+    if (phase !== 'ready') return
+    onComplete()
   }
 
   const portraitVisible = operatorText.length >= OPERATOR_ID.length

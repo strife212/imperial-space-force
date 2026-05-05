@@ -1,6 +1,7 @@
 const SCREENS = [
   { key: 'login',   label: 'Login Screen'           },
   { key: 'boot',    label: 'Boot / Loading Screen'  },
+  { key: 'menu',    label: 'Menu Screen'             },
   { key: 'main',    label: 'Main Panel'              },
   { key: 'monitor', label: 'Launch Monitor Screen'  },
 ]
