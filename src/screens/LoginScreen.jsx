@@ -61,7 +61,7 @@ export default function LoginScreen({ onComplete, onDebug }) {
     <div id="login-screen" className={exiting ? 'fade-out' : ''}>
       <div className="login-inner">
         <div className="boot-header">
-          <img className="boot-emblem" src={`${import.meta.env.BASE_URL}logo.png`} alt="Imperial Space Force Emblem" onClick={onDebug} style={{ cursor: 'pointer' }} />
+          <img className="boot-emblem" src={`${import.meta.env.BASE_URL}logo.png`} alt="Imperial Space Force Emblem" />
           <div className="boot-title">IMPERIAL SPACE FORCE</div>
           <div className="boot-subtitle">
             TACTICAL COMMAND INTERFACE // HMSS &quot;HER ANNUNCIATOR&quot; // FIRE CONTROL SYSTEM v6.2.41
@@ -171,6 +171,9 @@ export default function LoginScreen({ onComplete, onDebug }) {
           </p>
         </div>
       </div>
+      <footer className="login-footer">
+        <button className="login-debug-link" onClick={onDebug}>debug</button>
+      </footer>
     </div>
   )
 }

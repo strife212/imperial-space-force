@@ -215,6 +215,31 @@
   line-height: 1.6;
   margin-top: 2px;
 }
+.login-footer {
+  position: fixed;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.login-debug-link {
+  background: none;
+  border: none;
+  color: rgba(106,173,245,0.2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  padding: 0;
+  pointer-events: auto;
+}
+.login-debug-link:hover {
+  color: rgba(106,173,245,0.5);
+}
+
 .login-anthem {
   color: var(--c-ash-dim);
   font-family: var(--font-mono);
