@@ -1689,6 +1689,17 @@ body {
   gap: 7px;
 }
 .mail-pill:hover { opacity: 0.75; }
+.mail-pill--unread { animation: mail-pill-pulse 1.2s ease-in-out infinite; }
+@keyframes mail-pill-pulse {
+  0%, 100% {
+    box-shadow: none;
+    background: transparent;
+  }
+  50% {
+    box-shadow: 0 0 18px 4px rgba(255, 255, 255, 0.22), 0 0 6px 1px rgba(180, 220, 255, 0.4);
+    background: rgba(255, 255, 255, 0.07);
+  }
+}
 
 .mail-unread-dot {
   display: inline-block;
@@ -1938,6 +1949,65 @@ body {
   line-height: 1.85;
   color: rgba(170, 205, 240, 0.8);
   letter-spacing: 0.03em;
+}
+
+.mail-reply-wrap {
+  margin-top: 20px;
+  border-top: 1px solid rgba(60, 110, 220, 0.2);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mail-reply-btn {
+  background: transparent;
+  border: 1px solid rgba(80, 130, 220, 0.4);
+  color: rgba(160, 210, 255, 0.85);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 9px 14px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  line-height: 1.5;
+}
+.mail-reply-btn:hover {
+  background: rgba(60, 110, 220, 0.12);
+  border-color: rgba(120, 170, 255, 0.7);
+  color: #c8e0ff;
+}
+
+.mail-reply-sent {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(120, 170, 220, 0.6);
+  padding: 9px 14px;
+  border: 1px solid rgba(60, 110, 220, 0.2);
+  border-radius: 2px;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.mail-reply-response {
+  font-size: 12px;
+  line-height: 1.85;
+  color: rgba(170, 205, 240, 0.8);
+  letter-spacing: 0.03em;
+}
+
+.mail-reply-cursor {
+  display: inline-block;
+  color: rgba(140, 190, 255, 0.9);
+  animation: mail-cursor-blink 0.6s step-start infinite;
+}
+@keyframes mail-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }
 
 /* ---------- animations ---------- */

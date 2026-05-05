@@ -15,9 +15,11 @@ export default function App() {
   const [plasmaLevel,   setPlasmaLevel]   = useState(0)
   const [messages,      setMessages]      = useState(INITIAL_MESSAGES)
   const [mailOpen,      setMailOpen]      = useState(false)
+  const [repliedIds,    setRepliedIds]    = useState(new Set())
 
   const unreadCount = messages.filter(m => !m.read).length
   const markRead    = (id) => setMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m))
+  const markReplied = (id) => setRepliedIds(prev => new Set([...prev, id]))
   const mailProps   = { unreadCount, onMailOpen: () => setMailOpen(true) }
 
   return (
@@ -32,7 +34,7 @@ export default function App() {
       {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => setScreen('main')} onLogout={() => setScreen('login')} packageName={launchPackage} {...mailProps} />}
       {screen === 'debug'   && <DebugScreen onNavigate={setScreen} />}
       {screen === 'reactor' && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); setScreen('main') }} onLogout={() => setScreen('login')} initialPlasma={plasmaLevel} />}
-      {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} />}
+      {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
     </>
   )
 }
