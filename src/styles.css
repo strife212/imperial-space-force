@@ -2385,14 +2385,14 @@ body {
   z-index: 1;
 }
 
-/* Safe zone — middle 70% (10–80%) */
+/* Safe zone — middle 55% (25–80%) */
 .plasma-safe-zone {
   position: absolute;
   top: 20%;
   left: 50%;
   transform: translateX(-50%);
   width: 34px;
-  height: 70%;
+  height: 55%;
   background: rgba(30, 160, 80, 0.14);
   border: 1px solid rgba(40,180,90,0.30);
   border-top: none;
@@ -2400,10 +2400,10 @@ body {
   pointer-events: none;
 }
 
-/* 10% threshold line */
+/* 25% threshold line */
 .plasma-10-line {
   position: absolute;
-  top: 90%;
+  top: 75%;
   left: 50%;
   transform: translateX(-50%);
   width: 42px;
@@ -2413,14 +2413,14 @@ body {
   z-index: 1;
 }
 
-/* Low-power zone — bottom 10% (0–10%) */
+/* Low-power zone — bottom 25% (0–25%) */
 .plasma-lowpower-zone {
   position: absolute;
-  top: 90%;
+  top: 75%;
   left: 50%;
   transform: translateX(-50%);
   width: 34px;
-  height: 10%;
+  height: 25%;
   background: rgba(80, 80, 80, 0.20);
   border: 1px solid rgba(120,120,120,0.30);
   border-top: none;

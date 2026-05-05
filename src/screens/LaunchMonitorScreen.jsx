@@ -150,6 +150,12 @@ export default function LaunchMonitorScreen({ onReturn, onLogout, packageName })
   const onReturnRef    = useRef(onReturn)
   useEffect(() => { onReturnRef.current = onReturn }, [onReturn])
 
+  const playClick = useCallback(() => {
+    const sfx = new Audio(`${import.meta.env.BASE_URL}click.wav`)
+    sfx.volume = 1.0
+    sfx.play().catch(() => {})
+  }, [])
+
   const [distance,    setDistance]    = useState(INITIAL_DIST)
   const [clock,       setClock]       = useState(fmtClk(Date.now() - t0))
   const [hovered,     setHovered]     = useState(null)
@@ -496,7 +502,7 @@ export default function LaunchMonitorScreen({ onReturn, onLogout, packageName })
             <span className="monitor-dist-unit">km</span>
           </div>
           </div>
-          <button className="monitor-return-btn" onClick={onReturn}>
+          <button className="monitor-return-btn" onClick={() => { playClick(); onReturn() }}>
             RETURN TO INSTALLATION VIEW
           </button>
         </div>

@@ -558,7 +558,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
   }, [addLog])
 
   // ── JSX ───────────────────────────────────────────────────────────────────
-  const lowPower      = reactorPlasma < 10
+  const lowPower      = reactorPlasma < 25
   const showArm       = launchPhase === 'idle'
   const showDisarm    = launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown'
   const showLaunch    = launchPhase === 'armed' || launchPhase === 'fired'

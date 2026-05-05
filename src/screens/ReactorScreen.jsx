@@ -161,6 +161,10 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0 })
   const [redlineActive,  setRedlineActive]  = useState(false)
   const [overloadWarning,setOverloadWarning]= useState(false)
 
+  const audioCtxRef  = useRef(null)
+  const gainNodeRef  = useRef(null)
+  const sourceNodeRef = useRef(null)
+
   const fluxValRef = useRef(null)
   const fluxBarRef = useRef(null)
   const capValRef  = useRef(null)
@@ -198,6 +202,11 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0 })
     plasmaRef.current = val
     setPlasmaDensity(val)
 
+    // Resume AudioContext on first user gesture (browser autoplay policy)
+    if (audioCtxRef.current?.state === 'suspended') {
+      audioCtxRef.current.resume()
+    }
+
     if (val >= 80) {
       setRedlineActive(true)
       if (!redlineTimerRef.current) {
@@ -210,6 +219,12 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0 })
   }, [triggerOverload])
 
   // ── Acknowledge overload ──────────────────────────────────────────────────
+  const playClick = useCallback(() => {
+    const sfx = new Audio(`${import.meta.env.BASE_URL}click.wav`)
+    sfx.volume = 1.0
+    sfx.play().catch(() => {})
+  }, [])
+
   const handleAcknowledge = useCallback(() => {
     clearTimers()
     overloadActiveRef.current = false
@@ -264,6 +279,47 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0 })
 
   useEffect(() => clearTimers, [clearTimers])
 
+  // ── Power audio: seamless loop via Web Audio API ──────────────────────────
+  useEffect(() => {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)()
+    const gain = ctx.createGain()
+    gain.gain.value = 0          // start silent; slider gesture will resume ctx
+    gain.connect(ctx.destination)
+    audioCtxRef.current = ctx
+    gainNodeRef.current = gain
+
+    fetch(`${import.meta.env.BASE_URL}power.flac`)
+      .then(r => r.arrayBuffer())
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => {
+        const src = ctx.createBufferSource()
+        src.buffer   = decoded
+        src.loop     = true
+        src.loopStart = 0
+        src.loopEnd   = decoded.duration
+        src.connect(gain)
+        src.start(0)
+        sourceNodeRef.current = src
+      })
+      .catch(() => {})
+
+    return () => {
+      sourceNodeRef.current?.stop()
+      ctx.close()
+    }
+  }, [])
+
+  // Drive volume via gain — no gaps, no restarts
+  useEffect(() => {
+    const gain = gainNodeRef.current
+    if (!gain) return
+    gain.gain.setTargetAtTime(
+      plasmaDensity >= 25 ? 0.5 : 0,
+      gainNodeRef.current.context.currentTime,
+      0.1   // 100ms ramp to avoid clicks
+    )
+  }, [plasmaDensity])
+
   return (
     <div id="reactor-screen">
 
@@ -310,10 +366,10 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0 })
                 <div className="plasma-zone-label plasma-zone-label--danger" style={{ top: '10%' }}>
                   DANGER ZONE
                 </div>
-                <div className="plasma-zone-label plasma-zone-label--ideal" style={{ top: '55%' }}>
+                <div className="plasma-zone-label plasma-zone-label--ideal" style={{ top: '50%' }}>
                   IDEAL POWER
                 </div>
-                <div className="plasma-zone-label plasma-zone-label--low" style={{ top: '95%' }}>
+                <div className="plasma-zone-label plasma-zone-label--low" style={{ top: '87.5%' }}>
                   LOW POWER
                 </div>
 
@@ -338,15 +394,15 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0 })
                   <span>0</span>
                 </div>
               </div>
-              <div className={`plasma-adjust-label${plasmaDensity >= 10 && plasmaDensity < 80 ? ' plasma-adjust-label--ideal' : ''}`}>
+              <div className={`plasma-adjust-label${plasmaDensity >= 25 && plasmaDensity < 80 ? ' plasma-adjust-label--ideal' : ''}`}>
                 ADJUST
               </div>
             </div>
           </div>
-          <div className={`reactor-status-label${redlineActive ? ' rsl--overload' : plasmaDensity < 10 ? ' rsl--low' : ' rsl--nominal'}`}>
-            {redlineActive ? 'OVERLOAD' : plasmaDensity < 10 ? 'LOW POWER — INCREASE PLASMA' : 'STATUS NOMINAL'}
+          <div className={`reactor-status-label${redlineActive ? ' rsl--overload' : plasmaDensity < 25 ? ' rsl--low' : ' rsl--nominal'}`}>
+            {redlineActive ? 'OVERLOAD' : plasmaDensity < 25 ? 'LOW POWER — INCREASE PLASMA' : 'STATUS NOMINAL'}
           </div>
-          <button className="monitor-return-btn" onClick={() => onReturn(plasmaRef.current)} disabled={redlineActive}>RETURN TO INSTALLATION VIEW</button>
+          <button className="monitor-return-btn" onClick={() => { playClick(); onReturn(plasmaRef.current) }} disabled={redlineActive}>RETURN TO INSTALLATION VIEW</button>
         </div>
 
         {/* ── Status metrics ───────────────────────────────────────────────── */}
