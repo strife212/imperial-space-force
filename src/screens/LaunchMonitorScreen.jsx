@@ -343,7 +343,19 @@ export default function LaunchMonitorScreen({ onReturn }) {
 
   const onMouseUp = useCallback(() => { dragging.current = false }, [])
 
-  const ttiSecs = Math.round(distance / DIST_PER_SEC)
+  const ttiSecs   = Math.round(distance / DIST_PER_SEC)
+  const distStr   = fmtDist(distance)
+  const prevDistRef    = useRef(distStr)
+  const digitVersions  = useRef({})
+  if (distStr !== prevDistRef.current) {
+    const prev = prevDistRef.current
+    for (let i = 0; i < distStr.length; i++) {
+      if (distStr[i] !== (prev[i] ?? '')) {
+        digitVersions.current[i] = (digitVersions.current[i] || 0) + 1
+      }
+    }
+    prevDistRef.current = distStr
+  }
 
   return (
     <div id="monitor-screen">
@@ -467,7 +479,16 @@ export default function LaunchMonitorScreen({ onReturn }) {
         <div className="monitor-bottom">
           <div className="monitor-dist-section">
             <div className="monitor-dist-label">DISTANCE TO TARGET</div>
-            <div className="monitor-dist-value">{fmtDist(distance)} <span className="monitor-dist-unit">km</span></div>
+            <div className="monitor-dist-value">
+            {distStr.split('').map((char, i) =>
+              char === ',' ? (
+                <span key={i} className="dist-comma">{char}</span>
+              ) : (
+                <span key={`${i}-${digitVersions.current[i] || 0}`} className="dist-digit">{char}</span>
+              )
+            )}
+            <span className="monitor-dist-unit">km</span>
+          </div>
           </div>
           <button className="monitor-return-btn" onClick={onReturn}>
             RETURN TO INSTALLATION VIEW
