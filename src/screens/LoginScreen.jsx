@@ -133,10 +133,10 @@ export default function LoginScreen({ onComplete }) {
             <div className={`login-info-panel${portraitHover ? ' visible' : ''}`}>
               <div className="lip-heading">OPERATOR DOSSIER</div>
               <div className="lip-divider" />
-              <div className="lip-row"><span className="lip-label">DESIGNATION</span><span className="lip-value">HIH V. ASTRAIA</span></div>
+              <div className="lip-row"><span className="lip-label">DESIGNATION</span><span className="lip-value">HER IMPERIAL HIGHNESS VALERIA ASTRAIA</span></div>
+              <div className="lip-row"><span className="lip-label">RANK</span><span className="lip-value">O-10: ADMIRAL</span></div>
               <div className="lip-row"><span className="lip-label">CLEARANCE</span><span className="lip-value">CLR-Ω // IMPERIAL</span></div>
               <div className="lip-row"><span className="lip-label">POSTING</span><span className="lip-value">HMSS HER ANNUNCIATOR</span></div>
-              <div className="lip-row"><span className="lip-label">RANK</span><span className="lip-value">O-10: ADMIRAL</span></div>
               <div className="lip-row"><span className="lip-label">STATUS</span><span className="lip-value lip-value--ok">ACTIVE // VERIFIED</span></div>
               <div className="lip-divider" />
               <div className="lip-body">
