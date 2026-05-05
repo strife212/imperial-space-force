@@ -39,6 +39,23 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 // ── Component ────────────────────────────────────────────────────────────────
 export default function MainPanel({ onLogout, onLaunchComplete }) {
 
+  // ── Panel init animation ──────────────────────────────────────────────────
+  const [litPanels, setLitPanels] = useState(new Set())
+
+  useEffect(() => {
+    const order = [
+      'panel-geodetic', 'panel-radar',    'panel-loadout',
+      'panel-spacetime','panel-causality','panel-target',
+      'panel-power',    'panel-log',      'panel-launch',
+    ]
+    const timers = order.map((id, i) =>
+      setTimeout(() => setLitPanels(prev => new Set([...prev, id])), 80 + i * 160)
+    )
+    return () => timers.forEach(clearTimeout)
+  }, [])
+
+  const lit = (id) => litPanels.has(id) ? '' : ' unlit'
+
   // ── Structural state (drives re-renders) ──────────────────────────────────
   const [radarView,       setRadarViewState]  = useState('radar')
   const [launchPhase,     setLaunchPhase]     = useState('idle')
@@ -560,7 +577,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
       <main className="grid">
 
         {/* GEODETIC TELEMETRY */}
-        <section className="panel" id="panel-geodetic">
+        <section className={`panel${lit('panel-geodetic')}`} id="panel-geodetic">
           <header className="panel-header">
             <span className="bullet" /><h2>GEODETIC TELEMETRY</h2>
             <span className="panel-id">PNL-001 / WGS-84</span>
@@ -584,7 +601,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
         </section>
 
         {/* MINKOWSKI RADAR / INSTALLATION VIEW */}
-        <section className="panel wide tall" id="panel-radar">
+        <section className={`panel wide tall${lit('panel-radar')}`} id="panel-radar">
           <header className="panel-header">
             <span className="bullet pulse" />
             <h2>{radarView === 'radar' ? 'MINKOWSKI THREAT TRACE // SECTOR Δ' : 'HMSS "HER ANNUNCIATOR" // INSTALLATION SCHEMATIC'}</h2>
@@ -627,7 +644,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
         </section>
 
         {/* PHYSICS PACKAGE LOADOUT */}
-        <section className="panel" id="panel-loadout">
+        <section className={`panel${lit('panel-loadout')}`} id="panel-loadout">
           <header className="panel-header">
             <span className="bullet" /><h2>PHYSICS PACKAGE LOADOUT</h2>
             <span className="panel-id">PNL-003 / ORDNANCE</span>
@@ -658,7 +675,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
         </section>
 
         {/* SPACETIME DIAGNOSTICS */}
-        <section className="panel" id="panel-spacetime">
+        <section className={`panel${lit('panel-spacetime')}`} id="panel-spacetime">
           <header className="panel-header">
             <span className="bullet" /><h2>LOCAL SPACETIME DIAGNOSTICS</h2>
             <span className="panel-id">PNL-004 / METRIC TENSOR</span>
@@ -677,7 +694,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
         </section>
 
         {/* CAUSALITY / CHRONOLOGY MONITOR */}
-        <section className="panel" id="panel-causality">
+        <section className={`panel${lit('panel-causality')}`} id="panel-causality">
           <header className="panel-header">
             <span className="bullet pulse" /><h2>CHRONOLOGY PROTECTION MONITOR</h2>
             <span className="panel-id">PNL-005 / HAWKING CONJECTURE</span>
@@ -719,7 +736,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
         </section>
 
         {/* TARGETING SOLUTION */}
-        <section className="panel wide" id="panel-target">
+        <section className={`panel wide${lit('panel-target')}`} id="panel-target">
           <header className="panel-header">
             <span className="bullet pulse" /><h2>GEODESIC TARGETING SOLUTION</h2>
             <span className="panel-id">PNL-006 / SCHWARZSCHILD-CORRECTED</span>
@@ -749,7 +766,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
         </section>
 
         {/* POWER / REACTOR */}
-        <section className="panel" id="panel-power">
+        <section className={`panel${lit('panel-power')}`} id="panel-power">
           <header className="panel-header">
             <span className="bullet" /><h2>REACTOR // PHASE-SPACE</h2>
             <span className="panel-id">PNL-007 / D-³He FUSOR + ZPE TAP</span>
@@ -784,7 +801,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
         <div className="bottom-row">
 
           {/* EVENT LOG */}
-          <section className="panel" id="panel-log">
+          <section className={`panel${lit('panel-log')}`} id="panel-log">
             <header className="panel-header">
               <span className="bullet pulse" /><h2>EVENT LOG // T-STREAM</h2>
               <span className="panel-id">PNL-008 / RING BUFFER</span>
@@ -803,7 +820,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
           </section>
 
           {/* LAUNCH CONTROL */}
-          <section className={`panel${showCodeVerify ? ' elevated' : ''}`} id="panel-launch">
+          <section className={`panel${showCodeVerify ? ' elevated' : ''}${lit('panel-launch')}`} id="panel-launch">
             <header className="panel-header">
               <span className="bullet pulse" /><h2>PHYSICS PACKAGE LAUNCH CONTROL</h2>
               <span className="panel-id">PNL-009 / AUTHORIZATION REQUIRED</span>
