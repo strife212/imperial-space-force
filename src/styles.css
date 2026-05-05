@@ -587,6 +587,79 @@ body {
   filter: saturate(0) brightness(0.5);
 }
 
+.panel--clickable {
+  cursor: pointer;
+}
+
+.panel--clickable:hover {
+  border-color: rgba(60, 140, 255, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 100, 255, 0.10),
+    0 0 0 1px #000,
+    0 0 18px rgba(26, 100, 255, 0.18);
+  background: rgba(4, 10, 44, 0.72);
+}
+
+.panel--clickable:hover .panel-header h2 {
+  color: rgba(180, 215, 255, 1);
+}
+
+/* ── Low power state ──────────────────────────────────────────────────────── */
+.panel--low-power {
+  filter: saturate(0.08) brightness(0.45);
+  pointer-events: none;
+}
+
+.low-power-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  user-select: none;
+  /* dark tint layer */
+  background: rgba(1, 2, 12, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.low-power-overlay::after {
+  content: '[ LOW POWER ]';
+  position: relative;
+  z-index: 1;
+  font-size: clamp(14px, 1.6vw, 26px);
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: rgba(200, 215, 255, 0.95);
+  text-shadow: 0 0 18px rgba(120, 160, 255, 0.7);
+}
+
+#panel-power .panel-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-enter-link-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel-enter-link {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(80, 140, 255, 0.45);
+  text-align: center;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+
+.panel--clickable:hover .panel-enter-link {
+  color: rgba(120, 180, 255, 0.85);
+}
+
 /* corner marks */
 .panel::before, .panel::after,
 .panel > .panel-body::before, .panel > .panel-body::after {
@@ -1934,7 +2007,8 @@ body {
 }
 
 .monitor-dist-label {
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.2em;
   color: rgba(106,173,245,0.5);
   text-transform: uppercase;
@@ -1990,9 +2064,340 @@ body {
   transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
-.monitor-return-btn:hover {
+.monitor-return-btn:hover:not(:disabled) {
   background: rgba(26,100,255,0.12);
   border-color: rgba(60,140,255,0.85);
   color: #d0e8ff;
   box-shadow: 0 0 14px rgba(26,100,255,0.25);
+}
+
+.monitor-return-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+  border-color: rgba(200, 50, 30, 0.4);
+  color: rgba(220, 80, 60, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REACTOR SCREEN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#reactor-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.reactor-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 8px;
+  gap: 10px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Diagram column (label + wrap) ───────────────────────────────────────── */
+.reactor-diagram-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.reactor-torus-label {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: rgba(130, 190, 255, 0.75);
+  text-align: center;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* ── Diagram row ──────────────────────────────────────────────────────────── */
+.reactor-diagram-wrap {
+  flex: 1;
+  position: relative;          /* anchor for the absolutely-placed slider */
+  display: block;
+  min-height: 0;
+  background: rgba(2,5,22,0.6);
+  border: 1px solid var(--c-line-2);
+  box-shadow: inset 0 0 0 1px rgba(0,100,255,0.04), 0 0 0 1px #000;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.reactor-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Plasma slider — overlaid beside the torus ────────────────────────────── */
+/* The torus is centered on the canvas. Its right edge sits at ~67% of the
+   canvas width on a typical wide viewport (derived from the 3D projection
+   math: cx + (R_MAJ + coilRad) / d * scale ≈ 50% + 16% * (h/w)).
+   Positioning the slider at left: 67% places it right against that edge.   */
+.plasma-slider-wrap {
+  position: absolute;
+  left: 67%;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 72%;           /* match the torus visual height on the canvas */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px;
+  width: 86px;
+  background: rgba(2, 6, 28, 0.82);
+  border: 1px solid rgba(60, 120, 255, 0.25);
+  border-radius: 3px;
+  backdrop-filter: blur(4px);
+}
+
+.plasma-slider-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: rgba(160, 210, 255, 0.85);
+  text-align: center;
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+
+.plasma-track-outer {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+}
+
+/* Redline zone — top 20% of the track area */
+.plasma-redline-zone {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 20%;
+  background: rgba(180, 20, 20, 0.25);
+  border: 1px solid rgba(220,50,50,0.45);
+  border-radius: 2px 2px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.plasma-redline-zone.rl-active {
+  background: rgba(220, 30, 20, 0.40);
+  border-color: rgba(255,60,40,0.9);
+  animation: rl-pulse 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes rl-pulse {
+  from { background: rgba(200,30,20,0.30); box-shadow: none; }
+  to   { background: rgba(230,40,20,0.55); box-shadow: 0 0 16px rgba(255,50,30,0.55); }
+}
+
+.plasma-redline-label {
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255,90,70,0.95);
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+/* 80% threshold line */
+.plasma-80-line {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42px;
+  height: 1px;
+  background: rgba(220,60,40,0.7);
+  pointer-events: none;
+}
+
+/* Vertical range input */
+.plasma-slider {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 22px;
+  height: 100%;
+  cursor: pointer;
+  accent-color: #1a80ff;
+  background: transparent;
+}
+
+.plasma-slider--redline {
+  accent-color: #e03a1e;
+}
+
+.plasma-pct-display {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: #d8eeff;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-shadow: 0 0 18px rgba(100,180,255,0.5);
+  line-height: 1;
+}
+
+.plasma-pct-unit {
+  font-size: 14px;
+  color: rgba(130,190,255,0.7);
+  margin-left: 2px;
+}
+
+.plasma-scale {
+  position: absolute;
+  right: -22px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 8px;
+  color: rgba(106,173,245,0.40);
+  pointer-events: none;
+  text-align: right;
+  width: 100%;
+  padding-right: 4px;
+}
+
+/* ── Status row ───────────────────────────────────────────────────────────── */
+.reactor-status-row {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.reactor-status-row .power-cell {
+  flex: 1;
+  background: rgba(2,5,22,0.6);
+  border: 1px solid var(--c-line-2);
+  box-shadow: inset 0 0 0 1px rgba(0,100,255,0.04), 0 0 0 1px #000;
+  border-radius: 2px;
+  padding: 10px 14px;
+}
+
+/* ── Overload warning dialog ──────────────────────────────────────────────── */
+.reactor-overload-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.reactor-overload-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 610;
+  width: min(480px, 88vw);
+  background: rgba(4, 8, 28, 0.97);
+  border: 1px solid rgba(220, 60, 40, 0.75);
+  box-shadow: 0 0 0 1px #000, 0 0 40px rgba(220, 50, 30, 0.35);
+  border-radius: 3px;
+  padding: 32px 36px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: overload-appear 0.2s ease-out;
+}
+
+@keyframes overload-appear {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.rod-icon {
+  font-size: 36px;
+  animation: rod-blink 0.6s step-end infinite;
+}
+
+@keyframes rod-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+
+.rod-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(255, 80, 60, 0.95);
+  text-transform: uppercase;
+}
+
+.rod-sub {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(220, 120, 80, 0.75);
+  text-transform: uppercase;
+}
+
+.rod-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(220, 60, 40, 0.35);
+  margin: 4px 0;
+}
+
+.rod-body {
+  font-size: 11px;
+  color: rgba(160, 200, 240, 0.75);
+  line-height: 1.7;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.rod-reset {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: rgba(255, 160, 60, 0.9);
+  text-transform: uppercase;
+  animation: rod-blink 1.2s ease-in-out infinite;
+}
+
+.rod-btn {
+  margin-top: 8px;
+  padding: 9px 32px;
+  background: rgba(180, 40, 20, 0.15);
+  border: 1px solid rgba(220, 60, 40, 0.6);
+  color: rgba(255, 120, 80, 0.95);
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.rod-btn:hover {
+  background: rgba(220, 50, 30, 0.25);
+  border-color: rgba(255, 80, 60, 0.9);
+  color: #ffaa88;
 }

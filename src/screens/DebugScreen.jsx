@@ -4,6 +4,7 @@ const SCREENS = [
   { key: 'menu',    label: 'Menu Screen'             },
   { key: 'main',    label: 'Main Panel'              },
   { key: 'monitor', label: 'Launch Monitor Screen'  },
+  { key: 'reactor', label: 'Reactor Control Screen' },
 ]
 
 export default function DebugScreen({ onNavigate }) {

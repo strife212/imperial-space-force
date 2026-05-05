@@ -37,7 +37,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel({ onLogout, onLaunchComplete }) {
+export default function MainPanel({ onLogout, onLaunchComplete, onReactor, reactorPlasma = 75 }) {
 
   // ── Panel init animation ──────────────────────────────────────────────────
   const [litPanels, setLitPanels] = useState(new Set())
@@ -126,6 +126,8 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
   const codetickSfx          = useRef(null)
   const onLaunchCompleteRef  = useRef(onLaunchComplete)
   useEffect(() => { onLaunchCompleteRef.current = onLaunchComplete }, [onLaunchComplete])
+  const reactorPlasmaRef = useRef(reactorPlasma)
+  useEffect(() => { reactorPlasmaRef.current = reactorPlasma }, [reactorPlasma])
 
   // ── Log helper ────────────────────────────────────────────────────────────
   const addLog = useCallback((level, msg) => {
@@ -310,16 +312,17 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
     }
 
     const updatePower = (now) => {
-      const flux = 2.847 + Math.sin(now * 0.00041) * 0.092
+      const d    = reactorPlasmaRef.current / 100
+      const flux = (0.35 + d * 3.85) + Math.sin(now * 0.00041) * 0.05
       if (coreFluxRef.current) coreFluxRef.current.textContent = `${flux.toFixed(3)} GW`
-      if (coreBarRef.current)  coreBarRef.current.style.width  = `${(flux / 3.5 * 100).toFixed(1)}%`
-      const cap = 94.2 + Math.sin(now * 0.00058) * 3.1
-      if (capBankRef.current)  capBankRef.current.textContent  = `${cap.toFixed(1)}%`
-      if (capBarRef.current)   capBarRef.current.style.width   = `${cap.toFixed(1)}%`
+      if (coreBarRef.current)  coreBarRef.current.style.width  = `${Math.min(100, flux / 4.2 * 100).toFixed(1)}%`
+      const cap = (14 + d * 80) + Math.sin(now * 0.00058) * 1.5
+      if (capBankRef.current)  capBankRef.current.textContent  = `${Math.min(100, cap).toFixed(1)}%`
+      if (capBarRef.current)   capBarRef.current.style.width   = `${Math.min(100, cap).toFixed(1)}%`
       const zpe = 3.7e-9 + Math.sin(now * 0.00077) * 4.0e-10
       if (zpeRef.current)      zpeRef.current.textContent      = `${zpe.toExponential(2)} J·m⁻³`
       if (zpeBarRef.current)   zpeBarRef.current.style.width   = `${(zpe / 6e-9 * 100).toFixed(1)}%`
-      const radT = 2140 + Math.sin(now * 0.00033) * 60
+      const radT = (580 + d * 2950) + Math.sin(now * 0.00033) * 40
       if (radiatorRef.current) radiatorRef.current.textContent = `+${radT.toFixed(0)} K`
     }
 
@@ -553,6 +556,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
   }, [addLog])
 
   // ── JSX ───────────────────────────────────────────────────────────────────
+  const lowPower      = reactorPlasma < 10
   const showArm       = launchPhase === 'idle'
   const showDisarm    = launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown'
   const showLaunch    = launchPhase === 'armed' || launchPhase === 'fired'
@@ -601,7 +605,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
         </section>
 
         {/* MINKOWSKI RADAR / INSTALLATION VIEW */}
-        <section className={`panel wide tall${lit('panel-radar')}`} id="panel-radar">
+        <section className={`panel wide tall${lit('panel-radar')}${lowPower ? ' panel--low-power' : ''}`} id="panel-radar">
           <header className="panel-header">
             <span className="bullet pulse" />
             <h2>{radarView === 'radar' ? 'MINKOWSKI THREAT TRACE // SECTOR Δ' : 'HMSS "HER ANNUNCIATOR" // INSTALLATION SCHEMATIC'}</h2>
@@ -641,6 +645,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
               </div>
             </div>
           </div>
+          {lowPower && <div className="low-power-overlay" />}
         </section>
 
         {/* PHYSICS PACKAGE LOADOUT */}
@@ -736,7 +741,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
         </section>
 
         {/* TARGETING SOLUTION */}
-        <section className={`panel wide${lit('panel-target')}`} id="panel-target">
+        <section className={`panel wide${lit('panel-target')}${lowPower ? ' panel--low-power' : ''}`} id="panel-target">
           <header className="panel-header">
             <span className="bullet pulse" /><h2>GEODESIC TARGETING SOLUTION</h2>
             <span className="panel-id">PNL-006 / SCHWARZSCHILD-CORRECTED</span>
@@ -763,10 +768,11 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
               <div className="td-row"><span>P<sub>K</sub> (KILL PROB.)</span><span className="mono ok">0.974</span></div>
             </div>
           </div>
+          {lowPower && <div className="low-power-overlay" />}
         </section>
 
         {/* POWER / REACTOR */}
-        <section className={`panel${lit('panel-power')}`} id="panel-power">
+        <section className={`panel panel--clickable${lit('panel-power')}`} id="panel-power" onClick={onReactor} title="Open Reactor Control">
           <header className="panel-header">
             <span className="bullet" /><h2>REACTOR // PHASE-SPACE</h2>
             <span className="panel-id">PNL-007 / D-³He FUSOR + ZPE TAP</span>
@@ -794,6 +800,9 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
                 <div className="bar"><div className="bar-fill warn" style={{ width: '71%' }} /></div>
               </div>
             </div>
+            <div className="panel-enter-link-wrap">
+              <div className="panel-enter-link">ENTER D-³He FUSOR MANAGEMENT</div>
+            </div>
           </div>
         </section>
 
@@ -820,7 +829,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
           </section>
 
           {/* LAUNCH CONTROL */}
-          <section className={`panel${showCodeVerify ? ' elevated' : ''}${lit('panel-launch')}`} id="panel-launch">
+          <section className={`panel${showCodeVerify ? ' elevated' : ''}${lit('panel-launch')}${lowPower ? ' panel--low-power' : ''}`} id="panel-launch">
             <header className="panel-header">
               <span className="bullet pulse" /><h2>PHYSICS PACKAGE LAUNCH CONTROL</h2>
               <span className="panel-id">PNL-009 / AUTHORIZATION REQUIRED</span>
@@ -867,6 +876,7 @@ export default function MainPanel({ onLogout, onLaunchComplete }) {
               </div>
 
             </div>
+          {lowPower && <div className="low-power-overlay" />}
           </section>
 
         </div>
