@@ -1,11 +1,11 @@
 export const BOOT_LINES = [
+  { text: 'Authenticating operator HIH V. ASTRAIA // CLR-Ω',         tag: 'OK',   ms: 300 },
   { text: 'Initializing WGS-84 geodetic reference frame',             tag: 'OK',   ms: 270 },
   { text: 'Loading Kerr–Newman metric solver (a=0.998, Q=0.043)',     tag: 'OK',   ms: 315 },
   { text: 'Calibrating Lense–Thirring frame-drag compensators',       tag: 'OK',   ms: 240 },
   { text: 'Verifying physics package safety interlocks',              tag: 'OK',   ms: 360 },
   { text: 'Running Kretschmann invariant self-test',                  tag: 'OK',   ms: 285 },
   { text: 'Establishing 256-qubit QKD uplink to ground station',      tag: 'OK',   ms: 465 },
-  { text: 'Authenticating operator HIH V. ASTRAIA // CLR-Ω',         tag: 'OK',   ms: 300 },
   { text: 'Loading geodesic fire-control integrator (6th-order RK)',  tag: 'OK',   ms: 265 },
   { text: 'Initializing Minkowski threat-detection array',            tag: 'OK',   ms: 330 },
   { text: 'Chronology protection diagnostic — CTC scan',              tag: 'OK',   ms: 390 },

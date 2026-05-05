@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { BOOT_LINES } from '../lib/constants'
 
 export default function BootScreen({ onComplete }) {
-  const [lines, setLines] = useState([])
-  const [barPct, setBarPct] = useState(0)
-  const [showBar, setShowBar] = useState(false)
-  const [exiting, setExiting] = useState(false)
+  const [lines,       setLines]       = useState([])
+  const [barPct,      setBarPct]      = useState(0)
+  const [showBar,     setShowBar]     = useState(false)
+  const [showWelcome, setShowWelcome] = useState(false)
+  const [exiting,     setExiting]     = useState(false)
   const processingSfx  = useRef(null)
   const linesOuterRef  = useRef(null)
 
@@ -32,10 +33,11 @@ export default function BootScreen({ onComplete }) {
 
         if (i === BOOT_LINES.length - 1) {
           processingSfx.current?.pause()
+          setShowWelcome(true)
           timers.push(setTimeout(() => {
             setExiting(true)
             setTimeout(onComplete, 850)
-          }, 1050))
+          }, 1100))
         }
       }, delay))
     })
@@ -50,7 +52,7 @@ export default function BootScreen({ onComplete }) {
     if (linesOuterRef.current) {
       linesOuterRef.current.scrollTop = linesOuterRef.current.scrollHeight
     }
-  }, [lines])
+  }, [lines, showWelcome])
 
   return (
     <div id="boot-screen" className={exiting ? 'fade-out' : ''}>
@@ -83,6 +85,10 @@ export default function BootScreen({ onComplete }) {
             <div className="boot-bar-wrap">
               <div className="boot-bar" style={{ width: `${barPct}%` }} />
             </div>
+          )}
+
+          {showWelcome && (
+            <div className="boot-welcome">WELCOME, ADMIRAL.</div>
           )}
         </div>
       </div>

@@ -345,6 +345,22 @@
   box-shadow: 0 0 10px rgba(26,128,255,0.7);
   transition: width 0.3s linear;
 }
+.boot-welcome {
+  margin-top: 32px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--c-pink);
+  text-shadow: 0 0 16px rgba(100,180,255,0.5);
+  opacity: 1;
+}
+@keyframes boot-welcome-blink {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
 
 :root {
   --c-bg-0:    #010208;        /* deep black-blue */
