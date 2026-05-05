@@ -251,6 +251,178 @@
 .login-anthem p:last-child {
   margin-bottom: 0;
 }
+.login-anthem-slot {
+  position: relative;
+  width: 100%;
+}
+
+.login-anthem--hidden {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+/* ── Cryptography module ─────────────────────────────────────────────────────*/
+.crypto-module {
+  position: relative;
+  width: 100%;
+  margin-top: 28px;
+  border: 1px solid rgba(60, 120, 255, 0.3);
+  border-radius: 2px;
+  padding: 14px 16px;
+  background: rgba(4, 8, 32, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  overflow: hidden;
+  animation: crypto-appear 0.4s ease-out;
+}
+
+@keyframes crypto-appear {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.crypto-module-title {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(100, 150, 255, 0.7);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.crypto-link-text {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(140, 180, 255, 0.9);
+  text-transform: uppercase;
+}
+
+.crypto-canvas-wrap {
+  position: relative;
+  width: 280px;
+}
+.crypto-canvas {
+  display: block;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.crypto-canvas--visible {
+  opacity: 1;
+}
+.crypto-qubit-labels {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+.crypto-qubit-labels--fading {
+  opacity: 0;
+}
+.crypto-qubit-label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.92);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.crypto-result-line {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(140, 200, 255, 0.85);
+  text-transform: uppercase;
+}
+.crypto-result-line--final {
+  font-weight: 700;
+  color: rgba(80, 200, 140, 0.95);
+  letter-spacing: 0.22em;
+}
+.crypto-result-line--blinking {
+  animation: crypto-blink 0.75s ease-in-out 3 forwards;
+}
+@keyframes crypto-blink {
+  0%   { opacity: 1; text-shadow: 0 0 8px rgba(80, 200, 140, 0.9), 0 0 20px rgba(80, 200, 140, 0.5); }
+  50%  { opacity: 0; text-shadow: none; }
+  100% { opacity: 1; text-shadow: 0 0 8px rgba(80, 200, 140, 0.9), 0 0 20px rgba(80, 200, 140, 0.5); }
+}
+
+.crypto-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  opacity: 1;
+  transition: opacity 0.8s ease;
+}
+.crypto-content--fading {
+  opacity: 0;
+}
+.crypto-key-slot {
+  width: 100%;
+  height: 165px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.crypto-key-block {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  line-height: 1.55;
+  letter-spacing: 0.04em;
+  color: rgba(140, 200, 140, 0.9);
+  background: rgba(0, 20, 0, 0.5);
+  border: 1px solid rgba(80, 160, 80, 0.25);
+  border-radius: 2px;
+  padding: 10px 14px;
+  margin: 0;
+  white-space: pre;
+  text-align: left;
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+.crypto-key-block--fading {
+  opacity: 0;
+}
+.crypto-final-slot {
+  width: 100%;
+  height: 82px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.crypto-final-line {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: rgba(180, 210, 255, 0.9);
+  text-transform: uppercase;
+}
+.crypto-final-line--identity {
+  font-size: 18px;
+  color: rgba(80, 220, 120, 1);
+  text-shadow: 0 0 10px rgba(80, 220, 120, 0.8), 0 0 28px rgba(80, 220, 120, 0.4);
+}
+.crypto-final-line--blinking {
+  animation: crypto-blink 0.75s ease-in-out 3 forwards;
+}
 
 /* ---------- boot screen ---------- */
 #boot-screen {
@@ -2050,6 +2222,15 @@ body {
 #menu-screen::-webkit-scrollbar { display: none; }
 
 
+.menu-content {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.menu-content--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
 .menu-ship-wrap {
   width: 100%;
   display: flex;

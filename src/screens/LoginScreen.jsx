@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import CryptographyModule from '../components/CryptographyModule'
 
 const OPERATOR_ID = 'HIH V. ASTRAIA // CLR-Ω'
 const PASSWORD    = 'IMPERIAL-CLEARANCE-OMEGA'
@@ -7,7 +8,7 @@ const PW_SPEED    = 60   // ms per character
 
 export default function LoginScreen({ onComplete, onDebug }) {
   const [exiting,        setExiting]        = useState(false)
-  const [phase,          setPhase]          = useState('idle')  // idle | typing | ready
+  const [phase,          setPhase]          = useState('idle')  // idle | typing | ready | crypto
   const [operatorText,   setOperatorText]   = useState('')
   const [passwordText,   setPasswordText]   = useState('')
   const [portraitHover,  setPortraitHover]  = useState(false)
@@ -50,7 +51,7 @@ export default function LoginScreen({ onComplete, onDebug }) {
     if (clickSfx.current) { clickSfx.current.currentTime = 0; clickSfx.current.play().catch(() => {}) }
     if (phase === 'idle') { startFill(); return }
     if (phase !== 'ready') return
-    onComplete()
+    setPhase('crypto')
   }
 
   const portraitVisible = operatorText.length >= OPERATOR_ID.length
@@ -145,7 +146,8 @@ export default function LoginScreen({ onComplete, onDebug }) {
           )}
         </div>
 
-        <div className="login-anthem">
+        <div className="login-anthem-slot">
+        <div className={`login-anthem${phase === 'crypto' ? ' login-anthem--hidden' : ''}`}>
           <p>
             From the high and sacrèd morning star<br />
             To the silent deeps where no suns are<br />
@@ -168,6 +170,9 @@ export default function LoginScreen({ onComplete, onDebug }) {
             We are the chord,<br />
             O Star-Hearèr, we are the chord beneath thy hand.
           </p>
+        </div>
+
+          {phase === 'crypto' && <CryptographyModule onComplete={onComplete} />}
         </div>
       </div>
       <footer className="login-footer">
