@@ -844,21 +844,12 @@ export default function MainPanel({ onLogout }) {
               <div className="launch-right">
                 <div className="launch-pkg-name">{PKG_NAMES[selectedPkg]}</div>
                 <div className={launchStatus.cls}>{launchStatus.text}</div>
-                <div className="launch-btn-row">
-                  {showArm && (
-                    <button className="arm-btn" onClick={handleArm}>ARM</button>
-                  )}
-                  {showDisarm && (
-                    <button className="disarm-btn" onClick={handleArm}>DISARM</button>
-                  )}
-                  {showLaunch && (
-                    <button className={`launch-btn${launchFiring ? ' firing-anim' : ''}`} disabled={launchPhase !== 'armed'} onClick={handleFire}>
-                      <span className="launch-btn-inner">
-                        <span className="launch-btn-label">{launchLabel}</span>
-                      </span>
-                    </button>
-                  )}
-                </div>
+                {showArm && (
+                  <button className="arm-btn arm-btn--full" onClick={handleArm}>ARM</button>
+                )}
+                {showDisarm && (
+                  <button className="disarm-btn disarm-btn--full" onClick={handleArm}>DISARM</button>
+                )}
                 <div className="launch-countdown">{launchCdText}</div>
               </div>
 
@@ -870,7 +861,14 @@ export default function MainPanel({ onLogout }) {
 
       {showCodeVerify && <div className="code-verify-dim" />}
       {showCodeVerify && (
-        <LaunchCodeVerifier onComplete={handleVerifyComplete} onTick={playTick} />
+        <LaunchCodeVerifier
+          onComplete={handleVerifyComplete}
+          onTick={playTick}
+          onFire={handleFire}
+          launchPhase={launchPhase}
+          launchLabel={launchLabel}
+          launchFiring={launchFiring}
+        />
       )}
 
       {launchPhase === 'countdown' && cdVisible && (

@@ -1048,6 +1048,15 @@ body {
   align-items: stretch;
   gap: 8px;
 }
+.arm-btn--full,
+.disarm-btn--full {
+  flex: 1;
+  font-size: 20px;
+  letter-spacing: 0.35em;
+  padding: 0;
+  border-width: 2px;
+  box-sizing: border-box;
+}
 .launch-pkg-name {
   color: var(--c-rose);
   font-size: 11.5px;
@@ -1320,6 +1329,11 @@ body {
   letter-spacing: 0.2em;
   color: var(--c-ash-dim);
   text-transform: uppercase;
+}
+.cvl-launch-btn {
+  width: 100%;
+  height: 60px;
+  position: relative;
 }
 .code-verify-status.verified {
   font-size: 16px;

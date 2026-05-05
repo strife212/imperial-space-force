@@ -8,7 +8,7 @@ const LOCK_INTERVAL_MS = 260
 
 const randChar = () => CHARS[Math.floor(Math.random() * CHARS.length)]
 
-export default function LaunchCodeVerifier({ onComplete, onTick }) {
+export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchPhase, launchLabel, launchFiring }) {
   const [symbols,     setSymbols]     = useState(() => Array.from({ length: BOX_COUNT }, randChar))
   const [lockedCount, setLockedCount] = useState(0)
   const lockedRef  = useRef(0)
@@ -58,6 +58,16 @@ export default function LaunchCodeVerifier({ onComplete, onTick }) {
             ? 'CODES VERIFIED — LAUNCH ENABLED'
             : `AUTHENTICATING — ${lockedCount} / ${BOX_COUNT}`}
         </div>
+        {launchPhase === 'armed' && (
+          <button
+            className={`launch-btn cvl-launch-btn${launchFiring ? ' firing-anim' : ''}`}
+            onClick={onFire}
+          >
+            <span className="launch-btn-inner">
+              <span className="launch-btn-label">{launchLabel}</span>
+            </span>
+          </button>
+        )}
       </div>
     </div>
   )
