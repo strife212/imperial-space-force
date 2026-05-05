@@ -148,7 +148,7 @@ function drawReactor(ctx, w, h, rx, ry, plasma) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0 }) {
+export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, unreadCount = 0, onMailOpen }) {
   const canvasRef         = useRef(null)
   const rafRef            = useRef(null)
   const rotRef            = useRef({ x: 0.38, y: 0.3 })
@@ -325,7 +325,12 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0 })
 
       <HudHeader
         onLogout={onLogout}
-        center={<span className="status-pill armed">REACTOR CONTROL // D-³He FUSOR ARRAY</span>}
+        center={
+          <span className={`status-pill mail-pill${unreadCount > 0 ? ' mail-pill--unread' : ''}`} onClick={onMailOpen}>
+            {unreadCount > 0 && <span className="mail-unread-dot" />}
+            ✉ IMPERIAL MESSAGING SERVICE // UNREAD: {unreadCount}
+          </span>
+        }
         right={<span className="label">PNL-007-EXT / PLASMA INTERFACE</span>}
       />
 

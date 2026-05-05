@@ -33,7 +33,7 @@ export default function App() {
       {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setScreen('monitor') }} onReactor={() => setScreen('reactor')} reactorPlasma={plasmaLevel} {...mailProps} />}
       {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => setScreen('main')} onLogout={() => setScreen('login')} packageName={launchPackage} {...mailProps} />}
       {screen === 'debug'   && <DebugScreen onNavigate={setScreen} />}
-      {screen === 'reactor' && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); setScreen('main') }} onLogout={() => setScreen('login')} initialPlasma={plasmaLevel} />}
+      {screen === 'reactor' && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); setScreen('main') }} onLogout={() => setScreen('login')} initialPlasma={plasmaLevel} {...mailProps} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
     </>
   )
