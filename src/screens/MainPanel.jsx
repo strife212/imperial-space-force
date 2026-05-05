@@ -37,7 +37,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel({ onLogout }) {
+export default function MainPanel({ onLogout, onLaunchComplete }) {
 
   // ── Structural state (drives re-renders) ──────────────────────────────────
   const [radarView,       setRadarViewState]  = useState('radar')
@@ -104,9 +104,11 @@ export default function MainPanel({ onLogout }) {
   const logTimerRef   = useRef(0)
   const grbTimerRef   = useRef(0)
   const logBufRef     = useRef([])
-  const rafRef        = useRef(null)
-  const cdTimerRef    = useRef(null)
-  const codetickSfx  = useRef(null)
+  const rafRef               = useRef(null)
+  const cdTimerRef           = useRef(null)
+  const codetickSfx          = useRef(null)
+  const onLaunchCompleteRef  = useRef(onLaunchComplete)
+  useEffect(() => { onLaunchCompleteRef.current = onLaunchComplete }, [onLaunchComplete])
 
   // ── Log helper ────────────────────────────────────────────────────────────
   const addLog = useCallback((level, msg) => {
@@ -196,8 +198,7 @@ export default function MainPanel({ onLogout }) {
         addLog('CRIT', `*** ${PKG_NAMES[selectedPkgRef.current]} // PACKAGE AWAY ***`)
         addLog('CRIT', 'GEODESIC INTERCEPT SOLUTION COMMITTED')
         cdTimerRef.current = setTimeout(() => {
-          handleReset()
-          addLog('INFO', 'LAUNCH SYSTEM RESET // READY FOR NEXT SEQUENCE')
+          onLaunchCompleteRef.current?.()
         }, 4000)
       }
     }
