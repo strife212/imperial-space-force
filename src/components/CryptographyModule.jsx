@@ -90,10 +90,12 @@ function drawBlochSphere(ctx, cx, cy, r, ry, alpha) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function CryptographyModule({ onComplete }) {
-  const moduleRef = useRef(null)
-  const canvasRef = useRef(null)
-  const humRef    = useRef(null)
-  const beepRef   = useRef(null)
+  const moduleRef    = useRef(null)
+  const canvasRef    = useRef(null)
+  const humRef       = useRef(null)
+  const humGainRef   = useRef(null)
+  const humCtxRef    = useRef(null)
+  const beepRef      = useRef(null)
 
   // ── Computer hum audio (seamless Web Audio loop) ────────────────────────
   useEffect(() => {
@@ -101,6 +103,8 @@ export default function CryptographyModule({ onComplete }) {
     const gain = ctx.createGain()
     gain.gain.value = 0.5
     gain.connect(ctx.destination)
+    humGainRef.current = gain
+    humCtxRef.current  = ctx
 
     let source = null
     fetch(`${import.meta.env.BASE_URL}computerhum.mp3`)
@@ -297,7 +301,15 @@ export default function CryptographyModule({ onComplete }) {
 
     // Blink "IDENTITY VERIFIED." then call onComplete
     const T_BLINK2 = T_FINAL2 + FINAL_LINE2.length * CHAR_DELAY + 400
-    at(T_BLINK2,                          () => { setBlinkIdentity(true); beep() })
+    at(T_BLINK2,                          () => {
+      setBlinkIdentity(true)
+      beep()
+      if (humGainRef.current && humCtxRef.current) {
+        const g = humGainRef.current.gain
+        g.setValueAtTime(g.value, humCtxRef.current.currentTime)
+        g.linearRampToValueAtTime(0, humCtxRef.current.currentTime + 2)
+      }
+    })
     at(T_BLINK2 + BLINK_DUR,             beep)
     at(T_BLINK2 + BLINK_DUR * 2,         beep)
     at(T_BLINK2 + BLINK_DUR * 3 + 1000,  () => { if (onComplete) onComplete() })
@@ -325,13 +337,15 @@ export default function CryptographyModule({ onComplete }) {
               </div>
             )}
           </div>
-          {resultLine0 && <div className="crypto-result-line">{resultLine0}</div>}
-          {resultLine1 && <div className="crypto-result-line">{resultLine1}</div>}
-          {resultLine2 && (
-            <div className={`crypto-result-line crypto-result-line--final${blinkFinal ? ' crypto-result-line--blinking' : ''}`}>
-              {resultLine2}
-            </div>
-          )}
+          <div className="crypto-result-slot">
+            {resultLine0 && <div className="crypto-result-line">{resultLine0}</div>}
+            {resultLine1 && <div className="crypto-result-line">{resultLine1}</div>}
+            {resultLine2 && (
+              <div className={`crypto-result-line crypto-result-line--final${blinkFinal ? ' crypto-result-line--blinking' : ''}`}>
+                {resultLine2}
+              </div>
+            )}
+          </div>
         </div>
       )}
       {contentGone && (

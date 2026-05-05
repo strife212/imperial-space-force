@@ -14,6 +14,22 @@ export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchP
   const lockedRef  = useRef(0)
   const finalChars = useRef(Array.from({ length: BOX_COUNT }, randChar))
   const timers     = useRef([])
+  const beepRef    = useRef(null)
+
+  useEffect(() => {
+    const b = new Audio(`${import.meta.env.BASE_URL}beep.mp3`)
+    b.preload = 'auto'
+    beepRef.current = b
+  }, [])
+
+  // Beep in sync with the 1s warning-pulse blink when PACKAGE AWAY is showing
+  useEffect(() => {
+    if (launchPhase !== 'fired') return
+    const playBeep = () => { if (beepRef.current) beepRef.current.cloneNode().play().catch(() => {}) }
+    playBeep()
+    const id = setInterval(playBeep, 1000)
+    return () => clearInterval(id)
+  }, [launchPhase])
 
   useEffect(() => {
     const interval = setInterval(() => {
