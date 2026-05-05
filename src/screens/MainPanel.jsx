@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { LOG_MESSAGES, PKG_NAMES, SECTION_INFO } from '../lib/constants'
 import LaunchCodeVerifier from './LaunchCodeVerifier'
+import HudHeader from '../components/HudHeader'
+import HudFooter from '../components/HudFooter'
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 const t0      = Date.now() - 86400_000 * 17 - 3600_000 * 4 - 60_000 * 22
@@ -565,18 +567,11 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
 
   return (
     <>
-      <header className="hud-header">
-        <div className="header-left">
-          <span className="brand brand-link" onClick={onLogout} title="Return to login">⬢ IMPERIAL SPACE FORCE // HMSS &quot;HER ANNUNCIATOR&quot;</span>
-        </div>
-        <div className="header-center">
-          <span className="status-pill armed" id="readiness">DEFCON-2 // WEAPONS HOT</span>
-        </div>
-        <div className="header-right">
-          <span className="label">MISSION CLOCK T+</span>
-          <span className="mono big" ref={clockRef}>000:00:00:00</span>
-        </div>
-      </header>
+      <HudHeader
+        onLogout={onLogout}
+        center={<span className="status-pill armed" id="readiness">DEFCON-2 // WEAPONS HOT</span>}
+        right={<><span className="label">MISSION CLOCK T+</span><span className="mono big" ref={clockRef}>000:00:00:00</span></>}
+      />
 
       <main className="grid">
 
@@ -897,7 +892,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
       )}
 
 
-      <footer className="hud-footer">
+      <HudFooter>
         <span>HMSS / FCS v6.2.41 / GR-CORRECTED FIRE-CONTROL</span>
         <span className="sep">│</span>
         <span>UPLINK: <em className="ok" id="uplink">SECURE 256-QKD</em></span>
@@ -905,8 +900,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
         <span>OPERATOR: <em>HIH V. ASTRAIA // CLR-Ω</em></span>
         <span className="sep">│</span>
         <span ref={utcRef}>UTC 0000-00-00 00:00:00.000</span>
-        <span className="footer-motto">✦ CAELUM CANIT ✦ ILLA AVDIT ✦</span>
-      </footer>
+      </HudFooter>
     </>
   )
 }

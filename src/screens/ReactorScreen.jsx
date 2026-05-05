@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import HudHeader from '../components/HudHeader'
+import HudFooter from '../components/HudFooter'
 
 // ── 3D projection ─────────────────────────────────────────────────────────────
 function proj3D(x, y, z, cx, cy, scale, rx, ry) {
@@ -265,17 +267,11 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 75 }
   return (
     <div id="reactor-screen">
 
-      <header className="hud-header">
-        <div className="header-left">
-          <span className="brand brand-link" onClick={onLogout} title="Return to login">⬢ IMPERIAL SPACE FORCE // HMSS &quot;HER ANNUNCIATOR&quot;</span>
-        </div>
-        <div className="header-center">
-          <span className="status-pill armed">REACTOR CONTROL // D-³He FUSOR ARRAY</span>
-        </div>
-        <div className="header-right">
-          <span className="label">PNL-007-EXT / PLASMA INTERFACE</span>
-        </div>
-      </header>
+      <HudHeader
+        onLogout={onLogout}
+        center={<span className="status-pill armed">REACTOR CONTROL // D-³He FUSOR ARRAY</span>}
+        right={<span className="label">PNL-007-EXT / PLASMA INTERFACE</span>}
+      />
 
       <main className="reactor-main">
 
@@ -364,7 +360,7 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 75 }
         </>
       )}
 
-      <footer className="hud-footer">
+      <HudFooter>
         <span>HMSS / FCS v6.2.41 / REACTOR CONTROL SUBSYSTEM</span>
         <span className="sep">│</span>
         <span>FUSOR: <em className="ok">NOMINAL</em></span>
@@ -372,8 +368,7 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 75 }
         <span>CONTAINMENT: <em className="ok">STABLE</em></span>
         <span className="sep">│</span>
         <span>PLASMA: <em className={redlineActive ? 'warn' : 'ok'}>{redlineActive ? 'CRITICAL' : 'NOMINAL'}</em></span>
-        <span className="footer-motto">✦ CAELUM CANIT ✦ ILLA AVDIT ✦</span>
-      </footer>
+      </HudFooter>
 
     </div>
   )

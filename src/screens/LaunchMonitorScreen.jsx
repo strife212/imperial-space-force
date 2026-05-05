@@ -1,4 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
+import HudHeader from '../components/HudHeader'
+import HudFooter from '../components/HudFooter'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const INITIAL_DIST   = 112_582_692_623_711
@@ -370,18 +372,11 @@ export default function LaunchMonitorScreen({ onReturn, onLogout, packageName })
 
   return (
     <div id="monitor-screen">
-      <header className="hud-header">
-        <div className="header-left">
-          <span className="brand brand-link" onClick={onLogout} title="Return to login">⬢ IMPERIAL SPACE FORCE // HMSS &quot;HER ANNUNCIATOR&quot;</span>
-        </div>
-        <div className="header-center">
-          <span className="status-pill armed">DEFCON-2 // WEAPONS HOT</span>
-        </div>
-        <div className="header-right">
-          <span className="label">MISSION CLOCK T+</span>
-          <span className="mono big">{clock}</span>
-        </div>
-      </header>
+      <HudHeader
+        onLogout={onLogout}
+        center={<span className="status-pill armed">DEFCON-2 // WEAPONS HOT</span>}
+        right={<><span className="label">MISSION CLOCK T+</span><span className="mono big">{clock}</span></>}
+      />
 
       <main className="monitor-main">
         <div className="monitor-title">LAUNCH MONITORING // TRAJECTORY TRACKING ACTIVE</div>
@@ -507,7 +502,7 @@ export default function LaunchMonitorScreen({ onReturn, onLogout, packageName })
         </div>
       </main>
 
-      <footer className="hud-footer">
+      <HudFooter>
         <span>HMSS / FCS v6.2.41 / GR-CORRECTED FIRE-CONTROL</span>
         <span className="sep">│</span>
         <span>UPLINK: <em className="ok">SECURE 256-QKD</em></span>
@@ -515,8 +510,7 @@ export default function LaunchMonitorScreen({ onReturn, onLogout, packageName })
         <span>OPERATOR: <em>HIH V. ASTRAIA // CLR-Ω</em></span>
         <span className="sep">│</span>
         <span ref={utcRef} />
-        <span className="footer-motto">✦ CAELUM CANIT ✦ ILLA AVDIT ✦</span>
-      </footer>
+      </HudFooter>
     </div>
   )
 }

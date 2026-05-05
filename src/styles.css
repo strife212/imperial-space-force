@@ -1550,6 +1550,123 @@ body {
   letter-spacing: 0.22em;
   color: var(--c-pink);
   text-shadow: 0 0 10px rgba(100,180,255,0.4);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.footer-motto:hover { opacity: 0.75; }
+
+/* ── Empress modal ───────────────────────────────────────────────────────────*/
+.empress-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.empress-modal-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 710;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.empress-modal {
+  pointer-events: all;
+  width: min(480px, 90vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: rgba(4, 6, 26, 0.97);
+  border: 1px solid rgba(180, 140, 255, 0.35);
+  box-shadow: 0 0 0 1px #000, 0 0 48px rgba(140, 80, 255, 0.2);
+  border-radius: 3px;
+  padding: 32px 36px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: empress-appear 0.25s ease-out;
+}
+
+@keyframes empress-appear {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.empress-motto {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: rgba(210, 185, 255, 0.95);
+  text-align: center;
+  text-shadow: 0 0 20px rgba(160, 100, 255, 0.5);
+}
+
+.empress-translation {
+  font-size: 12px;
+  color: rgba(170, 155, 210, 0.7);
+  letter-spacing: 0.06em;
+  margin-top: -6px;
+}
+
+.empress-img {
+  width: 100%;
+  border: 1px solid rgba(160, 120, 255, 0.25);
+  border-radius: 2px;
+  display: block;
+}
+
+.empress-caption {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: rgba(180, 160, 220, 0.6);
+  text-align: center;
+  margin-top: -6px;
+  text-transform: uppercase;
+}
+
+.empress-poem {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid rgba(140, 100, 255, 0.2);
+  border-bottom: 1px solid rgba(140, 100, 255, 0.2);
+  padding: 14px 0;
+}
+
+.empress-poem p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.9;
+  color: rgba(190, 175, 225, 0.8);
+  letter-spacing: 0.04em;
+  text-align: center;
+  font-style: italic;
+}
+
+.empress-close {
+  margin-top: 4px;
+  padding: 8px 36px;
+  background: transparent;
+  border: 1px solid rgba(160, 120, 255, 0.45);
+  color: rgba(200, 175, 255, 0.85);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.empress-close:hover {
+  background: rgba(140, 80, 255, 0.12);
+  border-color: rgba(190, 150, 255, 0.8);
+  color: #ddd0ff;
 }
 
 /* ---------- animations ---------- */
