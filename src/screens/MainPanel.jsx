@@ -37,7 +37,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel() {
+export default function MainPanel({ onLogout }) {
 
   // ── Structural state (drives re-renders) ──────────────────────────────────
   const [radarView,       setRadarViewState]  = useState('radar')
@@ -545,7 +545,7 @@ export default function MainPanel() {
     <>
       <header className="hud-header">
         <div className="header-left">
-          <span className="brand">⬢ IMPERIAL SPACE FORCE // HMSS &quot;HER ANNUNCIATOR&quot;</span>
+          <span className="brand brand-link" onClick={onLogout} title="Return to login">⬢ IMPERIAL SPACE FORCE // HMSS &quot;HER ANNUNCIATOR&quot;</span>
         </div>
         <div className="header-center">
           <span className="status-pill armed" id="readiness">DEFCON-2 // WEAPONS HOT</span>

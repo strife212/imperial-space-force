@@ -13,7 +13,7 @@ export default function App() {
       <div className="vignette" />
       {screen === 'login' && <LoginScreen onComplete={() => setScreen('boot')} />}
       {screen === 'boot'  && <BootScreen  onComplete={() => setScreen('main')} />}
-      {screen === 'main'  && <MainPanel />}
+      {screen === 'main'  && <MainPanel onLogout={() => setScreen('login')} />}
     </>
   )
 }
