@@ -159,8 +159,8 @@ export default function LaunchMonitorScreen({ onReturn }) {
           const [sx, sy] = project(rotXY(p, rx, ry), cx, cy, s)
           if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy)
         })
-        ctx.strokeStyle = 'rgba(20,60,170,0.28)'
-        ctx.lineWidth   = 0.6
+        ctx.strokeStyle = 'rgba(40,100,220,0.65)'
+        ctx.lineWidth   = 1.2
         ctx.stroke()
       })
 
@@ -284,6 +284,8 @@ export default function LaunchMonitorScreen({ onReturn }) {
           onMouseLeave={onMouseUp}
         >
           <canvas ref={canvasRef} className="monitor-canvas" />
+
+          <div className="monitor-canvas-hint">Click &amp; drag to rotate</div>
 
           {hovered && OBJECTS[hovered] && (
             <div className="monitor-infobox" style={{ left: hoverXY.x + 18, top: hoverXY.y - 16 }}>
