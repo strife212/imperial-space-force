@@ -324,7 +324,7 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, u
     <div id="reactor-screen">
 
       <HudHeader
-        onLogout={onLogout}
+        onLogout={() => onReturn(plasmaRef.current)}
         center={
           <span className={`status-pill mail-pill${unreadCount > 0 ? ' mail-pill--unread' : ''}`} onClick={onMailOpen}>
             {unreadCount > 0 && <span className="mail-unread-dot" />}
