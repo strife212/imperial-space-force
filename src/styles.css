@@ -1810,6 +1810,9 @@ body {
   display: block;
 }
 
+.empress-poem-supertitle {
+  margin-bottom: 10px;
+}
 .empress-caption {
   font-size: 10px;
   letter-spacing: 0.18em;

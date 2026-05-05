@@ -381,7 +381,7 @@ export default function LaunchMonitorScreen({ onReturn, onLogout, packageName, u
       <HudHeader
         onLogout={onLogout}
         center={
-          <span className="status-pill mail-pill" onClick={onMailOpen}>
+          <span className={`status-pill mail-pill${unreadCount > 0 ? ' mail-pill--unread' : ''}`} onClick={onMailOpen}>
             {unreadCount > 0 && <span className="mail-unread-dot" />}
             ✉ IMPERIAL MESSAGING SERVICE // UNREAD: {unreadCount}
           </span>

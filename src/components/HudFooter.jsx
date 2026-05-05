@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 const POEM = [
   "O'er silent Star, beneath broken Sky,",
@@ -14,6 +14,61 @@ const POEM = [
 export default function HudFooter({ children }) {
   const [open, setOpen] = useState(false)
 
+  const audioCtxRef = useRef(null)
+  const gainRef     = useRef(null)
+  const sourceRef   = useRef(null)
+  const bufferRef   = useRef(null)
+
+  // Preload audio buffer on mount
+  useEffect(() => {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)()
+    const gain = ctx.createGain()
+    gain.gain.value = 0.8
+    gain.connect(ctx.destination)
+    audioCtxRef.current = ctx
+    gainRef.current     = gain
+
+    fetch(`${import.meta.env.BASE_URL}auditioultima.mp3`)
+      .then(r => r.arrayBuffer())
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { bufferRef.current = decoded })
+      .catch(() => {})
+
+    return () => { ctx.close() }
+  }, [])
+
+  // Play on open, fade out on close
+  useEffect(() => {
+    const ctx  = audioCtxRef.current
+    const gain = gainRef.current
+    if (!ctx || !gain) return
+
+    if (open) {
+      if (!bufferRef.current) return
+      ctx.resume()
+      // Reset gain in case a previous fade left it at 0
+      gain.gain.cancelScheduledValues(ctx.currentTime)
+      gain.gain.setValueAtTime(0.8, ctx.currentTime)
+      // Stop any previous playback
+      try { sourceRef.current?.stop() } catch (_) {}
+      const source = ctx.createBufferSource()
+      source.buffer = bufferRef.current
+      source.loop   = false
+      source.connect(gain)
+      source.start(0)
+      sourceRef.current = source
+    } else {
+      if (!sourceRef.current) return
+      // Fade out over 2 seconds then stop
+      const g = gain.gain
+      g.setValueAtTime(g.value, ctx.currentTime)
+      g.linearRampToValueAtTime(0, ctx.currentTime + 2)
+      const src = sourceRef.current
+      setTimeout(() => { try { src.stop() } catch (_) {} }, 2100)
+      sourceRef.current = null
+    }
+  }, [open])
+
   return (
     <>
       <footer className="hud-footer">
@@ -25,7 +80,7 @@ export default function HudFooter({ children }) {
 
       {open && (
         <>
-          <div className="empress-dim" onClick={() => setOpen(false)} />
+          <div className="empress-dim" />
           <div className="empress-modal-wrap">
             <div className="empress-modal">
               <div className="empress-motto-group">
@@ -43,6 +98,9 @@ export default function HudFooter({ children }) {
                 HER IMPERIAL MAJESTY EMPRESS Iliantha III
               </div>
               <div className="empress-poem">
+                <div className="empress-caption empress-poem-supertitle">
+                  AUDITIO ULTIMA : IMPERIAL ESCHATOLOGICAL PROPHECY
+                </div>
                 {POEM.map((line, i) => (
                   <p key={i}>{line}</p>
                 ))}
