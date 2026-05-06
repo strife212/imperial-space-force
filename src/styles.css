@@ -256,6 +256,99 @@
   width: 100%;
 }
 
+.login-anthem-row {
+  position: relative;
+  width: 100%;
+}
+
+.login-anthem-row .login-anthem {
+  width: fit-content;
+  margin: 0 auto;
+  position: relative;
+}
+
+.anthem-play-btn {
+  display: block;
+  width: fit-content;
+  margin: 14px auto 0;
+  background: none;
+  border: 1px solid rgba(140, 210, 255, 0.25);
+  color: rgba(140, 210, 255, 0.55);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.anthem-play-btn:hover {
+  color: rgba(140, 210, 255, 0.9);
+  border-color: rgba(140, 210, 255, 0.55);
+}
+
+.anthem-viz-popup {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 16px);
+  transform: translateY(-50%);
+  z-index: 10;
+  color: initial;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(140, 210, 255, 0.2);
+  background: rgba(6, 14, 28, 0.88);
+}
+
+.anthem-viz-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: rgba(140, 210, 255, 0.9);
+  text-align: center;
+}
+
+.anthem-viz-name {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(140, 210, 255, 0.9);
+  text-align: center;
+  font-style: italic;
+}
+
+.anthem-viz-subtitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: rgba(200, 230, 255, 0.9);
+  text-align: center;
+}
+
+.anthem-viz-canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.anthem-stop-btn {
+  background: none;
+  border: 1px solid rgba(140, 210, 255, 0.3);
+  color: rgba(140, 210, 255, 0.9);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  padding: 6px 18px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.anthem-stop-btn:hover {
+  color: #fff;
+  border-color: rgba(140, 210, 255, 0.7);
+}
+
 .login-anthem--hidden {
   position: absolute;
   top: 0;

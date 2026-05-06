@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import CryptographyModule from '../components/CryptographyModule'
 
 const OPERATOR_ID = 'HIH V. ASTRAIA // CLR-Ω'
@@ -6,14 +6,29 @@ const PASSWORD    = 'IMPERIAL-CLEARANCE-OMEGA'
 const ID_SPEED    = 38   // ms per character
 const PW_SPEED    = 60   // ms per character
 
+const VIZ_W = 200
+const VIZ_H = 72
+const BAR_COUNT = 28
+
 export default function LoginScreen({ onComplete, onDebug }) {
   const [exiting,        setExiting]        = useState(false)
   const [phase,          setPhase]          = useState('idle')  // idle | typing | ready | crypto
   const [operatorText,   setOperatorText]   = useState('')
   const [passwordText,   setPasswordText]   = useState('')
   const [portraitHover,  setPortraitHover]  = useState(false)
+  const [anthemPlaying,  setAnthemPlaying]  = useState(false)
+
   const timers   = useRef([])
   const clickSfx = useRef(null)
+
+  // Anthem audio refs
+  const anthemCtxRef      = useRef(null)
+  const anthemBufRef      = useRef(null)
+  const anthemGainRef     = useRef(null)
+  const anthemAnalyserRef = useRef(null)
+  const anthemSourceRef   = useRef(null)
+  const anthemRafRef      = useRef(null)
+  const anthemCanvasRef   = useRef(null)
 
   useEffect(() => {
     const audio = new Audio(`${import.meta.env.BASE_URL}click.wav`)
@@ -21,6 +36,115 @@ export default function LoginScreen({ onComplete, onDebug }) {
     clickSfx.current = audio
     return () => timers.current.forEach(clearTimeout)
   }, [])
+
+  // Preload anthem audio buffer
+  useEffect(() => {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    anthemCtxRef.current = ctx
+    fetch(`${import.meta.env.BASE_URL}oempress.mp3`)
+      .then(r => r.arrayBuffer())
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { anthemBufRef.current = decoded })
+      .catch(() => {})
+    return () => {
+      cancelAnimationFrame(anthemRafRef.current)
+      try { anthemSourceRef.current?.stop() } catch (_) {}
+      ctx.close().catch(() => {})
+    }
+  }, [])
+
+  const fadeStopAnthem = useCallback((immediate = false) => {
+    cancelAnimationFrame(anthemRafRef.current)
+    setAnthemPlaying(false)
+    const ctx    = anthemCtxRef.current
+    const gain   = anthemGainRef.current
+    const source = anthemSourceRef.current
+    anthemSourceRef.current = null
+    if (!source) return
+    if (immediate) {
+      try { source.stop() } catch (_) {}
+    } else {
+      if (ctx && gain) {
+        gain.gain.cancelScheduledValues(ctx.currentTime)
+        gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime)
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1)
+      }
+      setTimeout(() => { try { source.stop() } catch (_) {} }, 1100)
+    }
+  }, [])
+
+  const playAnthem = () => {
+    if (!anthemBufRef.current || anthemPlaying) return
+    const ctx = anthemCtxRef.current
+    ctx.resume()
+
+    const analyser = ctx.createAnalyser()
+    analyser.fftSize = 512
+    anthemAnalyserRef.current = analyser
+
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(0.85, ctx.currentTime)
+    anthemGainRef.current = gain
+
+    const source = ctx.createBufferSource()
+    source.buffer = anthemBufRef.current
+    source.loop = false
+    source.connect(analyser)
+    analyser.connect(gain)
+    gain.connect(ctx.destination)
+    source.start(0)
+    anthemSourceRef.current = source
+    setAnthemPlaying(true)
+
+    // Stop cleanly when track ends naturally
+    source.onended = () => {
+      if (anthemSourceRef.current === source) {
+        cancelAnimationFrame(anthemRafRef.current)
+        anthemSourceRef.current = null
+        setAnthemPlaying(false)
+      }
+    }
+  }
+
+  // Start visualizer RAF loop once the canvas is in the DOM
+  useEffect(() => {
+    if (!anthemPlaying) return
+    const analyser = anthemAnalyserRef.current
+    if (!analyser) return
+
+    const drawBars = () => {
+      const canvas = anthemCanvasRef.current
+      if (!canvas) return
+      const ctx2d = canvas.getContext('2d')
+      const data  = new Uint8Array(analyser.frequencyBinCount)
+      analyser.getByteFrequencyData(data)
+
+      ctx2d.clearRect(0, 0, VIZ_W, VIZ_H)
+
+      const step = Math.floor(data.length / BAR_COUNT)
+      const barW = Math.floor(VIZ_W / BAR_COUNT) - 2
+
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const val   = data[i * step] / 255
+        const barH  = Math.max(2, val * VIZ_H)
+        const x     = i * (barW + 2)
+        const y     = VIZ_H - barH
+        const alpha = 0.3 + val * 0.7
+        ctx2d.fillStyle = `rgba(140, 210, 255, ${alpha})`
+        ctx2d.fillRect(x, y, barW, barH)
+      }
+
+      anthemRafRef.current = requestAnimationFrame(drawBars)
+    }
+    drawBars()
+
+    return () => cancelAnimationFrame(anthemRafRef.current)
+  }, [anthemPlaying])
+
+  // Fade out when crypto starts
+  useEffect(() => {
+    if (phase === 'crypto') fadeStopAnthem(false)
+  }, [phase, fadeStopAnthem])
 
   const startFill = () => {
     if (phase !== 'idle') return
@@ -147,30 +271,50 @@ export default function LoginScreen({ onComplete, onDebug }) {
         </div>
 
         <div className="login-anthem-slot">
-        <div className={`login-anthem${phase === 'crypto' ? ' login-anthem--hidden' : ''}`}>
-          <p>
-            From the high and sacrèd morning star<br />
-            To the silent deeps where no suns are<br />
-            O Empress, thou alone dost hear<br />
-            The turning of each celestial sphere
-          </p>
-          <p>
-            We are the chord beneath thy hand<br />
-            We are the chord,<br />
-            O Star-Hearer, we are the chord beneath thy hand.
-          </p>
-          <p>
-            Ten thousand daughters bear thy name<br />
-            Each princess thy belovèd flame<br />
-            A note set down upon thy stave<br />
-            A song that none beside thee gave
-          </p>
-          <p>
-            We are the chord beneath thy hand,<br />
-            We are the chord,<br />
-            O Star-Hearèr, we are the chord beneath thy hand.
-          </p>
-        </div>
+          <div className="login-anthem-row">
+            <div className={`login-anthem${phase === 'crypto' ? ' login-anthem--hidden' : ''}`}>
+              <p>
+                From the high and sacrèd morning star<br />
+                To the silent deeps where no suns are<br />
+                O Empress, thou alone dost hear<br />
+                The turning of each celestial sphere
+              </p>
+              <p>
+                We are the chord beneath thy hand<br />
+                We are the chord,<br />
+                O Star-Hearer, we are the chord beneath thy hand.
+              </p>
+              <p>
+                Ten thousand daughters bear thy name<br />
+                Each princess thy belovèd flame<br />
+                A note set down upon thy stave<br />
+                A song that none beside thee gave
+              </p>
+              <p>
+                We are the chord beneath thy hand,<br />
+                We are the chord,<br />
+                O Star-Hearèr, we are the chord beneath thy hand.
+              </p>
+              {!anthemPlaying && phase !== 'crypto' && (
+                <button className="anthem-play-btn" onClick={playAnthem}>▶ PLAY</button>
+              )}
+
+              {anthemPlaying && (
+                <div className="anthem-viz-popup">
+                  <div className="anthem-viz-title">AUDIO SPECTROGRAPH</div>
+                  <div className="anthem-viz-name">IMPERIAL ANTHEM</div>
+                  <div className="anthem-viz-subtitle">&ldquo;O EMPRESS, THOU ALONE DOST HEAR&rdquo;</div>
+                  <canvas
+                    ref={anthemCanvasRef}
+                    className="anthem-viz-canvas"
+                    width={VIZ_W}
+                    height={VIZ_H}
+                  />
+                  <button className="anthem-stop-btn" onClick={() => fadeStopAnthem(false)}>■ STOP</button>
+                </div>
+              )}
+            </div>
+          </div>
 
           {phase === 'crypto' && <CryptographyModule onComplete={onComplete} />}
         </div>
