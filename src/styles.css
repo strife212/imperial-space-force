@@ -1950,6 +1950,21 @@ body {
   pointer-events: none;
 }
 
+.empress-modal-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.empress-viz-side {
+  position: absolute;
+  left: calc(100% + 16px);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: all;
+}
+
 .empress-modal {
   pointer-events: all;
   width: min(480px, 90vw);

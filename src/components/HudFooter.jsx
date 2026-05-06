@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import AudioSpectrograph from './AudioSpectrograph'
 
 const POEM = [
   "O'er silent Star, beneath broken Sky,",
@@ -16,10 +17,11 @@ export default function HudFooter({ children }) {
   const [imgZoomed,   setImgZoomed]   = useState(false)
   const [imgClosing,  setImgClosing]  = useState(false)
 
-  const audioCtxRef = useRef(null)
-  const gainRef     = useRef(null)
-  const sourceRef   = useRef(null)
-  const bufferRef   = useRef(null)
+  const audioCtxRef  = useRef(null)
+  const gainRef      = useRef(null)
+  const sourceRef    = useRef(null)
+  const bufferRef    = useRef(null)
+  const analyserRef  = useRef(null)
 
   // Preload audio buffer on mount
   useEffect(() => {
@@ -53,10 +55,17 @@ export default function HudFooter({ children }) {
       gain.gain.setValueAtTime(0.8, ctx.currentTime)
       // Stop any previous playback
       try { sourceRef.current?.stop() } catch (_) {}
+
+      // Build analyser → gain chain
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 512
+      analyserRef.current = analyser
+      analyser.connect(gain)
+
       const source = ctx.createBufferSource()
       source.buffer = bufferRef.current
       source.loop   = false
-      source.connect(gain)
+      source.connect(analyser)
       source.start(0)
       sourceRef.current = source
     } else {
@@ -67,7 +76,8 @@ export default function HudFooter({ children }) {
       g.linearRampToValueAtTime(0, ctx.currentTime + 2)
       const src = sourceRef.current
       setTimeout(() => { try { src.stop() } catch (_) {} }, 2100)
-      sourceRef.current = null
+      sourceRef.current  = null
+      analyserRef.current = null
     }
   }, [open])
 
@@ -101,36 +111,47 @@ export default function HudFooter({ children }) {
         <>
           <div className="empress-dim" />
           <div className="empress-modal-wrap">
-            <div className="empress-modal">
-              <div className="empress-motto-group">
-                <div className="empress-motto">✦ CAELUM CANIT ✦ ILLA AVDIT ✦</div>
-                <div className="empress-translation">
-                  <em>The heavens sing; she hears.</em>
+            <div className="empress-modal-group">
+              <div className="empress-modal">
+                <div className="empress-motto-group">
+                  <div className="empress-motto">✦ CAELUM CANIT ✦ ILLA AVDIT ✦</div>
+                  <div className="empress-translation">
+                    <em>The heavens sing; she hears.</em>
+                  </div>
                 </div>
+                <div className="empress-img-wrap">
+                  <img
+                    className="empress-img"
+                    src={`${import.meta.env.BASE_URL}empress.jpg`}
+                    alt="The Grand Empress"
+                    style={{ cursor: 'zoom-in' }}
+                    onClick={() => setImgZoomed(true)}
+                  />
+                </div>
+                <div className="empress-caption">
+                  HER IMPERIAL MAJESTY EMPRESS Iliantha III
+                </div>
+                <div className="empress-poem">
+                  <div className="empress-caption empress-poem-supertitle">
+                    AUDITIO ULTIMA : IMPERIAL ESCHATOLOGICAL PROPHECY
+                  </div>
+                  {POEM.map((line, i) => (
+                    <p key={i}>{line}</p>
+                  ))}
+                </div>
+                <button className="empress-close" onClick={() => setOpen(false)}>
+                  CLOSE
+                </button>
               </div>
-              <div className="empress-img-wrap">
-                <img
-                  className="empress-img"
-                  src={`${import.meta.env.BASE_URL}empress.jpg`}
-                  alt="The Grand Empress"
-                  style={{ cursor: 'zoom-in' }}
-                  onClick={() => setImgZoomed(true)}
+
+              <div className="empress-viz-side">
+                <AudioSpectrograph
+                  analyser={analyserRef.current}
+                  name="Imperial Prophecy"
+                  subtitle="Auditio Ultima"
+                  onStop={() => setOpen(false)}
                 />
               </div>
-              <div className="empress-caption">
-                HER IMPERIAL MAJESTY EMPRESS Iliantha III
-              </div>
-              <div className="empress-poem">
-                <div className="empress-caption empress-poem-supertitle">
-                  AUDITIO ULTIMA : IMPERIAL ESCHATOLOGICAL PROPHECY
-                </div>
-                {POEM.map((line, i) => (
-                  <p key={i}>{line}</p>
-                ))}
-              </div>
-              <button className="empress-close" onClick={() => setOpen(false)}>
-                CLOSE
-              </button>
             </div>
           </div>
         </>
