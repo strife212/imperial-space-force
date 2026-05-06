@@ -1676,9 +1676,9 @@ body {
 .cvl-fired-blessing {
   margin-top: 14px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.14em;
-  color: rgba(200, 200, 220, 0.5);
+  color: rgba(200, 200, 220, 0.8);
   text-align: center;
   line-height: 1.8;
   font-style: italic;
