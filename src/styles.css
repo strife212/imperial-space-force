@@ -561,9 +561,10 @@
   margin: 0 auto 18px;
 }
 .boot-title {
-  font-size: 32px;
+  font-size: clamp(18px, 5vw, 32px);
   font-weight: 700;
   letter-spacing: 0.35em;
+  white-space: nowrap;
   text-transform: uppercase;
   color: var(--c-pink);
   text-shadow: 0 0 18px rgba(100,180,255,0.6);
