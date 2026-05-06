@@ -349,7 +349,8 @@
   border-color: rgba(140, 210, 255, 0.7);
 }
 
-.login-anthem--hidden {
+.login-anthem--hidden,
+.login-anthem-row .login-anthem--hidden {
   position: absolute;
   top: 0;
   left: 0;
