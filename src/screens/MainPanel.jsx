@@ -220,7 +220,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
         addLog('CRIT', 'GEODESIC INTERCEPT SOLUTION COMMITTED')
         cdTimerRef.current = setTimeout(() => {
           onLaunchCompleteRef.current?.(PKG_NAMES[selectedPkgRef.current])
-        }, 4000)
+        }, 6500)
       }
     }
     tick()

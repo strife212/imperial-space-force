@@ -27,7 +27,7 @@ export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchP
     if (launchPhase !== 'fired') return
     const playBeep = () => { if (beepRef.current) beepRef.current.cloneNode().play().catch(() => {}) }
     playBeep()
-    const id = setInterval(playBeep, 1000)
+    const id = setInterval(playBeep, 1200)
     return () => clearInterval(id)
   }, [launchPhase])
 
@@ -102,6 +102,9 @@ export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchP
         {isFired && (
           <div className={`cvl-warning-body cvl-fired${launchFiring ? ' firing-anim' : ''}`}>
             <div className="cvl-warning-text">⚠ PACKAGE AWAY ⚠</div>
+            <div className="cvl-fired-blessing">
+              The Celestial Lance has been cast.<br />Goddess be with you.
+            </div>
           </div>
         )}
 

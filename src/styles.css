@@ -1671,7 +1671,17 @@ body {
 }
 
 .cvl-fired .cvl-warning-text {
-  animation: warning-pulse 1s step-end infinite;
+  animation: warning-pulse 1.2s step-end 5 forwards;
+}
+.cvl-fired-blessing {
+  margin-top: 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(200, 200, 220, 0.5);
+  text-align: center;
+  line-height: 1.8;
+  font-style: italic;
 }
 .code-verify-status.verified {
   font-size: 16px;
