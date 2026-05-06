@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 
-export default function MenuScreen({ onManage, onLogout }) {
+export default function MenuScreen({ onManage, onLogout, onEncyclopedia }) {
   const clickSfx   = useRef(null)
   const [infoHover, setInfoHover] = useState(false)
   const [visible,   setVisible]   = useState(false)
@@ -66,9 +66,14 @@ export default function MenuScreen({ onManage, onLogout }) {
             <button className="menu-btn menu-btn--primary" onClick={playClick(onManage)}>
               MANAGE ORBITAL WEAPONS PLATFORM
             </button>
-            <button className="menu-btn menu-btn--secondary" onClick={playClick(onLogout)}>
-              LOG OUT
-            </button>
+            <div className="menu-btn-row">
+              <button className="menu-btn menu-btn--primary menu-btn--half" onClick={playClick(onEncyclopedia)}>
+                ENCYCLOPEDIA
+              </button>
+              <button className="menu-btn menu-btn--secondary menu-btn--half" onClick={playClick(onLogout)}>
+                LOG OUT
+              </button>
+            </div>
           </div>
         </div>
       </div>

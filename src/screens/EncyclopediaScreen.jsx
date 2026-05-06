@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ENCYCLOPEDIA } from '../data/encyclopediaData'
+import { getFlag } from '../lib/store'
 
 export default function EncyclopediaScreen({ onReturn }) {
   const [topicId, setTopicId] = useState(ENCYCLOPEDIA[0].id)
@@ -8,6 +9,8 @@ export default function EncyclopediaScreen({ onReturn }) {
   const topic   = ENCYCLOPEDIA.find(t => t.id === topicId)
   const entries = topic?.entries ?? []
   const entry   = entries.find(e => e.id === entryId) ?? null
+
+  const isLocked = (e) => e.locked && !getFlag(e.locked.flag)
 
   const handleTopicClick = (id) => {
     setTopicId(id)
@@ -51,15 +54,18 @@ export default function EncyclopediaScreen({ onReturn }) {
           <ul className="enc-entry-list">
             {entries.map(e => {
               const hasContent = e.content !== null
+              const locked     = isLocked(e)
               const isActive   = e.id === entryId
+              const isStub     = !hasContent && !locked
               return (
                 <li key={e.id}>
                   <button
-                    className={`enc-entry-btn${isActive ? ' enc-entry-btn--active' : ''}${!hasContent ? ' enc-entry-btn--stub' : ''}`}
-                    onClick={hasContent ? () => setEntryId(e.id) : undefined}
-                    disabled={!hasContent}
-                    title={!hasContent ? 'No data available' : undefined}
+                    className={`enc-entry-btn${isActive ? ' enc-entry-btn--active' : ''}${isStub ? ' enc-entry-btn--stub' : ''}${locked ? ' enc-entry-btn--locked' : ''}`}
+                    onClick={hasContent || locked ? () => setEntryId(e.id) : undefined}
+                    disabled={isStub}
+                    title={isStub ? 'No data available' : undefined}
                   >
+                    {locked && <span className="enc-lock-icon">🔒</span>}
                     {e.title}
                   </button>
                 </li>
@@ -70,10 +76,24 @@ export default function EncyclopediaScreen({ onReturn }) {
 
         {/* Content panel */}
         <div className="enc-content">
-          {entry?.content ? (
+          {entry && isLocked(entry) ? (
+            <div className="enc-content-locked">
+              [ FIND INFORMATION TO UNLOCK ]
+            </div>
+          ) : entry?.content ? (
             <div className="enc-article">
               <h2 className="enc-article-heading">{entry.content.heading}</h2>
               <div className="enc-article-divider" />
+              {entry.content.image && (
+                <div className="enc-article-image-block">
+                  <img
+                    className="enc-article-image"
+                    src={`${import.meta.env.BASE_URL}${entry.content.image.src}`}
+                    alt={entry.content.image.caption}
+                  />
+                  <p className="enc-article-image-caption">{entry.content.image.caption}</p>
+                </div>
+              )}
               {entry.content.body.map((para, i) => (
                 <p key={i} className="enc-article-para">{para}</p>
               ))}

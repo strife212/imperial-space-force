@@ -2,7 +2,12 @@
 const KEY = 'orbital_flags'
 
 const DEFAULTS = {
-  empressPanelVisited: false,
+  // persistent flags — saved in localStorage
+  empressPanelVisited:  false,
+  throneworldTargeted:  false,
+  worldengineTargeted:  false,
+  seenSelene:           false,
+  mainPanelSeen:        false,
 }
 
 export function getFlags() {

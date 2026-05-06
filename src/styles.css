@@ -2551,6 +2551,18 @@ body {
   box-shadow: 0 0 20px rgba(26,100,255,0.3);
 }
 
+.menu-btn-row {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  width: 100%;
+}
+
+.menu-btn--half {
+  width: 50%;
+  flex: 1;
+}
+
 .menu-btn--secondary {
   border: 1px solid rgba(60,120,255,0.35);
   color: rgba(106,173,245,0.7);
@@ -3899,6 +3911,24 @@ body {
   background: transparent;
   color: rgba(120, 160, 220, 0.22);
 }
+.enc-entry-btn--locked {
+  color: rgba(220, 60, 60, 0.65);
+  cursor: pointer;
+}
+.enc-entry-btn--locked:hover {
+  background: rgba(180, 30, 30, 0.1);
+  color: rgba(255, 90, 90, 0.9);
+}
+.enc-entry-btn--locked.enc-entry-btn--active {
+  background: rgba(160, 20, 20, 0.15);
+  color: rgba(255, 100, 100, 0.95);
+  border-left-color: rgba(200, 40, 40, 0.8);
+}
+.enc-lock-icon {
+  margin-right: 6px;
+  font-size: 10px;
+  opacity: 0.85;
+}
 
 /* ── Content panel ───────────────────────────────────────────────── */
 .enc-content {
@@ -3908,6 +3938,20 @@ body {
   flex-direction: column;
   scrollbar-width: thin;
   scrollbar-color: rgba(80,120,220,0.3) transparent;
+  position: relative;
+}
+
+.enc-content::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(to bottom, transparent, #010208);
+  pointer-events: none;
+  flex-shrink: 0;
+  display: block;
 }
 
 .enc-content-empty {
@@ -3920,9 +3964,21 @@ body {
   color: rgba(120, 180, 255, 0.2);
 }
 
+.enc-content-locked {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  letter-spacing: 0.2em;
+  color: rgba(220, 60, 60, 0.7);
+  text-align: center;
+  padding: 40px;
+}
+
 .enc-article {
   padding: 40px 56px 56px;
-  max-width: 780px;
+  max-width: 1000px;
 }
 
 .enc-article-heading {
@@ -3938,6 +3994,31 @@ body {
   height: 1px;
   background: linear-gradient(to right, rgba(80, 120, 220, 0.5), transparent);
   margin-bottom: 32px;
+}
+
+.enc-article-image-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 0 36px;
+}
+
+.enc-article-image {
+  max-height: 400px;
+  max-width: 100%;
+  height: auto;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.enc-article-image-caption {
+  margin: 12px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: rgba(120, 180, 255, 0.45);
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .enc-article-para {

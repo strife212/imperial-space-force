@@ -1,20 +1,24 @@
 // ── Encyclopedia data ─────────────────────────────────────────────────────────
-// content: null  →  entry exists but has no article yet (unclickable)
-// content: { title, body: [...paragraphs] }  →  full article
+// content: null              →  stub entry (unclickable, greyed out)
+// content: { heading, body } →  full article (or minimal placeholder)
+// locked: { flag }           →  locked until localStorage flag is true
 
-const LOREM_A = `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`
+// ── Placeholder bodies ────────────────────────────────────────────────────────
+const PENDING = `[ Full article pending. ]`
 
-const LOREM_B = `Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.`
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const LOREM_C = `At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident. Similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio.`
-
-// ── Helper ────────────────────────────────────────────────────────────────────
-const stub = (prefix, n) =>
-  Array.from({ length: n }, (_, i) => ({
-    id:      `${prefix}-${i + 2}`,
-    title:   `${prefix.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Placeholder ${i + 2}`,
-    content: null,
-  }))
+// image: { src, caption } — optional, displayed below heading before body text
+const entry = (id, title, body, lockedFlag = null, image = null) => ({
+  id,
+  title,
+  ...(lockedFlag ? { locked: { flag: lockedFlag } } : {}),
+  content: {
+    heading: title,
+    ...(image ? { image } : {}),
+    body: Array.isArray(body) ? body : [body],
+  },
+})
 
 // ── Topics ────────────────────────────────────────────────────────────────────
 export const ENCYCLOPEDIA = [
@@ -22,45 +26,43 @@ export const ENCYCLOPEDIA = [
     id:    'imperial-lore',
     label: 'Imperial Lore',
     entries: [
-      {
-        id:    'imperial-lore-1',
-        title: 'Imperial Lore Placeholder 1',
-        content: {
-          heading: 'Imperial Lore Placeholder 1',
-          body: [LOREM_A, LOREM_B, LOREM_C],
-        },
-      },
-      ...stub('imperial-lore', 19),
+      entry('imperial-space-force', 'Imperial Space Force',
+        [
+          `The Imperial Space Force, also known as the Imperial Navy, is the empire's roughly three thousand ships and, by every accounting that signifies, the most powerful force in known space. Its existence is the empire's settled position on the question of who rules the heavens.`,
+          `For all this, the fleet has not fought a fleet engagement in a generation. The last great war ended before most current officers were born and the empire has been at peace since. This peace is the fleet's vindication; it is also, increasingly, its mood. A Stellaris captain today is more likely to spend her career escorting a Princess to a treaty signing, conducting an antiquarian survey of some long-quiet system, or running anti-piracy sweeps along the trade routes than to fire her primary armament in earnest. Drills are kept; doctrine is rehearsed; the gunnery officers earn their qualifications and their ribbons. But the fleet has learned, slowly and without anyone naming it, the habits of a parade: polished surfaces, exact formations, the careful ceremony of arriving in order.`,
+          `Some among the Empress's councilors have begun, in private, to wonder what would happen if the Navy were ever again asked to be a blade rather than a banner. The fleet would say, of course, that it is ready.`,
+        ],
+        null,
+        { src: 'logo.png', caption: 'Seal of the Imperial Space Force.' },
+      ),
+      entry('imperial-anthem',           'Imperial Anthem',                  PENDING),
+      entry('imperial-theology',         'Imperial Theology',                PENDING),
+      entry('the-empress',               'The Empress',                      PENDING, 'empressPanelVisited'),
+      entry('the-final-hearing',         'The Final Hearing',                PENDING, 'empressPanelVisited'),
+      entry('the-discord',               'The Discord',                      PENDING, 'empressPanelVisited'),
+      entry('throneworld',               'Throneworld',                      PENDING, 'throneworldTargeted'),
+      entry('world-engine',              "The World Engine; 'Litania Magna'", PENDING, 'worldengineTargeted'),
+      entry('annunciator-battlestation', 'Annunciator Class Battlestation',  PENDING),
+      entry('princess-astraia',          'Princess V. ASTRAIA',              PENDING),
+      entry('princess-selene',           'Princess L. SELENE',               PENDING, 'seenSelene'),
+
     ],
   },
   {
     id:    'technology',
     label: 'Technology',
     entries: [
-      {
-        id:    'technology-1',
-        title: 'Technology Placeholder 1',
-        content: {
-          heading: 'Technology Placeholder 1',
-          body: [LOREM_B, LOREM_C, LOREM_A],
-        },
-      },
-      ...stub('technology', 19),
+      entry('quantum-communication',      'Quantum Communication',          PENDING),
+      entry('relativistic-kill-vehicles', 'Relativistic Kill Vehicles',     PENDING, 'mainPanelSeen'),
+      entry('d3he-fusor',                 'D-³He Fusor Reactor',            PENDING, 'mainPanelSeen'),
+      entry('chronology-protection',      'Chronology Protection',          PENDING, 'mainPanelSeen'),
     ],
   },
   {
     id:    'world',
     label: 'World',
     entries: [
-      {
-        id:    'world-1',
-        title: 'World Placeholder 1',
-        content: {
-          heading: 'World Placeholder 1',
-          body: [LOREM_C, LOREM_A, LOREM_B],
-        },
-      },
-      ...stub('world', 19),
+      entry('world-placeholder', 'Placeholder', 'Work in Progress.'),
     ],
   },
 ]
