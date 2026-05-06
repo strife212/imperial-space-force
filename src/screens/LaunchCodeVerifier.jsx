@@ -93,9 +93,9 @@ export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchP
         )}
 
         {isCountdown && (
-          <div className="cvl-warning-body" style={{ opacity: cdVisible ? 1 : 0 }}>
+          <div className="cvl-warning-body">
             <div className="cvl-warning-text">⚠ WARNING — LAUNCH INITIATED ⚠</div>
-            <div className="cvl-warning-cd">! {launchCdText} !</div>
+            <div className="cvl-warning-cd">! T−&nbsp;<span key={launchCdText} className="cvl-cd-num--flash">{launchCdText.slice(-2)}</span> !</div>
           </div>
         )}
 

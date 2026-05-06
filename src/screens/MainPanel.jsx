@@ -200,17 +200,11 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
     let val = 10
     const tick = () => {
       if (val > 0) {
-        // Hide, update number while invisible, then show
-        setCdVisible(false)
-        cdTimerRef.current = setTimeout(() => {
-          setLaunchCdText(`T− ${String(val).padStart(2, '0')}`)
-          addLog('CRIT', `LAUNCH T-${val} // ${PKG_NAMES[selectedPkgRef.current]}`)
-          setCdVisible(true)
-          val--
-          cdTimerRef.current = setTimeout(tick, 500)
-        }, 500)
+        setLaunchCdText(`T− ${String(val).padStart(2, '0')}`)
+        addLog('CRIT', `LAUNCH T-${val} // ${PKG_NAMES[selectedPkgRef.current]}`)
+        val--
+        cdTimerRef.current = setTimeout(tick, 1000)
       } else {
-        setCdVisible(true)
         launchPhaseRef.current = 'fired'
         setLaunchPhase('fired')
         setLaunchCdText('LAUNCHED')

@@ -1670,6 +1670,19 @@ body {
   text-shadow: 0 0 16px rgba(255,255,255,0.5);
 }
 
+@keyframes cd-flash {
+  0%   { text-shadow: 0 0 18px rgba(255,255,255,0.85), 0 0 32px rgba(255,255,255,0.4); }
+  100% { text-shadow: 0 0 16px rgba(255,255,255,0.5); }
+}
+
+.cvl-cd-num--flash {
+  animation: cd-flash 0.5s ease-out forwards;
+}
+
+.cvl-warning-body .cvl-warning-text {
+  animation: warning-pulse 1s step-end infinite;
+}
+
 .cvl-fired .cvl-warning-text {
   animation: warning-pulse 1.2s step-end 5 forwards;
 }
