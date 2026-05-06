@@ -1953,17 +1953,17 @@ body {
 .empress-modal {
   pointer-events: all;
   width: min(480px, 90vw);
-  max-height: 90vh;
-  overflow-y: auto;
+  height: clamp(400px, 90dvh, 1000px);
+  overflow-y: hidden;
   background: rgba(4, 6, 26, 0.97);
   border: 1px solid rgba(180, 140, 255, 0.35);
   box-shadow: 0 0 0 1px #000, 0 0 48px rgba(140, 80, 255, 0.2);
   border-radius: 3px;
-  padding: 32px 36px 28px;
+  padding: clamp(12px, 3vh, 32px) 36px clamp(10px, 2.5vh, 28px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: clamp(5px, 1.4vh, 14px);
   animation: empress-appear 0.25s ease-out;
 }
 
@@ -1994,11 +1994,23 @@ body {
   letter-spacing: 0.06em;
 }
 
-.empress-img {
+.empress-img-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empress-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  display: block;
   border: 1px solid rgba(160, 120, 255, 0.25);
   border-radius: 2px;
-  display: block;
 }
 
 .empress-poem-supertitle {
@@ -2025,8 +2037,8 @@ body {
 
 .empress-poem p {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.9;
+  font-size: clamp(9px, 1.6vh, 12px);
+  line-height: 1.7;
   color: rgba(190, 175, 225, 0.8);
   letter-spacing: 0.04em;
   text-align: center;

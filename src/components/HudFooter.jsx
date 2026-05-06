@@ -108,13 +108,15 @@ export default function HudFooter({ children }) {
                   <em>The heavens sing; she hears.</em>
                 </div>
               </div>
-              <img
-                className="empress-img"
-                src={`${import.meta.env.BASE_URL}empress.jpg`}
-                alt="The Grand Empress"
-                style={{ cursor: 'zoom-in' }}
-                onClick={() => setImgZoomed(true)}
-              />
+              <div className="empress-img-wrap">
+                <img
+                  className="empress-img"
+                  src={`${import.meta.env.BASE_URL}empress.jpg`}
+                  alt="The Grand Empress"
+                  style={{ cursor: 'zoom-in' }}
+                  onClick={() => setImgZoomed(true)}
+                />
+              </div>
               <div className="empress-caption">
                 HER IMPERIAL MAJESTY EMPRESS Iliantha III
               </div>
