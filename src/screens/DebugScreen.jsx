@@ -6,6 +6,7 @@ const SCREENS = [
   { key: 'monitor',   label: 'Launch Monitor Screen'  },
   { key: 'reactor',   label: 'Reactor Control Screen' },
   { key: 'targeting', label: 'Targeting Screen'        },
+  { key: 'gameover',  label: 'Game Over Screen'        },
 ]
 
 export default function DebugScreen({ onNavigate }) {

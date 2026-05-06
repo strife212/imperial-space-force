@@ -3660,3 +3660,53 @@ body {
   border-color: rgba(120, 180, 255, 0.5);
   color: rgba(160, 210, 255, 0.85);
 }
+
+/* ── Game Over Screen ────────────────────────────────────────────── */
+#game-over-screen {
+  position: fixed;
+  top: 0; bottom: 0;
+  left: max(0px, calc(50vw - 1080px));
+  right: max(0px, calc(50vw - 1080px));
+  background: #010208;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  font-family: var(--font-mono);
+}
+.go-fin {
+  font-size: clamp(64px, 10vw, 140px);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--c-ash);
+  text-shadow: 0 0 60px rgba(180, 210, 255, 0.15);
+}
+.go-wip {
+  font-size: 13px;
+  letter-spacing: 0.35em;
+  color: rgba(255, 180, 60, 0.85);
+  text-shadow: 0 0 18px rgba(255, 150, 30, 0.45);
+  margin-bottom: -16px;
+  animation: go-pulse 2.8s ease-in-out infinite;
+}
+.go-again {
+  background: transparent;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  letter-spacing: 0.22em;
+  color: rgba(140, 200, 255, 0.75);
+  cursor: pointer;
+  animation: go-pulse 2.8s ease-in-out infinite;
+  transition: color 0.2s, text-shadow 0.2s;
+}
+.go-again:hover {
+  color: rgba(200, 230, 255, 0.95);
+  text-shadow: 0 0 24px rgba(120, 180, 255, 0.9);
+  animation: none;
+}
+@keyframes go-pulse {
+  0%, 100% { text-shadow: 0 0 10px rgba(120, 180, 255, 0.2); }
+  50%      { text-shadow: 0 0 28px rgba(120, 180, 255, 0.65); }
+}

@@ -133,7 +133,7 @@ const mkTimestamp = () => {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function LaunchMonitorScreen({ onReturn, onLogout, packageName, unreadCount = 0, onMailOpen }) {
+export default function LaunchMonitorScreen({ onReturn, onLogout, packageName, targetName = 'CLASSIFIED', unreadCount = 0, onMailOpen }) {
   const canvasRef      = useRef(null)
   const rotRef         = useRef({ x: 0.518, y: -1.240 })
   const rotDisplayRef  = useRef(null)
@@ -465,7 +465,7 @@ export default function LaunchMonitorScreen({ onReturn, onLogout, packageName, u
             {hovered && OBJECTS[hovered] && (
               <div className="monitor-infobox" style={{ left: hoverXY.x + 18, top: hoverXY.y - 16 }}>
                 <div className="mib-title" style={{ color: OBJECTS[hovered].color }}>
-                  {OBJECTS[hovered].label}
+                  {hovered === 'target' ? `TARGET // ${targetName}` : OBJECTS[hovered].label}
                 </div>
                 <div className="mib-divider" />
                 {OBJECTS[hovered].stats.map(({ key, value }) => (
