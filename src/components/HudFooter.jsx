@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import AudioSpectrograph from './AudioSpectrograph'
+import { setFlag } from '../lib/store'
 
 const POEM = [
   "O'er silent Star, beneath broken Sky,",
@@ -106,7 +107,7 @@ export default function HudFooter({ children }) {
     <>
       <footer className="hud-footer">
         {children}
-        <span className="footer-motto" onClick={() => setOpen(true)}>
+        <span className="footer-motto" onClick={() => { setOpen(true); setFlag('empressPanelVisited', true) }}>
           ✦ CAELUM CANIT ✦ ILLA AVDIT ✦
         </span>
       </footer>

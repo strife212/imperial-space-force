@@ -8,6 +8,7 @@ import MenuScreen from './screens/MenuScreen'
 import ReactorScreen from './screens/ReactorScreen'
 import TargetingScreen from './screens/TargetingScreen'
 import GameOverScreen from './screens/GameOverScreen'
+import EncyclopediaScreen from './screens/EncyclopediaScreen'
 import MailOverlay from './components/MailOverlay'
 import { INITIAL_MESSAGES } from './data/messages'
 import { PLANETS, SUN, SUN_IDX } from './lib/planetData'
@@ -43,7 +44,8 @@ export default function App() {
       {screen === 'debug'     && <DebugScreen onNavigate={(s) => { if (s === 'targeting') setTargetingSource('debug'); setScreen(s) }} />}
       {screen === 'reactor'   && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); setScreen('main') }} onLogout={() => setScreen('main')} initialPlasma={plasmaLevel} {...mailProps} />}
       {screen === 'targeting' && <TargetingScreen onBack={(idx) => { setTargetIdx(idx); setScreen(targetingSource) }} initialSelectedIdx={targetIdx} {...mailProps} />}
-      {screen === 'gameover'  && <GameOverScreen />}
+      {screen === 'gameover'      && <GameOverScreen />}
+      {screen === 'encyclopedia'  && <EncyclopediaScreen onReturn={() => setScreen('menu')} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
     </>
   )
