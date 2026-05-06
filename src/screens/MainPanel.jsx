@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { LOG_MESSAGES, PKG_NAMES, SECTION_INFO } from '../lib/constants'
+import { PLANETS, SUN, SUN_IDX } from '../lib/planetData'
 import LaunchCodeVerifier from './LaunchCodeVerifier'
 import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
@@ -39,7 +40,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel({ onLogout, onLaunchComplete, onReactor, reactorPlasma = 75, unreadCount = 0, onMailOpen }) {
+export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, reactorPlasma = 75, targetIdx = -1, unreadCount = 0, onMailOpen }) {
 
   // ── Panel init animation ──────────────────────────────────────────────────
   const [litPanels, setLitPanels] = useState(new Set())
@@ -130,6 +131,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
   useEffect(() => { onLaunchCompleteRef.current = onLaunchComplete }, [onLaunchComplete])
   const reactorPlasmaRef = useRef(reactorPlasma)
   useEffect(() => { reactorPlasmaRef.current = reactorPlasma }, [reactorPlasma])
+  const targetIdxRef = useRef(targetIdx)
+  useEffect(() => { targetIdxRef.current = targetIdx }, [targetIdx])
 
   // ── Log helper ────────────────────────────────────────────────────────────
   const addLog = useCallback((level, msg) => {
@@ -323,6 +326,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
     }
 
     const updateTargeting = (now) => {
+      if (targetIdxRef.current < 0) return
       const drift = (b) => b + (Math.random() - 0.5) * 0.4
       const x = drift(4218.412), y = -drift(3914.083), z = drift(3221.770)
       if (ecefRef.current) ecefRef.current.textContent =
@@ -485,25 +489,100 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
       const ctx = cv.getContext('2d')
       const w = cv.clientWidth, h = cv.clientHeight
       tphaseRef.current += dt * 0.0006
-      const ph = tphaseRef.current
-      ctx.fillStyle = 'rgba(1,2,8,0.35)'; ctx.fillRect(0, 0, w, h)
-      const cx = w / 2, cy = h * 1.65, R = h * 1.4
-      ctx.strokeStyle = 'rgba(20,80,220,0.7)'; ctx.lineWidth = 1.4
-      ctx.beginPath(); ctx.arc(cx, cy, R, Math.PI, 0, false); ctx.stroke()
-      const grad = ctx.createLinearGradient(0, h * 0.55, 0, h)
-      grad.addColorStop(0, 'rgba(0,80,255,0.0)'); grad.addColorStop(1, 'rgba(0,80,255,0.12)')
-      ctx.fillStyle = grad; ctx.fillRect(0, h * 0.55, w, h * 0.45)
-      ctx.strokeStyle = 'rgba(0,50,180,0.35)'; ctx.lineWidth = 1
-      for (let i = -3; i <= 3; i++) {
-        const offset = ((i * 60 + ph * 30) % w + w) % w
-        ctx.beginPath(); ctx.moveTo(offset, h * 0.6); ctx.lineTo(offset - 30, h); ctx.stroke()
+      const ph   = tphaseRef.current
+      const hasT = targetIdxRef.current >= 0
+
+      // background
+      ctx.fillStyle = 'rgba(1,2,8,0.35)'
+      ctx.fillRect(0, 0, w, h)
+
+      // ── crosshair lines (always, proportional gap around centre) ─────────
+      const gap = Math.min(w, h) * 0.18
+      ctx.strokeStyle = 'rgba(255,60,60,0.38)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(w / 2, 0);             ctx.lineTo(w / 2, h / 2 - gap)
+      ctx.moveTo(w / 2, h / 2 + gap);   ctx.lineTo(w / 2, h)
+      ctx.moveTo(0,     h / 2);          ctx.lineTo(w / 2 - gap, h / 2)
+      ctx.moveTo(w / 2 + gap, h / 2);   ctx.lineTo(w,     h / 2)
+      ctx.stroke()
+
+      // ── bracket corners (always, proportional) ────────────────────────────
+      const bs   = gap
+      const bLen = bs * 0.42
+      ctx.strokeStyle = 'rgba(255,36,0,0.5)'
+      ctx.lineWidth   = 1
+      const bracket = (cx, cy, dx, dy) => {
+        ctx.beginPath()
+        ctx.moveTo(cx + dx * bLen, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + dy * bLen)
+        ctx.stroke()
       }
-      const tx = w / 2 + Math.sin(ph * 1.7) * 8, ty = h / 2 + Math.cos(ph * 1.3) * 4
-      ctx.strokeStyle = 'rgba(255,36,0,0.95)'; ctx.lineWidth = 1.5
-      ctx.beginPath(); ctx.moveTo(tx, ty - 14); ctx.lineTo(tx + 14, ty); ctx.lineTo(tx, ty + 14); ctx.lineTo(tx - 14, ty); ctx.closePath(); ctx.stroke()
-      ctx.fillStyle = 'rgba(255,36,0,0.4)'; ctx.fill()
-      ctx.strokeStyle = 'rgba(106,173,255,0.7)'
-      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + 26, ty - 18); ctx.stroke()
+      bracket(w / 2 - bs, h / 2 - bs, +1, +1)
+      bracket(w / 2 + bs, h / 2 - bs, -1, +1)
+      bracket(w / 2 - bs, h / 2 + bs, +1, -1)
+      bracket(w / 2 + bs, h / 2 + bs, -1, -1)
+
+      // ── corner labels (always, pinned to canvas edges) ────────────────────
+      const fs  = Math.max(7, Math.min(10, Math.round(w * 0.044)))
+      const pad = 7
+      ctx.font      = `${fs}px "Cascadia Mono", Consolas, monospace`
+      ctx.fillStyle = 'rgba(106,173,255,0.82)'
+
+      ctx.textBaseline = 'top';    ctx.textAlign = 'left';  ctx.fillText('TGT // ASSET-X9', pad, pad)
+      ctx.textBaseline = 'top';    ctx.textAlign = 'right'; ctx.fillText(`LOCK ${hasT ? '98.7' : '0.0'}%`, w - pad, pad)
+      ctx.textBaseline = 'bottom'; ctx.textAlign = 'left';  ctx.fillText('RANGE 1,402 km', pad, h - pad)
+
+      // bottom-right: show TTI only when target acquired
+      if (hasT) {
+        ctx.textBaseline = 'bottom'; ctx.textAlign = 'right'
+        ctx.fillStyle = 'rgba(106,173,255,0.82)'
+        ctx.fillText('TTI 00:01:47', w - pad, h - pad)
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+      }
+
+      // centre: blink "AWAITING TARGET" in red when no target
+      if (!hasT && Math.floor(Date.now() / 600) % 2 === 0) {
+        ctx.font      = `${fs}px "Cascadia Mono", Consolas, monospace`
+        ctx.fillStyle = 'rgba(106,173,255,0.65)'
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText('AWAITING TARGET', w / 2, h / 2)
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+      }
+
+      // ── target-specific visuals ───────────────────────────────────────────
+      if (hasT) {
+        // horizon arc
+        const hcx = w / 2, hcy = h * 1.65, R = h * 1.4
+        ctx.strokeStyle = 'rgba(20,80,220,0.7)'; ctx.lineWidth = 1.4
+        ctx.beginPath(); ctx.arc(hcx, hcy, R, Math.PI, 0, false); ctx.stroke()
+
+        // gradient fill
+        const grad = ctx.createLinearGradient(0, h * 0.55, 0, h)
+        grad.addColorStop(0, 'rgba(0,80,255,0.0)'); grad.addColorStop(1, 'rgba(0,80,255,0.12)')
+        ctx.fillStyle = grad; ctx.fillRect(0, h * 0.55, w, h * 0.45)
+
+        // diagonal scan lines
+        ctx.strokeStyle = 'rgba(0,50,180,0.35)'; ctx.lineWidth = 1
+        for (let i = -3; i <= 3; i++) {
+          const offset = ((i * 60 + ph * 30) % w + w) % w
+          ctx.beginPath(); ctx.moveTo(offset, h * 0.6); ctx.lineTo(offset - 30, h); ctx.stroke()
+        }
+
+        // diamond marker (proportional to canvas size)
+        const dm = Math.min(w, h) * 0.07
+        const tx = w / 2 + Math.sin(ph * 1.7) * 8
+        const ty = h / 2 + Math.cos(ph * 1.3) * 4
+        ctx.strokeStyle = 'rgba(255,36,0,0.95)'; ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.moveTo(tx, ty - dm); ctx.lineTo(tx + dm, ty)
+        ctx.lineTo(tx, ty + dm); ctx.lineTo(tx - dm, ty)
+        ctx.closePath(); ctx.stroke()
+        ctx.fillStyle = 'rgba(255,36,0,0.4)'; ctx.fill()
+
+        // leader line
+        ctx.strokeStyle = 'rgba(106,173,255,0.7)'
+        ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + dm * 1.9, ty - dm * 1.3); ctx.stroke()
+      }
     }
 
     // ── Tick ─────────────────────────────────────────────────────────────
@@ -552,6 +631,10 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
   }, [addLog])
 
   // ── JSX ───────────────────────────────────────────────────────────────────
+  const hasTarget     = targetIdx >= 0
+  const targetName    = targetIdx === SUN_IDX ? SUN.name
+                      : targetIdx >= 0        ? PLANETS[targetIdx].name
+                      : 'None'
   const lowPower      = reactorPlasma < 25
   const showArm       = launchPhase === 'idle'
   const showDisarm    = launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown'
@@ -739,31 +822,34 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, react
         </section>
 
         {/* TARGETING SOLUTION */}
-        <section className={`panel wide${lit('panel-target')}${lowPower ? ' panel--low-power' : ''}`} id="panel-target">
+        <section
+          className={`panel wide${lit('panel-target')}${lowPower ? ' panel--low-power' : ' panel--clickable'}`}
+          id="panel-target"
+          onClick={!lowPower ? onTargeting : undefined}
+          title={!lowPower ? 'Open Targeting System' : undefined}
+        >
           <header className="panel-header">
             <span className="bullet pulse" /><h2>GEODESIC TARGETING SOLUTION</h2>
             <span className="panel-id">PNL-006 / SCHWARZSCHILD-CORRECTED</span>
           </header>
           <div className="panel-body target-body">
-            <div className="target-vis">
-              <canvas id="target-canvas" ref={targetCanvasRef} />
-              <div className="reticle" />
-              <div className="target-labels">
-                <div className="tlabel tl-tl">TGT // ASSET-X9</div>
-                <div className="tlabel tl-tr">LOCK 98.7%</div>
-                <div className="tlabel tl-bl">RANGE 1,402 km</div>
-                <div className="tlabel tl-br">TTI 00:01:47</div>
+            <div className="target-content">
+              <div className="target-vis">
+                <canvas id="target-canvas" ref={targetCanvasRef} />
               </div>
-            </div>
-            <div className="target-data">
-              <div className="td-row"><span>DESIGNATION</span><span className="mono">ASSET-X9 / &quot;AEGIS-PRIME&quot;</span></div>
-              <div className="td-row"><span>ECEF (X, Y, Z)</span><span className="mono" ref={ecefRef} /></div>
-              <div className="td-row"><span>GEODESIC TYPE</span><span className="mono">TIMELIKE / BOUND</span></div>
-              <div className="td-row"><span>IMPACT PARAMETER b</span><span className="mono">3.41 r<sub>s</sub></span></div>
-              <div className="td-row"><span>SHAPIRO DELAY Δt<sub>s</sub></span><span className="mono" ref={shapiroRef} /></div>
-              <div className="td-row"><span>LIGHT-TIME LAG</span><span className="mono" ref={ltlagRef} /></div>
-              <div className="td-row"><span>FIRING SOLUTION</span><span className="mono ok">CONVERGED</span></div>
-              <div className="td-row"><span>P<sub>K</sub> (KILL PROB.)</span><span className="mono ok">0.974</span></div>
+              <div className="target-data">
+                <div className="td-row"><span>DESIGNATION</span><span className="mono">{targetName}</span></div>
+                <div className="td-row"><span>ECEF (X, Y, Z)</span><span className="mono" ref={ecefRef}>{!hasTarget ? 'N/A' : ''}</span></div>
+                <div className="td-row"><span>GEODESIC TYPE</span><span className="mono">{hasTarget ? 'TIMELIKE / BOUND' : 'N/A'}</span></div>
+                <div className="td-row"><span>IMPACT PARAMETER b</span><span className="mono">{hasTarget ? <>3.41 r<sub>s</sub></> : 'N/A'}</span></div>
+                <div className="td-row"><span>SHAPIRO DELAY Δt<sub>s</sub></span><span className="mono" ref={shapiroRef}>{!hasTarget ? 'N/A' : ''}</span></div>
+                <div className="td-row"><span>LIGHT-TIME LAG</span><span className="mono" ref={ltlagRef}>{!hasTarget ? 'N/A' : ''}</span></div>
+                <div className="td-row"><span>FIRING SOLUTION</span><span className={`mono${hasTarget ? ' ok' : ''}`}>{hasTarget ? 'CONVERGED' : 'N/A'}</span></div>
+                <div className="td-row"><span>P<sub>K</sub> (KILL PROB.)</span><span className={`mono${hasTarget ? ' ok' : ''}`}>{hasTarget ? '0.974' : 'N/A'}</span></div>
+                <div className="panel-enter-link-wrap">
+                  <div className="panel-enter-link">ENTER TARGETING CONTROL</div>
+                </div>
+              </div>
             </div>
           </div>
           {lowPower && <div className="low-power-overlay" />}

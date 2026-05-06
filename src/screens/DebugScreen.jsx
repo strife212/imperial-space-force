@@ -1,10 +1,11 @@
 const SCREENS = [
-  { key: 'login',   label: 'Login Screen'           },
-  { key: 'boot',    label: 'Boot / Loading Screen'  },
-  { key: 'menu',    label: 'Menu Screen'             },
-  { key: 'main',    label: 'Main Panel'              },
-  { key: 'monitor', label: 'Launch Monitor Screen'  },
-  { key: 'reactor', label: 'Reactor Control Screen' },
+  { key: 'login',     label: 'Login Screen'           },
+  { key: 'boot',      label: 'Boot / Loading Screen'  },
+  { key: 'menu',      label: 'Menu Screen'             },
+  { key: 'main',      label: 'Main Panel'              },
+  { key: 'monitor',   label: 'Launch Monitor Screen'  },
+  { key: 'reactor',   label: 'Reactor Control Screen' },
+  { key: 'targeting', label: 'Targeting Screen'        },
 ]
 
 export default function DebugScreen({ onNavigate }) {
