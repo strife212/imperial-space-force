@@ -1782,6 +1782,47 @@ body {
   background: rgba(0, 0, 0, 0.78);
 }
 
+.empress-zoom-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 720;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.88);
+  animation: empress-zoom-in 0.35s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+.empress-zoom-img {
+  max-height: 90vh;
+  max-width: 90vw;
+  object-fit: contain;
+  border: 1px solid rgba(140, 100, 255, 0.3);
+  box-shadow: 0 0 60px rgba(100, 60, 200, 0.4);
+  animation: empress-zoom-img-in 0.35s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+@keyframes empress-zoom-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes empress-zoom-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes empress-zoom-img-in {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+@keyframes empress-zoom-img-out {
+  from { transform: scale(1);   opacity: 1; }
+  to   { transform: scale(0.7); opacity: 0; }
+}
+.empress-zoom-wrap--closing {
+  animation: empress-zoom-out 0.3s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+.empress-zoom-img--closing {
+  animation: empress-zoom-img-out 0.3s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+
 .empress-modal-wrap {
   position: fixed;
   inset: 0;

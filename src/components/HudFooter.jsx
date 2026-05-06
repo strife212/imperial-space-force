@@ -12,7 +12,9 @@ const POEM = [
 ]
 
 export default function HudFooter({ children }) {
-  const [open, setOpen] = useState(false)
+  const [open,        setOpen]        = useState(false)
+  const [imgZoomed,   setImgZoomed]   = useState(false)
+  const [imgClosing,  setImgClosing]  = useState(false)
 
   const audioCtxRef = useRef(null)
   const gainRef     = useRef(null)
@@ -78,6 +80,23 @@ export default function HudFooter({ children }) {
         </span>
       </footer>
 
+      {imgZoomed && (
+        <div
+          className={`empress-zoom-wrap${imgClosing ? ' empress-zoom-wrap--closing' : ''}`}
+          onClick={() => {
+            setImgClosing(true)
+            setTimeout(() => { setImgZoomed(false); setImgClosing(false) }, 320)
+          }}
+        >
+          <img
+            className={`empress-zoom-img${imgClosing ? ' empress-zoom-img--closing' : ''}`}
+            src={`${import.meta.env.BASE_URL}empress.jpg`}
+            alt="The Grand Empress"
+            style={{ cursor: 'zoom-out' }}
+          />
+        </div>
+      )}
+
       {open && (
         <>
           <div className="empress-dim" />
@@ -93,6 +112,8 @@ export default function HudFooter({ children }) {
                 className="empress-img"
                 src={`${import.meta.env.BASE_URL}empress.jpg`}
                 alt="The Grand Empress"
+                style={{ cursor: 'zoom-in' }}
+                onClick={() => setImgZoomed(true)}
               />
               <div className="empress-caption">
                 HER IMPERIAL MAJESTY EMPRESS Iliantha III
