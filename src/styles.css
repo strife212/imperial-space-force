@@ -1732,14 +1732,37 @@ body {
 .hud-footer .ok { color: var(--c-rose); }
 .footer-motto {
   margin-left: auto;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.22em;
-  color: var(--c-pink);
-  text-shadow: 0 0 10px rgba(100,180,255,0.4);
+  color: #ffcce0;
+  text-shadow:
+    0 0 10px rgba(244, 151, 186, 0.9),
+    0 0 28px rgba(244, 151, 186, 0.45);
   cursor: pointer;
-  transition: opacity 0.15s;
+  animation: motto-pulse 2.8s ease-in-out infinite;
+  transition: color 0.2s, text-shadow 0.2s;
 }
-.footer-motto:hover { opacity: 0.75; }
+.footer-motto:hover {
+  color: #ffe4f0;
+  text-shadow:
+    0 0 12px rgba(255, 196, 216, 1),
+    0 0 32px rgba(244, 151, 186, 0.8),
+    0 0 58px rgba(244, 151, 186, 0.35);
+  animation: none;
+}
+@keyframes motto-pulse {
+  0%, 100% {
+    text-shadow:
+      0 0 10px rgba(244, 151, 186, 0.9),
+      0 0 28px rgba(244, 151, 186, 0.45);
+  }
+  50% {
+    text-shadow:
+      0 0 14px rgba(244, 151, 186, 1),
+      0 0 36px rgba(244, 151, 186, 0.75),
+      0 0 62px rgba(244, 151, 186, 0.25);
+  }
+}
 
 /* ── Empress modal ───────────────────────────────────────────────────────────*/
 .empress-dim {
