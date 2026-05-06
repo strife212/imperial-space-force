@@ -231,7 +231,7 @@ export default function CryptographyModule({ onComplete }) {
     })
 
     // Merge qubits to centre
-    const T_MERGE = T_ROTATE + ROTATE_DUR + 400
+    const T_MERGE = T_ROTATE + ROTATE_DUR + 550
     const MERGE_DUR = 600
     at(T_MERGE, () => setLabelsFading(true))
     at(T_MERGE, () => {

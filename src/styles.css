@@ -425,7 +425,6 @@
   text-transform: uppercase;
 }
 .crypto-final-line--identity {
-  font-size: 18px;
   color: rgba(80, 220, 120, 1);
   text-shadow: 0 0 10px rgba(80, 220, 120, 0.8), 0 0 28px rgba(80, 220, 120, 0.4);
 }
