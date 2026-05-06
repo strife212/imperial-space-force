@@ -183,11 +183,18 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
 
   const handleArm = useCallback(() => {
     if (launchPhaseRef.current === 'idle') {
-      launchPhaseRef.current = 'verifying'
-      setLaunchPhase('verifying')
-      setLaunchStatus({ text: '⚠ VERIFYING LAUNCH CODES', cls: 'launch-status armed' })
-      setAuthCActive(true)
-      addLog('CRIT', `PHYSICS PACKAGE ARMED // ${PKG_NAMES[selectedPkgRef.current]}`)
+      if (targetIdxRef.current < 0) {
+        // No target — show rejection sequence
+        launchPhaseRef.current = 'notarget'
+        setLaunchPhase('notarget')
+        addLog('WARN', 'LAUNCH REJECTED // NO TARGET DESIGNATED')
+      } else {
+        launchPhaseRef.current = 'verifying'
+        setLaunchPhase('verifying')
+        setLaunchStatus({ text: '⚠ VERIFYING LAUNCH CODES', cls: 'launch-status armed' })
+        setAuthCActive(true)
+        addLog('CRIT', `PHYSICS PACKAGE ARMED // ${PKG_NAMES[selectedPkgRef.current]}`)
+      }
     } else if (launchPhaseRef.current === 'verifying' || launchPhaseRef.current === 'armed' || launchPhaseRef.current === 'countdown') {
       handleReset()
       addLog('WARN', 'LAUNCH SEQUENCE ABORTED // DISARMED BY OPERATOR')
@@ -637,7 +644,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const showDisarm    = launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown'
   const showLaunch    = launchPhase === 'armed' || launchPhase === 'fired'
   const launchFiring  = launchPhase === 'fired'
-  const showCodeVerify= launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown' || launchPhase === 'fired'
+  const showCodeVerify= launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown' || launchPhase === 'fired' || launchPhase === 'notarget'
 
   return (
     <>
@@ -975,6 +982,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
           launchFiring={launchFiring}
           launchCdText={launchCdText}
           cdVisible={cdVisible}
+          noTarget={launchPhase === 'notarget'}
+          onDismiss={handleReset}
         />
       )}
 

@@ -1698,6 +1698,30 @@ body {
   0%   { border-color: #80c8ff; color: #ffffff; box-shadow: 0 0 18px rgba(80,180,255,0.9); }
   100% { border-color: var(--c-cardinal); color: var(--c-ash); box-shadow: 0 0 6px rgba(20,96,208,0.3); }
 }
+.code-box--invalid {
+  color: rgba(255, 40, 20, 0.45);
+  border-color: rgba(255, 40, 20, 0.25);
+}
+.code-box--invalid.locked-invalid {
+  animation: code-lock-invalid 0.3s ease forwards;
+}
+@keyframes code-lock-invalid {
+  0%   { border-color: rgba(255,80,40,0.9); color: #ff6040; box-shadow: 0 0 14px rgba(255,40,10,0.7); }
+  100% { border-color: rgba(255,40,20,0.35); color: rgba(255,40,20,0.55); box-shadow: none; }
+}
+.cvl-no-target-msg {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+  animation: no-target-flash 2s linear 1 forwards;
+}
+@keyframes no-target-flash {
+  0%, 33.4%, 66.7%  { color: rgba(255, 40, 20, 0.95); text-shadow: 0 0 14px rgba(255,30,10,0.85); }
+  16.7%, 50%, 83.3% { color: rgba(255, 40, 20, 0.12); text-shadow: none; }
+  100%              { color: rgba(255, 40, 20, 0.95); text-shadow: 0 0 14px rgba(255,30,10,0.85); }
+}
 .code-verify-status {
   font-family: var(--font-mono);
   font-size: 14px;
