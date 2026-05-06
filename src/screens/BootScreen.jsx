@@ -7,6 +7,8 @@ export default function BootScreen({ onComplete }) {
   const [showBar,     setShowBar]     = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
   const [exiting,     setExiting]     = useState(false)
+  const [motto1,      setMotto1]      = useState(false)
+  const [motto2,      setMotto2]      = useState(false)
   const processingSfx  = useRef(null)
   const linesOuterRef  = useRef(null)
 
@@ -19,7 +21,13 @@ export default function BootScreen({ onComplete }) {
 
   useEffect(() => {
     const timers = []
-    let delay = 450
+
+    // Motto reveal: part 1 → 500ms pause → part 2 → 500ms pause → lines
+    const MOTTO_OFFSET = 1300
+    timers.push(setTimeout(() => setMotto1(true), 300))
+    timers.push(setTimeout(() => setMotto2(true), 800))
+
+    let delay = 450 + MOTTO_OFFSET
 
     BOOT_LINES.forEach((entry, i) => {
       delay += entry.ms
@@ -66,7 +74,10 @@ export default function BootScreen({ onComplete }) {
           <div className="boot-divider" />
         </div>
 
-        <div className="boot-motto">✦ CAELUM CANIT ✦ ILLA AVDIT ✦</div>
+        <div className="boot-motto">
+          <span className={`boot-motto-half${motto1 ? ' boot-motto-half--visible' : ''}`}>✦ CAELUM CANIT</span>
+          <span className={`boot-motto-half${motto2 ? ' boot-motto-half--visible' : ''}`}> ✦ ILLA AVDIT ✦</span>
+        </div>
 
         <div className="boot-lines-outer" ref={linesOuterRef}>
           <ul className="boot-lines">
