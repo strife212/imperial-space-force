@@ -496,57 +496,54 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
       ctx.fillStyle = 'rgba(1,2,8,0.35)'
       ctx.fillRect(0, 0, w, h)
 
-      // ── crosshair lines (always, proportional gap around centre) ─────────
-      const gap = Math.min(w, h) * 0.18
-      ctx.strokeStyle = 'rgba(255,60,60,0.38)'
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(w / 2, 0);             ctx.lineTo(w / 2, h / 2 - gap)
-      ctx.moveTo(w / 2, h / 2 + gap);   ctx.lineTo(w / 2, h)
-      ctx.moveTo(0,     h / 2);          ctx.lineTo(w / 2 - gap, h / 2)
-      ctx.moveTo(w / 2 + gap, h / 2);   ctx.lineTo(w,     h / 2)
-      ctx.stroke()
-
-      // ── bracket corners (always, proportional) ────────────────────────────
-      const bs   = gap
-      const bLen = bs * 0.42
-      ctx.strokeStyle = 'rgba(255,36,0,0.5)'
-      ctx.lineWidth   = 1
-      const bracket = (cx, cy, dx, dy) => {
-        ctx.beginPath()
-        ctx.moveTo(cx + dx * bLen, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + dy * bLen)
-        ctx.stroke()
-      }
-      bracket(w / 2 - bs, h / 2 - bs, +1, +1)
-      bracket(w / 2 + bs, h / 2 - bs, -1, +1)
-      bracket(w / 2 - bs, h / 2 + bs, +1, -1)
-      bracket(w / 2 + bs, h / 2 + bs, -1, -1)
-
-      // ── corner labels (always, pinned to canvas edges) ────────────────────
       const fs  = Math.max(7, Math.min(10, Math.round(w * 0.044)))
       const pad = 7
-      ctx.font      = `${fs}px "Cascadia Mono", Consolas, monospace`
-      ctx.fillStyle = 'rgba(106,173,255,0.82)'
 
-      ctx.textBaseline = 'top';    ctx.textAlign = 'left';  ctx.fillText('TGT // ASSET-X9', pad, pad)
-      ctx.textBaseline = 'top';    ctx.textAlign = 'right'; ctx.fillText(`LOCK ${hasT ? '98.7' : '0.0'}%`, w - pad, pad)
-      ctx.textBaseline = 'bottom'; ctx.textAlign = 'left';  ctx.fillText('RANGE 1,402 km', pad, h - pad)
-
-      // bottom-right: show TTI only when target acquired
       if (hasT) {
-        ctx.textBaseline = 'bottom'; ctx.textAlign = 'right'
-        ctx.fillStyle = 'rgba(106,173,255,0.82)'
-        ctx.fillText('TTI 00:01:47', w - pad, h - pad)
-        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
-      }
+        // ── crosshair lines ─────────────────────────────────────────────────
+        const gap = Math.min(w, h) * 0.18
+        ctx.strokeStyle = 'rgba(255,60,60,0.38)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(w / 2, 0);             ctx.lineTo(w / 2, h / 2 - gap)
+        ctx.moveTo(w / 2, h / 2 + gap);   ctx.lineTo(w / 2, h)
+        ctx.moveTo(0,     h / 2);          ctx.lineTo(w / 2 - gap, h / 2)
+        ctx.moveTo(w / 2 + gap, h / 2);   ctx.lineTo(w,     h / 2)
+        ctx.stroke()
 
-      // centre: blink "AWAITING TARGET" in red when no target
-      if (!hasT && Math.floor(Date.now() / 600) % 2 === 0) {
+        // ── bracket corners ─────────────────────────────────────────────────
+        const bs   = gap
+        const bLen = bs * 0.42
+        ctx.strokeStyle = 'rgba(255,36,0,0.5)'
+        ctx.lineWidth   = 1
+        const bracket = (cx, cy, dx, dy) => {
+          ctx.beginPath()
+          ctx.moveTo(cx + dx * bLen, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + dy * bLen)
+          ctx.stroke()
+        }
+        bracket(w / 2 - bs, h / 2 - bs, +1, +1)
+        bracket(w / 2 + bs, h / 2 - bs, -1, +1)
+        bracket(w / 2 - bs, h / 2 + bs, +1, -1)
+        bracket(w / 2 + bs, h / 2 + bs, -1, -1)
+
+        // ── corner labels ───────────────────────────────────────────────────
         ctx.font      = `${fs}px "Cascadia Mono", Consolas, monospace`
-        ctx.fillStyle = 'rgba(106,173,255,0.65)'
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText('AWAITING TARGET', w / 2, h / 2)
+        ctx.fillStyle = 'rgba(106,173,255,0.82)'
+        ctx.textBaseline = 'top';    ctx.textAlign = 'left';  ctx.fillText('TGT // ASSET-X9', pad, pad)
+        ctx.textBaseline = 'top';    ctx.textAlign = 'right'; ctx.fillText('LOCK 98.7%', w - pad, pad)
+        ctx.textBaseline = 'bottom'; ctx.textAlign = 'left';  ctx.fillText('RANGE 1,402 km', pad, h - pad)
+        ctx.textBaseline = 'bottom'; ctx.textAlign = 'right'; ctx.fillText('TTI 00:01:47', w - pad, h - pad)
         ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+      } else {
+        // ── "[ AWAITING TARGET ]" blink centred, no crosshair ───────────────
+        if (Math.floor(Date.now() / 600) % 2 === 0) {
+          const bigFs = Math.max(12, Math.min(20, Math.round(Math.min(w, h) * 0.09)))
+          ctx.font      = `${bigFs}px "Cascadia Mono", Consolas, monospace`
+          ctx.fillStyle = 'rgba(106,173,255,0.65)'
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+          ctx.fillText('[ AWAITING TARGET ]', w / 2, h / 2)
+          ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'
+        }
       }
 
       // ── target-specific visuals ───────────────────────────────────────────
@@ -829,7 +826,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
           title={!lowPower ? 'Open Targeting System' : undefined}
         >
           <header className="panel-header">
-            <span className="bullet pulse" /><h2>GEODESIC TARGETING SOLUTION</h2>
+            <span className={`bullet${hasTarget ? ' pulse' : ' bullet--alert'}`} /><h2>GEODESIC TARGETING SOLUTION</h2>
             <span className="panel-id">PNL-006 / SCHWARZSCHILD-CORRECTED</span>
           </header>
           <div className="panel-body target-body">

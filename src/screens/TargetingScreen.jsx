@@ -208,29 +208,32 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
       const isHov = i === hovered
       const isSel = i === selected
 
-      const [r, g, b] = hexToRgb(p.color)
+      const [r, g, b] = hexToRgb(p.color) // used for labels only
+
+      // uniform diagram colour
+      const dc = '100,160,240'
 
       // hover glow
       if (isHov) {
         const hg = ctx.createRadialGradient(ox, oy, 0, ox, oy, p.r + 20)
-        hg.addColorStop(0, `rgba(${r},${g},${b},0.25)`)
-        hg.addColorStop(1, `rgba(${r},${g},${b},0)`)
+        hg.addColorStop(0, `rgba(${dc},0.25)`)
+        hg.addColorStop(1, `rgba(${dc},0)`)
         ctx.beginPath(); ctx.arc(ox, oy, p.r + 20, 0, Math.PI * 2)
         ctx.fillStyle = hg; ctx.fill()
       }
 
-      // planet body — dark fill + colored outline
+      // planet body — dark fill + uniform outline
       ctx.beginPath(); ctx.arc(ox, oy, p.r, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(${r},${g},${b},0.07)`
+      ctx.fillStyle = `rgba(${dc},0.07)`
       ctx.fill()
-      ctx.strokeStyle = p.color
+      ctx.strokeStyle = `rgba(${dc},0.75)`
       ctx.lineWidth = 2.5
       ctx.stroke()
 
       // hover ring
       if (isHov) {
         ctx.beginPath(); ctx.arc(ox, oy, p.r + 4, 0, Math.PI * 2)
-        ctx.strokeStyle = `rgba(${r},${g},${b},0.55)`
+        ctx.strokeStyle = `rgba(${dc},0.55)`
         ctx.lineWidth = 1
         ctx.stroke()
       }
@@ -245,7 +248,7 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
         ctx.setLineDash([])
       }
 
-      // name tag — offset radially outward from star
+      // name tag — keep planet colour
       const dx = ox - CX, dy = oy - CY
       const dist = Math.hypot(dx, dy)
       const nx = dx / dist, ny = dy / dist
@@ -460,6 +463,10 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
           </div>
           </div>
         </div>
+
+        <button className="targeting-return-btn" onClick={() => onBack(selectedIdx)}>
+          ← RETURN TO INSTALLATION VIEW
+        </button>
       </main>
 
       <HudFooter>
