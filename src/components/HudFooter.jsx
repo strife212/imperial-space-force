@@ -14,6 +14,7 @@ const POEM = [
 
 export default function HudFooter({ children }) {
   const [open,        setOpen]        = useState(false)
+  const [playing,     setPlaying]     = useState(false)
   const [imgZoomed,   setImgZoomed]   = useState(false)
   const [imgClosing,  setImgClosing]  = useState(false)
 
@@ -67,7 +68,12 @@ export default function HudFooter({ children }) {
       source.loop   = false
       source.connect(analyser)
       source.start(0)
+      source.onended = () => {
+        analyserRef.current = null
+        setPlaying(false)
+      }
       sourceRef.current = source
+      setPlaying(true)
     } else {
       if (!sourceRef.current) return
       // Fade out over 2 seconds then stop
@@ -76,10 +82,25 @@ export default function HudFooter({ children }) {
       g.linearRampToValueAtTime(0, ctx.currentTime + 2)
       const src = sourceRef.current
       setTimeout(() => { try { src.stop() } catch (_) {} }, 2100)
-      sourceRef.current  = null
+      sourceRef.current   = null
       analyserRef.current = null
+      setPlaying(false)
     }
   }, [open])
+
+  const stopMusic = () => {
+    const ctx  = audioCtxRef.current
+    const gain = gainRef.current
+    if (!ctx || !gain || !sourceRef.current) return
+    const g = gain.gain
+    g.setValueAtTime(g.value, ctx.currentTime)
+    g.linearRampToValueAtTime(0, ctx.currentTime + 1)
+    const src = sourceRef.current
+    setTimeout(() => { try { src.stop() } catch (_) {} }, 1100)
+    sourceRef.current   = null
+    analyserRef.current = null
+    setPlaying(false)
+  }
 
   return (
     <>
@@ -144,14 +165,16 @@ export default function HudFooter({ children }) {
                 </button>
               </div>
 
-              <div className="empress-viz-side">
-                <AudioSpectrograph
-                  analyser={analyserRef.current}
-                  name="Imperial Prophecy"
-                  subtitle="Auditio Ultima"
-                  onStop={() => setOpen(false)}
-                />
-              </div>
+              {playing && (
+                <div className="empress-viz-side">
+                  <AudioSpectrograph
+                    analyser={analyserRef.current}
+                    name="Imperial Prophecy"
+                    subtitle="Auditio Ultima"
+                    onStop={stopMusic}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </>
