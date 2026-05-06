@@ -1638,7 +1638,6 @@ body {
   inset: 0;
   z-index: 590;
   background: rgba(0,0,0,0.72);
-  pointer-events: none;
 }
 .panel.elevated {
   position: relative;
