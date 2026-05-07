@@ -2,9 +2,32 @@ import { useState } from 'react'
 import { ENCYCLOPEDIA } from '../data/encyclopediaData'
 import { getFlag } from '../lib/store'
 
+// Renders a string supporting **bold**, *italic*, and \n line breaks
+const splitBreaks = (str, kp) =>
+  str.split('\n').flatMap((line, i, a) =>
+    i < a.length - 1 ? [line, <br key={`${kp}-${i}`} />] : [line]
+  )
+
+const renderInline = (text) => {
+  const result = []
+  const regex = /\*\*([^*]+)\*\*|\*([^*]+)\*/g
+  let last = 0, match
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) result.push(...splitBreaks(text.slice(last, match.index), `t${last}`))
+    if (match[1] !== undefined)
+      result.push(<strong key={match.index}>{splitBreaks(match[1], `b${match.index}`)}</strong>)
+    else
+      result.push(<em key={match.index}>{splitBreaks(match[2], `e${match.index}`)}</em>)
+    last = match.index + match[0].length
+  }
+  if (last < text.length) result.push(...splitBreaks(text.slice(last), `t${last}`))
+  return result
+}
+
 export default function EncyclopediaScreen({ onReturn }) {
-  const [topicId, setTopicId] = useState(ENCYCLOPEDIA[0].id)
-  const [entryId, setEntryId] = useState(null)
+  const [topicId,       setTopicId]       = useState(ENCYCLOPEDIA[0].id)
+  const [entryId,       setEntryId]       = useState(null)
+  const [imageExpanded, setImageExpanded] = useState(false)
 
   const topic   = ENCYCLOPEDIA.find(t => t.id === topicId)
   const entries = topic?.entries ?? []
@@ -15,6 +38,12 @@ export default function EncyclopediaScreen({ onReturn }) {
   const handleTopicClick = (id) => {
     setTopicId(id)
     setEntryId(null)
+    setImageExpanded(false)
+  }
+
+  const handleEntryClick = (id) => {
+    setEntryId(id)
+    setImageExpanded(false)
   }
 
   return (
@@ -61,7 +90,7 @@ export default function EncyclopediaScreen({ onReturn }) {
                 <li key={e.id}>
                   <button
                     className={`enc-entry-btn${isActive ? ' enc-entry-btn--active' : ''}${isStub ? ' enc-entry-btn--stub' : ''}${locked ? ' enc-entry-btn--locked' : ''}`}
-                    onClick={hasContent || locked ? () => setEntryId(e.id) : undefined}
+                    onClick={hasContent || locked ? () => handleEntryClick(e.id) : undefined}
                     disabled={isStub}
                     title={isStub ? 'No data available' : undefined}
                   >
@@ -87,15 +116,17 @@ export default function EncyclopediaScreen({ onReturn }) {
               {entry.content.image && (
                 <div className="enc-article-image-block">
                   <img
-                    className="enc-article-image"
+                    className={`enc-article-image${imageExpanded ? ' enc-article-image--expanded' : ''}`}
                     src={`${import.meta.env.BASE_URL}${entry.content.image.src}`}
                     alt={entry.content.image.caption}
+                    onClick={() => setImageExpanded(x => !x)}
+                    title={imageExpanded ? 'Click to shrink' : 'Click to enlarge'}
                   />
                   <p className="enc-article-image-caption">{entry.content.image.caption}</p>
                 </div>
               )}
               {entry.content.body.map((para, i) => (
-                <p key={i} className="enc-article-para">{para}</p>
+                <p key={i} className="enc-article-para">{renderInline(para)}</p>
               ))}
             </div>
           ) : (
