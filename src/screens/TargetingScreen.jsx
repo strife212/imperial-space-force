@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
 import { PLANETS, SUN, SUN_IDX } from '../lib/planetData'
+import { setFlag } from '../lib/store'
 
 const CANVAS_SIZE = 600
 const STAR_R      = 16
@@ -124,6 +125,12 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
   const [hoveredIdx,  setHoveredIdx]  = useState(-1)
   const [selectedIdx, setSelectedIdx] = useState(initialSelectedIdx)
   const [isPlaying,   setIsPlaying]   = useState(true)
+
+  // Seeing the orbital map unlocks the throneworld and world engine encyclopedia entries
+  useEffect(() => {
+    setFlag('throneworldTargeted', true)
+    setFlag('worldengineTargeted', true)
+  }, [])
 
   // panel shows selected target; falls back to hovered if nothing locked
   const displayIdx = selectedIdx !== -1 ? selectedIdx : hoveredIdx

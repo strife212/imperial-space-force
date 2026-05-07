@@ -12,6 +12,7 @@ import EncyclopediaScreen from './screens/EncyclopediaScreen'
 import MailOverlay from './components/MailOverlay'
 import { INITIAL_MESSAGES } from './data/messages'
 import { PLANETS, SUN, SUN_IDX } from './lib/planetData'
+import { setFlag } from './lib/store'
 
 export default function App() {
   const [screen,          setScreen]          = useState('login')
@@ -29,7 +30,7 @@ export default function App() {
   const unreadCount = messages.filter(m => !m.read).length
   const markRead    = (id) => setMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m))
   const markReplied = (id) => setRepliedIds(prev => new Set([...prev, id]))
-  const mailProps   = { unreadCount, onMailOpen: () => setMailOpen(true) }
+  const mailProps   = { unreadCount, onMailOpen: () => { setMailOpen(true); setFlag('seenSelene', true) } }
 
   return (
     <>

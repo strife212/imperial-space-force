@@ -3,12 +3,12 @@ const KEY = 'orbital_flags'
 
 const DEFAULTS = {
   // persistent flags — saved in localStorage
-  empressPanelVisited:  false,
-  throneworldTargeted:  false,
-  worldengineTargeted:  false,
-  seenSelene:           false,
-  mainPanelSeen:        false,
-  lancecast:            false,
+  empressPanelVisited:  false, // set in HudFooter.jsx — on empress panel open
+  throneworldTargeted:  false, // set in TargetingScreen.jsx — on mount (orbital map seen)
+  worldengineTargeted:  false, // set in TargetingScreen.jsx — on mount (orbital map seen)
+  seenSelene:           false, // set in App.jsx — on first mail overlay open
+  mainPanelSeen:        false, // set in MainPanel.jsx — on mount
+  lancecast:            false, // set in MainPanel.jsx — when PACKAGE AWAY fires
 }
 
 export function getFlags() {

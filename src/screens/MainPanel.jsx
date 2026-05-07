@@ -128,6 +128,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const rafRef               = useRef(null)
   const cdTimerRef           = useRef(null)
   const codetickSfx          = useRef(null)
+  useEffect(() => { setFlag('mainPanelSeen', true) }, [])
+
   const onLaunchCompleteRef  = useRef(onLaunchComplete)
   useEffect(() => { onLaunchCompleteRef.current = onLaunchComplete }, [onLaunchComplete])
   const reactorPlasmaRef = useRef(reactorPlasma)
