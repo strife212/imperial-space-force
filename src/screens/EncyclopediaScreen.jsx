@@ -33,7 +33,11 @@ export default function EncyclopediaScreen({ onReturn }) {
   const entries = topic?.entries ?? []
   const entry   = entries.find(e => e.id === entryId) ?? null
 
-  const isLocked = (e) => e.locked && !getFlag(e.locked.flag)
+  const isLocked = (e) => {
+    if (!e.locked) return false
+    if (e.locked.anyOf) return !e.locked.anyOf.some(f => getFlag(f))
+    return !getFlag(e.locked.flag)
+  }
 
   const handleTopicClick = (id) => {
     setTopicId(id)

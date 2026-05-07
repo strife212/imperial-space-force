@@ -10,10 +10,13 @@ const PENDING = `[ Full article pending. ]`
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // image: { src, caption } — optional, displayed below heading before body text
+// lockedFlag: string (single flag) or array of strings (unlocked if ANY flag is true)
 const entry = (id, title, body, lockedFlag = null, image = null) => ({
   id,
   title,
-  ...(lockedFlag ? { locked: { flag: lockedFlag } } : {}),
+  ...(lockedFlag
+    ? { locked: Array.isArray(lockedFlag) ? { anyOf: lockedFlag } : { flag: lockedFlag } }
+    : {}),
   content: {
     heading: title,
     ...(image ? { image } : {}),
@@ -60,7 +63,23 @@ O Star-Hearèr, we are the chord beneath thy hand.*`,
       entry('the-empress', 'The Empress', PENDING, 'empressPanelVisited',
         { src: 'empress.jpg', caption: 'HER IMPERIAL MAJESTY EMPRESS Iliantha III' },
       ),
-      entry('the-final-hearing',         'The Final Hearing',                PENDING, 'empressPanelVisited'),
+      entry('the-final-hearing', 'The Final Hearing',
+        [
+          `**Auditio Ultima, The Final Hearing**`,
+          `An ancient prophecy relating to the end of days. It goes as follows:`,
+          `*O'er silent Star, beneath broken Sky,
+A grim Discord the Lost have wrought.
+In the Hearing of Her, Sword-Sworn at her Side,
+'Gainst the Hush the Empress's Chord is brought.
+From the Cathedra high, to the listening below,
+Falls the Lance that the Discord besought.
+"Long live the Throne, where she hears alone,
+For the Day when the Discord comes to Naught."*`,
+          `The poem details that in the last days, a mysterious enemy known as the Discord will cause the stars to grow silent and shatter the sky. The once harmonious song of the stars grown discordant. The empress will take up her sword once more and cast her divine lance against the foe, destroying them once and for all.`,
+        ],
+        ['empressPanelVisited', 'lancecast'],
+        { src: 'finalhearing.jpg', caption: 'The Divine Lance being cast.' },
+      ),
       entry('the-discord', 'The Discord',
         [
           `The primordial foe of the Empire. The founding myths state that there came a long night where the stars were veiled and their song could no longer be heard. The first Empress, Rayanna I and her Sword-Sworn drove back the darkness and it's discordant noise, and the music of the heavens was revealed once more.`,

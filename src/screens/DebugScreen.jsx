@@ -19,6 +19,7 @@ const FLAG_LABELS = {
   worldengineTargeted: 'World Engine Targeted',
   seenSelene:          'Seen Selene',
   mainPanelSeen:       'Main Panel Seen',
+  lancecast:           'Lance Cast',
 }
 
 export default function DebugScreen({ onNavigate }) {

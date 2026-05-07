@@ -4,6 +4,7 @@ import { PLANETS, SUN, SUN_IDX } from '../lib/planetData'
 import LaunchCodeVerifier from './LaunchCodeVerifier'
 import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
+import { setFlag } from '../lib/store'
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 const t0      = Date.now() - 86400_000 * 17 - 3600_000 * 4 - 60_000 * 22
@@ -220,6 +221,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
         setLaunchCdText('LAUNCHED')
         setLaunchStatus({ text: '🔴 PACKAGE AWAY', cls: 'launch-status firing' })
         setLaunchLabel('PACKAGE AWAY')
+        setFlag('lancecast', true)
         addLog('CRIT', `*** ${PKG_NAMES[selectedPkgRef.current]} // PACKAGE AWAY ***`)
         addLog('CRIT', 'GEODESIC INTERCEPT SOLUTION COMMITTED')
         cdTimerRef.current = setTimeout(() => {

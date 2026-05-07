@@ -8,6 +8,7 @@ const DEFAULTS = {
   worldengineTargeted:  false,
   seenSelene:           false,
   mainPanelSeen:        false,
+  lancecast:            false,
 }
 
 export function getFlags() {
