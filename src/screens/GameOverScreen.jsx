@@ -11,8 +11,8 @@ export default function GameOverScreen({ initialFlagCount = 0, onEncyclopedia })
       {hasNewUnlocks && (
         <div className="go-unlocked" onClick={onEncyclopedia}>
           {currentFlagCount - initialFlagCount === 1
-            ? '1 NEW ENCYCLOPEDIA ENTRY PERMANENTLY UNLOCKED — CLICK TO READ'
-            : `${currentFlagCount - initialFlagCount} NEW ENCYCLOPEDIA ENTRIES PERMANENTLY UNLOCKED — CLICK TO READ`
+            ? '1 NEW ENCYCLOPEDIA ENTRY PERMANENTLY UNLOCKED - CLICK TO READ'
+            : `${currentFlagCount - initialFlagCount} NEW ENCYCLOPEDIA ENTRIES PERMANENTLY UNLOCKED - CLICK TO READ`
           }
         </div>
       )}
