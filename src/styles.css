@@ -3750,6 +3750,20 @@ body {
   margin-bottom: -16px;
   animation: go-pulse 2.8s ease-in-out infinite;
 }
+.go-unlocked {
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.2s, text-shadow 0.2s;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+.go-unlocked:hover {
+  color: #fff;
+  text-shadow: 0 0 30px rgba(200, 230, 255, 0.8);
+}
+
 .go-again {
   background: transparent;
   border: none;
