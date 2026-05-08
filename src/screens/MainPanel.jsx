@@ -42,7 +42,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, reactorPlasma = 75, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen }) {
+export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, onAdjustAntenna, antennaAligned = false, reactorPlasma = 75, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen }) {
 
   // ── Panel init animation ──────────────────────────────────────────────────
   const [litPanels, setLitPanels] = useState(new Set())
@@ -62,7 +62,6 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const lit = (id) => litPanels.has(id) ? '' : ' unlit'
 
   // ── Structural state (drives re-renders) ──────────────────────────────────
-  const [antennaAligned,  setAntennaAligned]  = useState(false)
   const [radarView,       setRadarViewState]  = useState('radar')
   const [launchPhase,     setLaunchPhase]     = useState('idle')
   const [selectedPkg,     setSelectedPkgState]= useState('kn')
@@ -749,7 +748,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
           {!lowPower && !antennaAligned && <div className="radio-offline-overlay"><span>[ RADIO OFFLINE ]</span></div>}
         </section>
 
-        <XBandRadioPanel litClass={lit('panel-xband')} lowPower={lowPower} aligned={antennaAligned} onAlign={() => setAntennaAligned(true)} />
+        <XBandRadioPanel litClass={lit('panel-xband')} lowPower={lowPower} aligned={antennaAligned} onAlign={onAdjustAntenna} />
 
         {/* SPACETIME DIAGNOSTICS */}
         <section className={`panel${lit('panel-spacetime')}${lowPower ? ' panel--low-power' : ''}`} id="panel-spacetime">

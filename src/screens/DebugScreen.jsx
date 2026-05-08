@@ -11,6 +11,7 @@ const SCREENS = [
   { key: 'targeting',    label: 'Targeting Screen'        },
   { key: 'gameover',     label: 'Game Over Screen'        },
   { key: 'encyclopedia', label: 'Encyclopedia Screen'     },
+  { key: 'antenna',      label: 'Antenna Alignment Screen'},
 ]
 
 const FLAG_LABELS = {

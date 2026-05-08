@@ -11,7 +11,6 @@ export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }
   const freqRef      = useRef(8.0)
   const dialAngleRef = useRef(-90)
   const isDragging   = useRef(false)
-  const isAnimating  = useRef(false)
   const lastX        = useRef(0)
   const dragAccum    = useRef(0)
 
@@ -23,7 +22,7 @@ export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }
   }, [])
 
   const onMouseMove = useCallback((e) => {
-    if (!isDragging.current || isAnimating.current) return
+    if (!isDragging.current) return
     const dx = e.clientX - lastX.current
     lastX.current = e.clientX
     dragAccum.current += dx
@@ -54,17 +53,6 @@ export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }
       window.removeEventListener('mouseup',   onMouseUp)
     }
   }, [onMouseMove, onMouseUp])
-
-  const handleAlign = useCallback(() => {
-    isAnimating.current = true
-    isDragging.current = false
-    freqRef.current = 8.0
-    dialAngleRef.current = -90
-    setFreq(8.0)
-    setDialAngle(-90)
-    onAlign()
-    setTimeout(() => { isAnimating.current = false }, 600)
-  }, [onAlign])
 
   const wavelengthCm = (30 / freq).toFixed(1)
 
@@ -101,7 +89,7 @@ export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }
               <div
                 className="xband-dial"
                 onMouseDown={onMouseDown}
-                style={{ transform: `rotate(${dialAngle}deg)`, transition: isAnimating.current ? 'transform 0.5s ease-out' : 'none' }}
+                style={{ transform: `rotate(${dialAngle}deg)` }}
               >
                 <div className="xband-dial-marker" />
               </div>
@@ -109,7 +97,7 @@ export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }
             <div className="xband-dial-range">8 ←──→ 12 GHz</div>
           </div>
 
-          <button className="xband-antenna-btn" disabled={lowPower || aligned} onClick={handleAlign}>
+          <button className="xband-antenna-btn" disabled={lowPower || aligned} onClick={onAlign}>
             {aligned ? 'ANTENNA ALIGNED' : 'ADJUST ANTENNA ALIGNMENT'}
           </button>
         </div>

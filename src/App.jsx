@@ -10,6 +10,7 @@ import ReactorScreen from './screens/ReactorScreen'
 import TargetingScreen from './screens/TargetingScreen'
 import GameOverScreen from './screens/GameOverScreen'
 import EncyclopediaScreen from './screens/EncyclopediaScreen'
+import AntennaAlignmentScreen from './screens/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import { INITIAL_MESSAGES, ALL_TRIGGERED_MESSAGES } from './data/messages'
 import { PLANETS, SUN, SUN_IDX } from './lib/planetData'
@@ -26,7 +27,9 @@ export default function App() {
   const [mailOpen,          setMailOpen]          = useState(false)
   const [repliedIds,        setRepliedIds]        = useState(new Set())
   const [sessionFlags,      setSessionFlags]      = useState(new Set())
+  const [antennaAligned,    setAntennaAligned]    = useState(false)
   const [toastKey,          setToastKey]          = useState(0)
+  const [toastVisible,      setToastVisible]      = useState(false)
   const seenMessageIds      = useRef(new Set(INITIAL_MESSAGES.map(m => m.id)))
   const [initialFlagCount]                        = useState(() => countTrueFlags())
   const [encyclopediaSource, setEncyclopediaSource] = useState('menu')
@@ -44,6 +47,7 @@ export default function App() {
     toAdd.forEach(m => seenMessageIds.current.add(m.id))
     setMessages(prev => [...prev, ...toAdd.map(({ enabled: _e, requires: _r, ...rest }) => ({ ...rest, read: false }))])
     setToastKey(k => k + 1)
+    setToastVisible(true)
   }, [sessionFlags])
 
   const goEncyclopedia = (source) => { setEncyclopediaSource(source); setScreen('encyclopedia') }
@@ -64,16 +68,17 @@ export default function App() {
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onDebug={() => setScreen('debug')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}
-      {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setCountdownSeconds(10); setScreen('monitor') }} onReactor={() => setScreen('reactor')} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} reactorPlasma={plasmaLevel} targetIdx={targetIdx} countdownSeconds={countdownSeconds} {...mailProps} />}
+      {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setCountdownSeconds(10); setScreen('monitor') }} onReactor={() => setScreen('reactor')} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} onAdjustAntenna={() => setScreen('antenna')} antennaAligned={antennaAligned} reactorPlasma={plasmaLevel} targetIdx={targetIdx} countdownSeconds={countdownSeconds} {...mailProps} />}
       {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => setScreen('gameover')} onLogout={() => setScreen('gameover')} packageName={launchPackage} targetName={targetName} {...mailProps} />}
       {screen === 'debug'     && <DebugScreen onNavigate={(s) => { if (s === 'targeting') setTargetingSource('debug'); setScreen(s) }} onDebugMain={() => { setPlasmaLevel(75); setTargetIdx(2); setCountdownSeconds(2); setScreen('main') }} />}
       {screen === 'reactor'   && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); if (density >= 25) triggerFlag('reactorPoweredUp'); setScreen('main') }} onLogout={() => setScreen('main')} initialPlasma={plasmaLevel} {...mailProps} />}
       {screen === 'targeting' && <TargetingScreen onBack={(idx) => { setTargetIdx(idx); setScreen(targetingSource) }} initialSelectedIdx={targetIdx} {...mailProps} />}
       {screen === 'gameover'      && <GameOverScreen initialFlagCount={initialFlagCount} onEncyclopedia={() => goEncyclopedia('gameover')} />}
       {screen === 'encyclopedia'  && <EncyclopediaScreen onReturn={() => setScreen(encyclopediaSource)} />}
+      {screen === 'antenna'       && <AntennaAlignmentScreen onBack={() => setScreen('main')} onAlignComplete={() => setAntennaAligned(true)} {...mailProps} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
-      {toastKey > 0 && <>
-        <div key={`dim-${toastKey}`} className="msg-toast-dim" />
+      {toastVisible && <>
+        <div key={`dim-${toastKey}`} className="msg-toast-dim" onAnimationEnd={() => setToastVisible(false)} />
         <div key={toastKey} className="msg-toast"><span>✉</span>NEW MESSAGE RECEIVED</div>
       </>}
     </>

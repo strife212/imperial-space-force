@@ -113,8 +113,8 @@ function drawReactor(ctx, w, h, rx, ry, plasma) {
                    R_MIN * Math.sin(v)))
     }
     const dv = depth(pts[24])
-    ctx.strokeStyle = `rgba(20,80,220,${((0.10 + dv * 0.50) * pScale).toFixed(3)})`
-    ctx.lineWidth = 0.65; stroke(ctx, pts)
+    ctx.strokeStyle = `rgba(20,80,220,${((0.22 + dv * 0.65) * pScale).toFixed(3)})`
+    ctx.lineWidth = 0.9; stroke(ctx, pts)
   }
 
   // Poloidal lines (longitude — cross-sections of the tube)
@@ -129,8 +129,8 @@ function drawReactor(ctx, w, h, rx, ry, plasma) {
                    R_MIN * Math.sin(v)))
     }
     const dv = depth(cpt)
-    ctx.strokeStyle = `rgba(30,100,255,${((0.13 + dv * 0.60) * pScale).toFixed(3)})`
-    ctx.lineWidth = 0.85; stroke(ctx, pts)
+    ctx.strokeStyle = `rgba(30,100,255,${((0.26 + dv * 0.72) * pScale).toFixed(3)})`
+    ctx.lineWidth = 1.1; stroke(ctx, pts)
   }
 
   // Front TF coils
@@ -147,6 +147,15 @@ function drawReactor(ctx, w, h, rx, ry, plasma) {
   ctx.strokeStyle = 'rgba(190,225,255,0.25)'; ctx.lineWidth = 3.5; stroke(ctx, solPts)
 }
 
+// ── Circuit breaker data ──────────────────────────────────────────────────────
+const BREAKERS = [
+  { id: 'main',   label: 'MAIN CIRCUIT',  delay: 0   },
+  { id: 'sec',    label: 'SECONDARY',     delay: 120  },
+  { id: 'aux',    label: 'AUX POWER',     delay: 240  },
+  { id: 'coil-a', label: 'FIELD COIL A', delay: 360  },
+  { id: 'coil-b', label: 'FIELD COIL B', delay: 480  },
+]
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, unreadCount = 0, onMailOpen }) {
   const canvasRef         = useRef(null)
@@ -156,6 +165,8 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, u
   const redlineTimerRef   = useRef(null)
   const resetIntervalRef  = useRef(null)
   const overloadActiveRef = useRef(false)
+  const cbPanelRef        = useRef(null)
+  const diagramWrapRef    = useRef(null)
 
   const [plasmaDensity,  setPlasmaDensity]  = useState(initialPlasma)
   const [redlineActive,  setRedlineActive]  = useState(false)
@@ -279,6 +290,26 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, u
 
   useEffect(() => clearTimers, [clearTimers])
 
+  // ── Scale circuit breakers to fit available height ────────────────────────
+  useEffect(() => {
+    const panel = cbPanelRef.current
+    const wrap  = diagramWrapRef.current
+    if (!panel || !wrap) return
+    const update = () => {
+      panel.style.transform = 'translateY(-50%)'
+      requestAnimationFrame(() => {
+        const availH = wrap.clientHeight * 0.72
+        const scale  = Math.min(1, availH / panel.scrollHeight)
+        panel.style.transform = `translateY(-50%) scale(${scale})`
+        panel.style.transformOrigin = 'center center'
+      })
+    }
+    const obs = new ResizeObserver(update)
+    obs.observe(wrap)
+    update()
+    return () => obs.disconnect()
+  }, [])
+
   // ── Power audio: seamless loop via Web Audio API ──────────────────────────
   useEffect(() => {
     const ctx  = new (window.AudioContext || window.webkitAudioContext)()
@@ -339,8 +370,26 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, u
         {/* ── Diagram + slider ────────────────────────────────────────────── */}
         <div className="reactor-diagram-col">
           <div className="reactor-torus-label">D-³He FUSOR REACTOR TORUS</div>
-          <div className="reactor-diagram-wrap">
+          <div className="reactor-diagram-wrap" ref={diagramWrapRef}>
             <canvas className="reactor-canvas" ref={canvasRef} />
+
+            {/* Circuit breakers overlaid on the left of the torus */}
+            <div className="cb-panel" ref={cbPanelRef}>
+              <div className="cb-panel-title">CIRCUIT<br/>BREAKERS</div>
+              {BREAKERS.map(b => (
+                <div
+                  key={b.id}
+                  className={`cb-item${plasmaDensity >= 25 ? ' cb-closed' : ''}`}
+                  style={{ '--cb-delay': `${b.delay}ms` }}
+                >
+                  <div className="cb-label">{b.label}</div>
+                  <div className="cb-body">
+                    <div className="cb-top" />
+                    <div className="cb-bot" />
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {/* Slider overlaid directly beside the torus */}
             <div className="plasma-slider-wrap">
