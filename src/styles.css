@@ -844,7 +844,7 @@ body {
 
 #panel-geodetic  { grid-column: 1; grid-row: 1; }
 #panel-radar     { grid-column: 2; grid-row: 1 / span 2; }
-#panel-loadout   { grid-column: 3; grid-row: 1; }
+#panel-xband     { grid-column: 3; grid-row: 1; }
 #panel-spacetime { grid-column: 1; grid-row: 2; }
 #panel-causality { grid-column: 3; grid-row: 2; }
 #panel-target    { grid-column: 1 / span 2; grid-row: 3; }
@@ -924,6 +924,27 @@ body {
   letter-spacing: 0.3em;
   color: rgba(200, 215, 255, 0.95);
   text-shadow: 0 0 18px rgba(120, 160, 255, 0.7);
+}
+
+.radio-offline-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  user-select: none;
+  background: rgba(1, 2, 12, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radio-offline-overlay span {
+  font-size: clamp(14px, 1.6vw, 26px);
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: rgba(255, 80, 80, 0.95);
+  text-shadow: 0 0 18px rgba(255, 60, 60, 0.6);
+  animation: blink 1s infinite;
 }
 
 #panel-power .panel-body {
@@ -1043,6 +1064,146 @@ body {
 .subline .v { color: var(--c-rose); text-shadow: var(--glow-soft); }
 
 .mono { font-family: var(--font-mono); }
+
+/* ---------- x-band radio panel ---------- */
+.xband-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+
+.xband-lcd {
+  background: #050f05;
+  border: 1px solid rgba(0, 200, 80, 0.35);
+  border-radius: 3px;
+  padding: 8px 10px;
+  font-family: 'Courier New', monospace;
+  box-shadow: inset 0 0 12px rgba(0, 200, 80, 0.08), 0 0 6px rgba(0, 200, 80, 0.1);
+}
+
+.xband-lcd-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(0, 200, 80, 0.1);
+}
+.xband-lcd-row:last-child { border-bottom: 0; }
+
+.xband-lcd-label {
+  font-size: 10px;
+  color: rgba(0, 200, 80, 0.5);
+  letter-spacing: 0.12em;
+}
+
+.xband-lcd-value {
+  font-size: 12px;
+  color: rgba(0, 230, 100, 0.9);
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 6px rgba(0, 200, 80, 0.6);
+}
+.xband-lcd-value--large {
+  font-size: 17px;
+  letter-spacing: 0.06em;
+}
+
+.xband-lcd-ok { color: rgba(80, 255, 140, 0.95); text-shadow: 0 0 8px rgba(80, 255, 140, 0.7); }
+
+.xband-lcd-fault {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 60, 60, 0.95);
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 8px rgba(255, 60, 60, 0.7);
+  text-align: center;
+  padding: 6px 0;
+  animation: blink 1s infinite;
+}
+
+.xband-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+
+.xband-dial-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.xband-dial-label {
+  font-size: 10px;
+  color: var(--c-ash-dim);
+  letter-spacing: 0.14em;
+}
+
+.xband-dial-surround {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #2a2a2a, #0a0a0a);
+  border: 2px solid rgba(160, 160, 160, 0.4);
+  box-shadow: 0 0 8px rgba(0,0,0,0.8), inset 0 1px 3px rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xband-dial {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 38%, #333, #111);
+  border: 1px solid rgba(120, 120, 120, 0.5);
+  cursor: ew-resize;
+  position: relative;
+  user-select: none;
+}
+
+.xband-dial-marker {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 10px;
+  background: rgba(0, 220, 100, 0.9);
+  border-radius: 2px;
+  box-shadow: 0 0 4px rgba(0, 220, 100, 0.8);
+}
+
+.xband-dial-range {
+  font-size: 9.5px;
+  color: var(--c-ash-dim);
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+}
+
+.xband-antenna-btn {
+  flex: 1;
+  align-self: stretch;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid rgba(100, 180, 255, 0.4);
+  color: rgba(140, 200, 255, 0.9);
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.xband-antenna-btn:hover:not(:disabled) {
+  background: rgba(80, 160, 255, 0.1);
+  border-color: rgba(140, 200, 255, 0.8);
+}
+.xband-antenna-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* ---------- weapons / loadout ---------- */
 .weapon { padding: 6px 0; border-bottom: 1px dashed var(--c-line); }
