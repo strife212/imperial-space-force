@@ -1,22 +1,27 @@
 // ── Imperial Messaging Service — Message Definitions ─────────────────────────
 //
-// Add new messages here. Set `enabled: false` to hide a message without
-// deleting it. Messages appear in the order listed.
+// Two lists:
 //
-// Fields:
+//   ALWAYS_ON_MESSAGES  — appear immediately when the game loads
+//   TRIGGERED_MESSAGES  — arrive mid-session when a session flag is set
+//
+// Set `enabled: false` to hide a message without deleting it.
+//
+// Fields (all messages):
 //   id        — unique number, never reuse
-//   enabled   — true/false, controls whether the message appears in-game
-//   sender    — display name shown in the list and content panel
+//   enabled   — true/false
+//   verified  — true/false, shown as quantum-cryptography pass/fail
+//   sender    — display name
 //   subject   — short subject line
 //   timestamp — display string, e.g. '2026-05-04 // 14:32:01'
-//   portrait  — path relative to /public (e.g. 'portraits/astraia.jpg'),
-//               or null for [ NO IMAGE ]
+//   portrait  — path relative to /public, or null for [ NO IMAGE ]
 //   body      — full message body text
-//   reply     — optional. If present, shows a reply button in the content panel:
-//     reply.buttonLabel — text shown on the reply button
-//     reply.response    — message that appears below after replying
+//   reply     — optional { buttonLabel, response }
+//
+// Extra field (TRIGGERED_MESSAGES only):
+//   requires  — session flag name; message arrives when triggerFlag(name) is called
 
-const ALL_MESSAGES = [
+const ALWAYS_ON_MESSAGES = [
   {
     id: 1,
     enabled: true,
@@ -43,7 +48,22 @@ const ALL_MESSAGES = [
   },
 ]
 
-// Only export messages that are enabled, with `read` initialised to false
-export const INITIAL_MESSAGES = ALL_MESSAGES
+const TRIGGERED_MESSAGES = [
+  {
+    id: 100,
+    enabled: true,
+    requires: 'reactorPoweredUp',
+    verified: true,
+    sender: 'Admiralty Command',
+    subject: 'Antenna Misalignment',
+    timestamp: '2026-05-04 // 14:44:17',
+    portrait: null,
+    body: "We can see the power readings increasing - looks like all systems are coming back online. However, we're not getting all the diagnostic readings we expect. It looks like the X-Band radio antenna isn't aligned correctly. Can you check the alignment? The panel should be in the top right of the main control system.",
+  },
+]
+
+export const INITIAL_MESSAGES = ALWAYS_ON_MESSAGES
   .filter(m => m.enabled)
-  .map(({ enabled: _enabled, ...rest }) => ({ ...rest, read: false }))
+  .map(({ enabled: _e, ...rest }) => ({ ...rest, read: false }))
+
+export const ALL_TRIGGERED_MESSAGES = TRIGGERED_MESSAGES

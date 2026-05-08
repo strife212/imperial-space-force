@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getFlags, setFlag } from './lib/store'
 import LoginScreen from './screens/LoginScreen'
 import BootScreen from './screens/BootScreen'
@@ -11,7 +11,7 @@ import TargetingScreen from './screens/TargetingScreen'
 import GameOverScreen from './screens/GameOverScreen'
 import EncyclopediaScreen from './screens/EncyclopediaScreen'
 import MailOverlay from './components/MailOverlay'
-import { INITIAL_MESSAGES } from './data/messages'
+import { INITIAL_MESSAGES, ALL_TRIGGERED_MESSAGES } from './data/messages'
 import { PLANETS, SUN, SUN_IDX } from './lib/planetData'
 
 const countTrueFlags = () => Object.values(getFlags()).filter(Boolean).length
@@ -25,9 +25,26 @@ export default function App() {
   const [messages,          setMessages]          = useState(INITIAL_MESSAGES)
   const [mailOpen,          setMailOpen]          = useState(false)
   const [repliedIds,        setRepliedIds]        = useState(new Set())
+  const [sessionFlags,      setSessionFlags]      = useState(new Set())
+  const [toastKey,          setToastKey]          = useState(0)
+  const seenMessageIds      = useRef(new Set(INITIAL_MESSAGES.map(m => m.id)))
   const [initialFlagCount]                        = useState(() => countTrueFlags())
   const [encyclopediaSource, setEncyclopediaSource] = useState('menu')
   const [countdownSeconds,   setCountdownSeconds]   = useState(10)
+
+  const triggerFlag = (name) => setSessionFlags(prev => new Set([...prev, name]))
+
+  useEffect(() => {
+    const toAdd = ALL_TRIGGERED_MESSAGES.filter(m =>
+      m.enabled &&
+      sessionFlags.has(m.requires) &&
+      !seenMessageIds.current.has(m.id)
+    )
+    if (!toAdd.length) return
+    toAdd.forEach(m => seenMessageIds.current.add(m.id))
+    setMessages(prev => [...prev, ...toAdd.map(({ enabled: _e, requires: _r, ...rest }) => ({ ...rest, read: false }))])
+    setToastKey(k => k + 1)
+  }, [sessionFlags])
 
   const goEncyclopedia = (source) => { setEncyclopediaSource(source); setScreen('encyclopedia') }
 
@@ -37,7 +54,7 @@ export default function App() {
   const unreadCount = messages.filter(m => !m.read).length
   const markRead    = (id) => setMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m))
   const markReplied = (id) => setRepliedIds(prev => new Set([...prev, id]))
-  const mailProps   = { unreadCount, onMailOpen: () => { setMailOpen(true); setFlag('seenSelene', true) } }
+  const mailProps   = { unreadCount, onMailOpen: () => { setMailOpen(true); setFlag('seenSelene', true) }, triggerFlag }
 
   return (
     <>
@@ -50,11 +67,15 @@ export default function App() {
       {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setCountdownSeconds(10); setScreen('monitor') }} onReactor={() => setScreen('reactor')} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} reactorPlasma={plasmaLevel} targetIdx={targetIdx} countdownSeconds={countdownSeconds} {...mailProps} />}
       {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => setScreen('gameover')} onLogout={() => setScreen('gameover')} packageName={launchPackage} targetName={targetName} {...mailProps} />}
       {screen === 'debug'     && <DebugScreen onNavigate={(s) => { if (s === 'targeting') setTargetingSource('debug'); setScreen(s) }} onDebugMain={() => { setPlasmaLevel(75); setTargetIdx(2); setCountdownSeconds(2); setScreen('main') }} />}
-      {screen === 'reactor'   && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); setScreen('main') }} onLogout={() => setScreen('main')} initialPlasma={plasmaLevel} {...mailProps} />}
+      {screen === 'reactor'   && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); if (density >= 25) triggerFlag('reactorPoweredUp'); setScreen('main') }} onLogout={() => setScreen('main')} initialPlasma={plasmaLevel} {...mailProps} />}
       {screen === 'targeting' && <TargetingScreen onBack={(idx) => { setTargetIdx(idx); setScreen(targetingSource) }} initialSelectedIdx={targetIdx} {...mailProps} />}
       {screen === 'gameover'      && <GameOverScreen initialFlagCount={initialFlagCount} onEncyclopedia={() => goEncyclopedia('gameover')} />}
       {screen === 'encyclopedia'  && <EncyclopediaScreen onReturn={() => setScreen(encyclopediaSource)} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
+      {toastKey > 0 && <>
+        <div key={`dim-${toastKey}`} className="msg-toast-dim" />
+        <div key={toastKey} className="msg-toast"><span>✉</span>NEW MESSAGE RECEIVED</div>
+      </>}
     </>
   )
 }

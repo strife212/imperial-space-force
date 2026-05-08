@@ -746,7 +746,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
             </div>
           </div>
           {lowPower && <div className="low-power-overlay" />}
-          {!lowPower && !antennaAligned && <div className="radio-offline-overlay"><span>RADIO OFFLINE</span></div>}
+          {!lowPower && !antennaAligned && <div className="radio-offline-overlay"><span>[ RADIO OFFLINE ]</span></div>}
         </section>
 
         <XBandRadioPanel litClass={lit('panel-xband')} lowPower={lowPower} aligned={antennaAligned} onAlign={() => setAntennaAligned(true)} />
@@ -846,7 +846,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
             </div>
           </div>
           {lowPower && <div className="low-power-overlay" />}
-          {!lowPower && !antennaAligned && <div className="radio-offline-overlay"><span>RADIO OFFLINE</span></div>}
+          {!lowPower && !antennaAligned && <div className="radio-offline-overlay"><span>[ RADIO OFFLINE ]</span></div>}
         </section>
 
         {/* POWER / REACTOR */}
