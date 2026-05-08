@@ -41,7 +41,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, reactorPlasma = 75, targetIdx = -1, unreadCount = 0, onMailOpen }) {
+export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, reactorPlasma = 75, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen }) {
 
   // ── Panel init animation ──────────────────────────────────────────────────
   const [litPanels, setLitPanels] = useState(new Set())
@@ -127,6 +127,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const logBufRef     = useRef([])
   const rafRef               = useRef(null)
   const cdTimerRef           = useRef(null)
+  const showTimerRef         = useRef(null)
   const codetickSfx          = useRef(null)
   useEffect(() => { setFlag('mainPanelSeen', true) }, [])
 
@@ -136,6 +137,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   useEffect(() => { reactorPlasmaRef.current = reactorPlasma }, [reactorPlasma])
   const targetIdxRef = useRef(targetIdx)
   useEffect(() => { targetIdxRef.current = targetIdx }, [targetIdx])
+  const countdownSecondsRef = useRef(countdownSeconds)
+  useEffect(() => { countdownSecondsRef.current = countdownSeconds }, [countdownSeconds])
 
   // ── Log helper ────────────────────────────────────────────────────────────
   const addLog = useCallback((level, msg) => {
@@ -167,7 +170,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
 
   // ── Launch control ────────────────────────────────────────────────────────
   const handleReset = useCallback(() => {
-    if (cdTimerRef.current) clearTimeout(cdTimerRef.current)
+    if (cdTimerRef.current)   clearTimeout(cdTimerRef.current)
+    if (showTimerRef.current) clearTimeout(showTimerRef.current)
     launchPhaseRef.current = 'idle'
     setLaunchPhase('idle')
     setLaunchStatus({ text: 'SYSTEM READY // AWAITING ARM', cls: 'launch-status' })
@@ -210,7 +214,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
     setLaunchPhase('countdown')
     setLaunchStatus({ text: 'COUNTDOWN IN PROGRESS', cls: 'launch-status firing' })
 
-    let val = 10
+    let val = countdownSecondsRef.current
     const tick = () => {
       if (val > 0) {
         setLaunchCdText(`T− ${String(val).padStart(2, '0')}`)
@@ -226,9 +230,13 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
         setFlag('lancecast', true)
         addLog('CRIT', `*** ${PKG_NAMES[selectedPkgRef.current]} // PACKAGE AWAY ***`)
         addLog('CRIT', 'GEODESIC INTERCEPT SOLUTION COMMITTED')
+        showTimerRef.current = setTimeout(() => {
+          launchPhaseRef.current = 'finalHearing'
+          setLaunchPhase('finalHearing')
+        }, 5000)
         cdTimerRef.current = setTimeout(() => {
           onLaunchCompleteRef.current?.(PKG_NAMES[selectedPkgRef.current])
-        }, 6500)
+        }, 12000)
       }
     }
     tick()
@@ -634,7 +642,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
     return () => {
       cancelAnimationFrame(rafRef.current)
       window.removeEventListener('resize', fitAll)
-      if (cdTimerRef.current) clearTimeout(cdTimerRef.current)
+      if (cdTimerRef.current)   clearTimeout(cdTimerRef.current)
+      if (showTimerRef.current) clearTimeout(showTimerRef.current)
     }
   }, [addLog])
 
@@ -1001,6 +1010,16 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
         <span className="sep">│</span>
         <span ref={utcRef}>UTC 0000-00-00 00:00:00.000</span>
       </HudFooter>
+
+      {launchPhase === 'finalHearing' && (
+        <div className="final-hearing-overlay">
+          <img
+            src={`${import.meta.env.BASE_URL}finalhearing.jpg`}
+            alt=""
+            className="final-hearing-img"
+          />
+        </div>
+      )}
     </>
   )
 }

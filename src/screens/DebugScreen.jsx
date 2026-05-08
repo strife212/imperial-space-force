@@ -22,7 +22,7 @@ const FLAG_LABELS = {
   lancecast:           'Lance Cast',
 }
 
-export default function DebugScreen({ onNavigate }) {
+export default function DebugScreen({ onNavigate, onDebugMain }) {
   const [flags, setFlags] = useState(getFlags)
 
   const toggle = (name) => {
@@ -44,6 +44,12 @@ export default function DebugScreen({ onNavigate }) {
               </button>
             </li>
           ))}
+          <li>
+            <button className="debug-item debug-item--shortcut" onClick={onDebugMain}>
+              <span className="debug-item-key">[⚡]</span>
+              <span className="debug-item-label">Main Panel — power 75, target Aethon</span>
+            </button>
+          </li>
         </ul>
 
         <div className="debug-flags">
