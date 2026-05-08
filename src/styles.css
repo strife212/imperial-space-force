@@ -2636,6 +2636,17 @@ body {
   color: #fff;
 }
 
+.debug-item--shortcut {
+  border-color: rgba(180, 120, 255, 0.5);
+  color: rgba(210, 180, 255, 0.9);
+  margin-top: 8px;
+}
+
+.debug-item--shortcut:hover {
+  background: rgba(140, 60, 255, 0.12);
+  border-color: rgba(180, 120, 255, 0.9);
+}
+
 .debug-item-key {
   color: rgba(106,173,245,0.5);
   font-size: 11px;
@@ -4070,4 +4081,36 @@ body {
   letter-spacing: 0.03em;
   color: rgba(185, 215, 255, 0.75);
   margin: 0 0 24px;
+}
+
+/* ── Final hearing image overlay ─────────────────────────────────────────── */
+.final-hearing-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse 70% 60% at center, rgba(8, 20, 65, 0.95) 0%, rgba(4, 10, 35, 0.98) 50%, #000 100%);
+}
+
+.final-hearing-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  display: block;
+  border: 1px solid rgba(160, 120, 255, 0.25);
+  border-radius: 2px;
+  box-shadow: 0 0 120px 40px rgba(8, 20, 65, 0.9);
+  animation: fh-sequence 7s linear forwards;
+}
+
+/* 1s fade-in → 4s hold → 2s fade-out */
+@keyframes fh-sequence {
+  0%      { opacity: 0; }
+  14.29%  { opacity: 1; }
+  71.43%  { opacity: 1; }
+  100%    { opacity: 0; }
 }

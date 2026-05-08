@@ -27,6 +27,7 @@ export default function App() {
   const [repliedIds,        setRepliedIds]        = useState(new Set())
   const [initialFlagCount]                        = useState(() => countTrueFlags())
   const [encyclopediaSource, setEncyclopediaSource] = useState('menu')
+  const [countdownSeconds,   setCountdownSeconds]   = useState(10)
 
   const goEncyclopedia = (source) => { setEncyclopediaSource(source); setScreen('encyclopedia') }
 
@@ -46,9 +47,9 @@ export default function App() {
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onDebug={() => setScreen('debug')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}
-      {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setScreen('monitor') }} onReactor={() => setScreen('reactor')} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} reactorPlasma={plasmaLevel} targetIdx={targetIdx} {...mailProps} />}
+      {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setCountdownSeconds(10); setScreen('monitor') }} onReactor={() => setScreen('reactor')} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} reactorPlasma={plasmaLevel} targetIdx={targetIdx} countdownSeconds={countdownSeconds} {...mailProps} />}
       {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => setScreen('gameover')} onLogout={() => setScreen('gameover')} packageName={launchPackage} targetName={targetName} {...mailProps} />}
-      {screen === 'debug'     && <DebugScreen onNavigate={(s) => { if (s === 'targeting') setTargetingSource('debug'); setScreen(s) }} />}
+      {screen === 'debug'     && <DebugScreen onNavigate={(s) => { if (s === 'targeting') setTargetingSource('debug'); setScreen(s) }} onDebugMain={() => { setPlasmaLevel(75); setTargetIdx(2); setCountdownSeconds(2); setScreen('main') }} />}
       {screen === 'reactor'   && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); setScreen('main') }} onLogout={() => setScreen('main')} initialPlasma={plasmaLevel} {...mailProps} />}
       {screen === 'targeting' && <TargetingScreen onBack={(idx) => { setTargetIdx(idx); setScreen(targetingSource) }} initialSelectedIdx={targetIdx} {...mailProps} />}
       {screen === 'gameover'      && <GameOverScreen initialFlagCount={initialFlagCount} onEncyclopedia={() => goEncyclopedia('gameover')} />}
