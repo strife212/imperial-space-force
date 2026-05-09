@@ -14,7 +14,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .login-inner {
   width: min(600px, 90vw);
@@ -25,6 +25,7 @@
   align-items: center;
   text-align: center;
   padding: 48px 0 60px;
+  transform-origin: top center;
 }
 .login-inner .boot-header {
   width: 100%;
@@ -831,6 +832,20 @@ body {
 }
 
 /* ---------- grid ---------- */
+#main-screen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.main-scaler {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  transform-origin: top left;
+}
+
 .grid {
   flex: 1 1 auto;
   display: grid;
@@ -2652,14 +2667,12 @@ body {
   top: 0; bottom: 0;
   left: max(0px, calc(50vw - 1080px));
   right: max(0px, calc(50vw - 1080px));
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--c-void);
   display: flex;
   flex-direction: column;
   align-items: center;
-  scrollbar-width: none;
 }
-#menu-screen::-webkit-scrollbar { display: none; }
 
 
 .menu-content {
@@ -2784,13 +2797,21 @@ body {
   top: 0; bottom: 0;
   left: max(0px, calc(50vw - 1080px));
   right: max(0px, calc(50vw - 1080px));
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24px;
   background: #010208;
   font-family: 'Cascadia Mono', Consolas, monospace;
+}
+
+.debug-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  transform-origin: top center;
 }
 
 .debug-body {
@@ -3971,12 +3992,20 @@ body {
 }
 
 /* ── targeting screen ───────────────────────────────────────────────────────── */
+#targeting-screen-outer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
 #targeting-screen {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   font-family: var(--font-mono);
+  transform-origin: top left;
 }
 
 .targeting-main {
@@ -4454,14 +4483,57 @@ body {
 }
 
 /* ── Content panel ───────────────────────────────────────────────── */
+.enc-content-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .enc-content {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   scrollbar-width: thin;
-  scrollbar-color: rgba(80,120,220,0.3) transparent;
+  scrollbar-color: rgba(80,120,220,0.5) rgba(30,40,80,0.3);
   position: relative;
+}
+
+.enc-content::-webkit-scrollbar {
+  width: 6px;
+}
+.enc-content::-webkit-scrollbar-track {
+  background: rgba(30,40,80,0.3);
+}
+.enc-content::-webkit-scrollbar-thumb {
+  background: rgba(80,120,220,0.5);
+  border-radius: 3px;
+}
+
+.enc-scroll-arrow {
+  position: absolute;
+  bottom: 12px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10,15,40,0.85);
+  border: 1px solid rgba(80,120,220,0.5);
+  color: rgba(100,160,255,0.9);
+  font-size: 14px;
+  border-radius: 4px;
+  pointer-events: none;
+  animation: enc-arrow-pulse 1.4s ease-in-out infinite;
+  z-index: 10;
+}
+
+@keyframes enc-arrow-pulse {
+  0%, 100% { opacity: 0.5; transform: translateY(0); }
+  50%       { opacity: 1;   transform: translateY(3px); }
 }
 
 .enc-content::after {

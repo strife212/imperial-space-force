@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { ENCYCLOPEDIA } from '../data/encyclopediaData'
 import { getFlag } from '../lib/store'
 
@@ -28,10 +28,25 @@ export default function EncyclopediaScreen({ onReturn }) {
   const [topicId,       setTopicId]       = useState(ENCYCLOPEDIA[0].id)
   const [entryId,       setEntryId]       = useState(null)
   const [imageExpanded, setImageExpanded] = useState(false)
+  const [canScrollDown, setCanScrollDown] = useState(false)
+  const contentRef = useRef(null)
 
   const topic   = ENCYCLOPEDIA.find(t => t.id === topicId)
   const entries = topic?.entries ?? []
   const entry   = entries.find(e => e.id === entryId) ?? null
+
+  const checkScroll = useCallback(() => {
+    const el = contentRef.current
+    if (!el) return
+    setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 4)
+  }, [])
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    el.scrollTop = 0
+    checkScroll()
+  }, [entryId, checkScroll])
 
   const isLocked = (e) => {
     if (!e.locked) return false
@@ -108,7 +123,8 @@ export default function EncyclopediaScreen({ onReturn }) {
         </div>
 
         {/* Content panel */}
-        <div className="enc-content">
+        <div className="enc-content-wrap">
+        <div className="enc-content" ref={contentRef} onScroll={checkScroll}>
           {entry && isLocked(entry) ? (
             <div className="enc-content-locked">
               [ FIND INFORMATION TO UNLOCK ]
@@ -138,6 +154,8 @@ export default function EncyclopediaScreen({ onReturn }) {
               {entryId ? '// NO DATA //' : '// SELECT AN ENTRY //'}
             </div>
           )}
+        </div>
+        {canScrollDown && <div className="enc-scroll-arrow">▼</div>}
         </div>
 
       </div>

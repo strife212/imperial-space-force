@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { getFlags, setFlag } from '../lib/store'
+import { useScreenScale } from '../hooks/useScreenScale'
 
 const SCREENS = [
   { key: 'login',        label: 'Login Screen'           },
@@ -25,6 +26,7 @@ const FLAG_LABELS = {
 
 export default function DebugScreen({ onNavigate, onDebugMain }) {
   const [flags, setFlags] = useState(getFlags)
+  const innerRef = useScreenScale()
 
   const toggle = (name) => {
     const next = !flags[name]
@@ -34,6 +36,7 @@ export default function DebugScreen({ onNavigate, onDebugMain }) {
 
   return (
     <div id="debug-screen">
+      <div className="debug-inner" ref={innerRef}>
       <div className="debug-title">⬢ DEBUG // SCREEN SELECT</div>
       <div className="debug-body">
         <ul className="debug-list">
@@ -64,6 +67,7 @@ export default function DebugScreen({ onNavigate, onDebugMain }) {
             </button>
           ))}
         </div>
+      </div>
       </div>
     </div>
   )

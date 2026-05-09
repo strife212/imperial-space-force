@@ -112,8 +112,9 @@ function PlanetSphere({ planet, size = 110 }) {
 
 // ── main component ────────────────────────────────────────────────────────────
 export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unreadCount = 0, onMailOpen }) {
-  const canvasRef = useRef(null)
-  const stateRef  = useRef({
+  const canvasRef  = useRef(null)
+  const scalerRef  = useRef(null)
+  const stateRef   = useRef({
     angles:   PLANETS.map((_, i) => (i * Math.PI * 2.3) / PLANETS.length),
     lastTime: null,
     playing:  true,
@@ -125,6 +126,29 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
   const [hoveredIdx,  setHoveredIdx]  = useState(-1)
   const [selectedIdx, setSelectedIdx] = useState(initialSelectedIdx)
   const [isPlaying,   setIsPlaying]   = useState(true)
+
+  // ── Scale to fit small viewports ─────────────────────────────────────────
+  // HudHeader(35) + padding(48) + label(35) + canvas(540) + controls(28) + gaps(60) + return-btn(26) + HudFooter(28) ≈ 850px
+  const NATURAL_H = 850
+  useEffect(() => {
+    const update = () => {
+      const el = scalerRef.current
+      if (!el) return
+      const scale = Math.min(1, window.innerHeight / NATURAL_H)
+      if (scale < 1) {
+        el.style.width     = `${100 / scale}%`
+        el.style.height    = `${NATURAL_H}px`
+        el.style.transform = `scale(${scale})`
+      } else {
+        el.style.width     = '100%'
+        el.style.height    = '100%'
+        el.style.transform = ''
+      }
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
 
   // Seeing the orbital map unlocks the throneworld and world engine encyclopedia entries
   useEffect(() => {
@@ -363,7 +387,8 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
   const displaySun    = displayIdx === SUN_IDX
 
   return (
-    <div id="targeting-screen">
+    <div id="targeting-screen-outer">
+      <div id="targeting-screen" ref={scalerRef}>
       <HudHeader
         onLogout={() => onBack(selectedIdx)}
         center={
@@ -488,6 +513,7 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
         <span className="sep">│</span>
         <span>SIMULATION: <em className={isPlaying ? 'ok' : 'warn'}>{isPlaying ? 'RUNNING' : 'PAUSED'}</em></span>
       </HudFooter>
+      </div>
     </div>
   )
 }

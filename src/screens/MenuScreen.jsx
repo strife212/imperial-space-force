@@ -1,7 +1,9 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
+import { useScreenScale } from '../hooks/useScreenScale'
 
 export default function MenuScreen({ onManage, onLogout, onEncyclopedia }) {
   const clickSfx   = useRef(null)
+  const innerRef   = useScreenScale()
   const [infoHover, setInfoHover] = useState(false)
   const [visible,   setVisible]   = useState(false)
 
@@ -26,7 +28,7 @@ export default function MenuScreen({ onManage, onLogout, onEncyclopedia }) {
 
   return (
     <div id="menu-screen">
-      <div className="login-inner">
+      <div className="login-inner" ref={innerRef}>
         <div className="boot-header">
           <img className="boot-emblem" src={`${import.meta.env.BASE_URL}logo.png`} alt="Imperial Space Force Emblem" />
           <div className="boot-title">IMPERIAL SPACE FORCE</div>

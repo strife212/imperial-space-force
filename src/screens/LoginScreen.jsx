@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import CryptographyModule from '../components/CryptographyModule'
 import AudioSpectrograph from '../components/AudioSpectrograph'
+import { useScreenScale } from '../hooks/useScreenScale'
 
 const OPERATOR_ID = 'HIH V. ASTRAIA // CLR-Ω'
 const PASSWORD    = 'IMPERIAL-CLEARANCE-OMEGA'
@@ -18,6 +19,7 @@ export default function LoginScreen({ onComplete, onDebug }) {
 
   const timers   = useRef([])
   const clickSfx = useRef(null)
+  const innerRef = useScreenScale()
 
   // Anthem audio refs
   const anthemCtxRef      = useRef(null)
@@ -143,7 +145,7 @@ export default function LoginScreen({ onComplete, onDebug }) {
 
   return (
     <div id="login-screen" className={exiting ? 'fade-out' : ''}>
-      <div className="login-inner">
+      <div className="login-inner" ref={innerRef}>
         <div className="boot-header">
           <img className="boot-emblem" src={`${import.meta.env.BASE_URL}logo.png`} alt="Imperial Space Force Emblem" />
           <div className="boot-title">IMPERIAL SPACE FORCE</div>

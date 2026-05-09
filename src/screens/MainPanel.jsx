@@ -123,6 +123,30 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const tphaseRef     = useRef(0)
   const grbPctRef     = useRef(34)
   const lastTimeRef   = useRef(null)
+
+  // ── Scale to fit small viewports ──────────────────────────────────────────
+  // NATURAL_H = grid row mins (190+190+220+150) + 3 gaps + padding + HudHeader
+  const NATURAL_H = 848
+  const scalerRef = useRef(null)
+  useEffect(() => {
+    const update = () => {
+      const el = scalerRef.current
+      if (!el) return
+      const scale = Math.min(1, window.innerHeight / NATURAL_H)
+      if (scale < 1) {
+        el.style.width     = `${100 / scale}%`
+        el.style.height    = `${NATURAL_H}px`
+        el.style.transform = `scale(${scale})`
+      } else {
+        el.style.width     = '100%'
+        el.style.height    = '100%'
+        el.style.transform = ''
+      }
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
   const logTimerRef   = useRef(0)
   const grbTimerRef   = useRef(0)
   const logBufRef     = useRef([])
@@ -664,7 +688,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const showCodeVerify= launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown' || launchPhase === 'fired' || launchPhase === 'notarget'
 
   return (
-    <>
+    <div id="main-screen">
+      <div className="main-scaler" ref={scalerRef}>
       <HudHeader
         onLogout={onLogout}
         center={
@@ -996,6 +1021,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
           />
         </div>
       )}
-    </>
+      </div>
+    </div>
   )
 }
