@@ -768,9 +768,9 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
                 }
               </div>
             </div>
+            {!lowPower && !antennaAligned && <div className="radio-offline-overlay"><span>[ RADIO OFFLINE ]</span></div>}
           </div>
           {lowPower && <div className="low-power-overlay" />}
-          {!lowPower && !antennaAligned && <div className="radio-offline-overlay"><span>[ RADIO OFFLINE ]</span></div>}
         </section>
 
         <XBandRadioPanel litClass={lit('panel-xband')} lowPower={lowPower} aligned={antennaAligned} onAlign={onAdjustAntenna} />
@@ -846,7 +846,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
           title={!lowPower && antennaAligned ? 'Open Targeting System' : undefined}
         >
           <header className="panel-header">
-            <span className={`bullet${hasTarget ? ' pulse' : ' bullet--alert'}`} /><h2>GEODESIC TARGETING SOLUTION</h2>
+            <span className={`bullet${(!hasTarget && antennaAligned) ? ' bullet--alert' : ''}`} /><h2>GEODESIC TARGETING SOLUTION</h2>
             <span className="panel-id">PNL-006 / SCHWARZSCHILD-CORRECTED</span>
           </header>
           <div className="panel-body target-body">
@@ -868,9 +868,9 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
                 </div>
               </div>
             </div>
+            {!lowPower && !antennaAligned && <div className="radio-offline-overlay"><span>[ RADIO OFFLINE ]</span></div>}
           </div>
           {lowPower && <div className="low-power-overlay" />}
-          {!lowPower && !antennaAligned && <div className="radio-offline-overlay"><span>[ RADIO OFFLINE ]</span></div>}
         </section>
 
         {/* POWER / REACTOR */}

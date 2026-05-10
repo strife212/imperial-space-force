@@ -95,7 +95,7 @@ export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }
                 </div>
               </>
             ) : (
-              <div className="xband-lcd-fault">ANTENNA ALIGNMENT ISSUE</div>
+              <div className="xband-lcd-fault">[ ANTENNA ALIGNMENT ISSUE ]</div>
             )}
           </div>
 

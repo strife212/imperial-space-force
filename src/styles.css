@@ -947,7 +947,16 @@ body {
   z-index: 10;
   pointer-events: none;
   user-select: none;
-  background: rgba(1, 2, 12, 0.55);
+  /* Nearly-opaque blank; repeating-linear-gradient adds faint scanlines */
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.18) 0px,
+      rgba(0, 0, 0, 0.18) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    rgba(1, 2, 10, 0.93);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -957,8 +966,8 @@ body {
   font-size: clamp(14px, 1.6vw, 26px);
   font-weight: 700;
   letter-spacing: 0.3em;
-  color: rgba(255, 80, 80, 0.95);
-  text-shadow: 0 0 18px rgba(255, 60, 60, 0.5);
+  color: rgba(255, 80, 80, 0.35);
+  text-shadow: none;
 }
 
 #panel-power .panel-body {
