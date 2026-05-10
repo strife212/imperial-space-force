@@ -1153,8 +1153,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
+  gap: 4px;
   border-left: 1px solid rgba(120, 120, 120, 0.15);
   padding-left: 8px;
   min-width: 0;
@@ -1167,11 +1166,32 @@ body {
   flex-shrink: 0;
 }
 
-.xband-dial-surround {
+.xband-dial-wrap {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  overflow: visible;
+}
+
+.xband-dial-arc {
+  width: 100%;
+  display: block;
+  flex-shrink: 0;
+}
+
+.xband-dial-surround {
+  /* Pull the surround up so its centre sits on the arc's centre point.
+     margin-top % is relative to parent width; surround is 90% wide with
+     aspect-ratio 1 (= 90% tall), so -45% = half its height. */
+  margin-top: -40%;
+  width: 80%;
+  flex-shrink: 0;
   aspect-ratio: 1;
-  max-width: 100%;
+  position: relative;
+  z-index: 1;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #2a2a2a, #0a0a0a);
   border: 2px solid rgba(160, 160, 160, 0.4);

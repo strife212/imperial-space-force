@@ -5,6 +5,22 @@ const MAX_FREQ = 12.0
 const STEP = 0.1
 const PX_PER_STEP = 5
 
+// ── Dial arc scale (computed once at module level) ────────────────────────────
+// 41 ticks spanning 180°; major every 10 (= 1 GHz), medium every 5 (= 0.5 GHz)
+const ARC_CX = 50, ARC_CY = 54, ARC_R = 46
+const DIAL_TICKS = Array.from({ length: 41 }, (_, i) => {
+  const angle   = Math.PI * (1 - i / 40)
+  const cos     = Math.cos(angle), sin = Math.sin(angle)
+  const isMajor = i % 10 === 0
+  const isMid   = i % 10 === 5
+  const len     = isMajor ? 13 : isMid ? 8 : 4
+  return {
+    x1: ARC_CX + ARC_R * cos,           y1: ARC_CY - ARC_R * sin,
+    x2: ARC_CX + (ARC_R - len) * cos,   y2: ARC_CY - (ARC_R - len) * sin,
+    isMajor, isMid,
+  }
+})
+
 export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }) {
   const [freq,      setFreq]      = useState(8.0)
   const [dialAngle, setDialAngle] = useState(-90)
@@ -90,13 +106,34 @@ export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }
 
         <div className="xband-dial-section">
           <div className="xband-dial-label">FREQUENCY</div>
-          <div className="xband-dial-surround">
-            <div
-              className="xband-dial"
-              onMouseDown={onMouseDown}
-              style={{ transform: `rotate(${dialAngle}deg)` }}
-            >
-              <div className="xband-dial-marker" />
+          <div className="xband-dial-wrap">
+            {/* Arc scale above the dial */}
+            <svg className="xband-dial-arc" viewBox="0 0 100 54" preserveAspectRatio="xMidYMid meet">
+              <path
+                d={`M 4 54 A ${ARC_R} ${ARC_R} 0 0 0 96 54`}
+                fill="none"
+                stroke="rgba(0,200,80,0.18)"
+                strokeWidth="0.8"
+              />
+              {DIAL_TICKS.map((t, i) => (
+                <line
+                  key={i}
+                  x1={t.x1.toFixed(2)} y1={t.y1.toFixed(2)}
+                  x2={t.x2.toFixed(2)} y2={t.y2.toFixed(2)}
+                  stroke={t.isMajor ? 'rgba(0,220,100,0.85)' : t.isMid ? 'rgba(0,200,80,0.55)' : 'rgba(0,170,65,0.32)'}
+                  strokeWidth={t.isMajor ? 1.3 : t.isMid ? 0.9 : 0.65}
+                  strokeLinecap="round"
+                />
+              ))}
+            </svg>
+            <div className="xband-dial-surround">
+              <div
+                className="xband-dial"
+                onMouseDown={onMouseDown}
+                style={{ transform: `rotate(${dialAngle}deg)` }}
+              >
+                <div className="xband-dial-marker" />
+              </div>
             </div>
           </div>
           <div className="xband-dial-range">8 ←→ 12 GHz</div>
