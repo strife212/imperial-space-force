@@ -24,7 +24,7 @@ const FLAG_LABELS = {
   lancecast:           'Lance Cast',
 }
 
-export default function DebugScreen({ onNavigate, onDebugMain }) {
+export default function DebugScreen({ onNavigate, onDebugMain, onDebugFail }) {
   const [flags, setFlags] = useState(getFlags)
   const innerRef = useScreenScale()
 
@@ -52,6 +52,12 @@ export default function DebugScreen({ onNavigate, onDebugMain }) {
             <button className="debug-item debug-item--shortcut" onClick={onDebugMain}>
               <span className="debug-item-key">[⚡]</span>
               <span className="debug-item-label">Main Panel — power 75, target Aethon</span>
+            </button>
+          </li>
+          <li>
+            <button className="debug-item debug-item--shortcut" onClick={onDebugFail}>
+              <span className="debug-item-key">[✕]</span>
+              <span className="debug-item-label">Game Over Screen — fail / court martial sequence</span>
             </button>
           </li>
         </ul>

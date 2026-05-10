@@ -4352,6 +4352,92 @@ body {
   50%      { text-shadow: 0 0 28px rgba(120, 180, 255, 0.65); }
 }
 
+/* ── Game Over — Fail / Court Martial sequence ───────────────────── */
+.go-id-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: clamp(320px, 56vw, 620px);
+  background: rgba(4, 6, 22, 0.97);
+  border: 1px solid rgba(100, 130, 180, 0.35);
+  box-shadow: 0 0 60px rgba(60, 80, 160, 0.15), inset 0 0 30px rgba(0, 0, 0, 0.4);
+  padding: 20px 24px;
+  gap: 14px;
+  font-family: var(--font-mono);
+}
+.go-id-card--fading {
+  animation: go-id-fade-out 2s ease-in forwards;
+}
+@keyframes go-id-fade-out {
+  to { opacity: 0; }
+}
+.go-fade-in {
+  animation: go-content-in 0.8s ease-out both;
+}
+@keyframes go-content-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.go-id-header {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--c-pink);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.go-id-divider {
+  height: 1px;
+  background: linear-gradient(90deg, var(--c-cardinal), transparent);
+  flex-shrink: 0;
+}
+.go-id-body {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+.go-id-portrait-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 140px;
+}
+.go-id-portrait {
+  display: block;
+  width: 100%;
+  filter: grayscale(0.2) contrast(1.05);
+  border: 1px solid rgba(100, 130, 180, 0.2);
+}
+.go-id-slash {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom right,
+    transparent calc(50% - 6px),
+    rgba(210, 30, 30, 0.5) calc(50% - 6px),
+    rgba(210, 30, 30, 0.5) calc(50% + 6px),
+    transparent calc(50% + 6px)
+  );
+  animation: go-slash-appear 0.25s ease-out both;
+}
+@keyframes go-slash-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.go-id-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.go-id-revoked {
+  color: rgba(220, 40, 40, 0.95) !important;
+  text-shadow: 0 0 10px rgba(220, 40, 40, 0.55);
+  animation: go-revoke-flash 0.35s step-start 2;
+}
+@keyframes go-revoke-flash {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
 /* ── Encyclopedia Screen ─────────────────────────────────────────── */
 #encyclopedia-screen {
   position: fixed;
