@@ -1,5 +1,5 @@
 # IMPERIAL SPACE FORCE
-### HMSS "Her Annunciator" — Tactical Command Interface
+Tactical Command Interface
 
 A narrative browser game built as a fictional military command terminal. The player operates an imperial orbital weapons platform through a series of interlocking screens, each simulating a real system on the station.
 
