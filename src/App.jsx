@@ -31,11 +31,23 @@ export default function App() {
   const [toastKey,          setToastKey]          = useState(0)
   const [toastVisible,      setToastVisible]      = useState(false)
   const seenMessageIds      = useRef(new Set(INITIAL_MESSAGES.map(m => m.id)))
+  const hasShownInitialToast = useRef(false)
   const [initialFlagCount]                        = useState(() => countTrueFlags())
   const [encyclopediaSource, setEncyclopediaSource] = useState('menu')
   const [countdownSeconds,   setCountdownSeconds]   = useState(10)
 
   const triggerFlag = (name) => setSessionFlags(prev => new Set([...prev, name]))
+
+  useEffect(() => {
+    if (screen === 'main' && !hasShownInitialToast.current) {
+      hasShownInitialToast.current = true
+      const t = setTimeout(() => {
+        setToastKey(k => k + 1)
+        setToastVisible(true)
+      }, 1600)
+      return () => clearTimeout(t)
+    }
+  }, [screen])
 
   useEffect(() => {
     const toAdd = ALL_TRIGGERED_MESSAGES.filter(m =>
