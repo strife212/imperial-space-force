@@ -2355,13 +2355,13 @@ body {
   z-index: 1999;
   background: rgba(0, 0, 0, 0.72);
   backdrop-filter: grayscale(1);
-  animation: msg-dim-fade 3s ease-in forwards;
+  animation: msg-dim-fade 2.7s ease-in forwards;
 }
 
 @keyframes msg-dim-fade {
   0%   { opacity: 0; }
-  8%   { opacity: 1; }
-  66%  { opacity: 1; }
+  9%   { opacity: 1; }
+  61%  { opacity: 1; }
   100% { opacity: 0; }
 }
 
@@ -2383,13 +2383,13 @@ body {
   gap: 10px;
   pointer-events: none;
   box-shadow: 0 0 40px rgba(80, 140, 255, 0.15);
-  animation: msg-toast-rise 3s ease-in forwards;
+  animation: msg-toast-rise 2.7s ease-in forwards;
 }
 
 @keyframes msg-toast-rise {
   0%   { opacity: 0;    top: 50%; }
-  8%   { opacity: 1;    top: 50%; }
-  66%  { opacity: 1;    top: 50%; }
+  9%   { opacity: 1;    top: 50%; }
+  61%  { opacity: 1;    top: 50%; }
   100% { opacity: 0;    top: 4%; }
 }
 

@@ -3,7 +3,7 @@ export default function HudHeader({ onLogout, center, right }) {
     <header className="hud-header">
       <div className="header-left">
         <span className="brand brand-link" onClick={onLogout} title="Return to login">
-          ⬢ IMPERIAL SPACE FORCE // HMSS &quot;HER ANNUNCIATOR&quot;
+          ⬢ IMPERIAL SPACE FORCE // HMSS HER ANNUNCIATOR
         </span>
       </div>
       <div className="header-center">{center}</div>
