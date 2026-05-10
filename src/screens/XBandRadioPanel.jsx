@@ -65,41 +65,41 @@ export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }
 
       <div className="panel-body xband-body">
 
-        <div className="xband-lcd">
-          {aligned ? (
-            <>
-              <div className="xband-lcd-row">
-                <span className="xband-lcd-label">FREQ</span>
-                <span className="xband-lcd-value xband-lcd-value--large">{freq.toFixed(1)} GHz</span>
-              </div>
-              <div className="xband-lcd-row">
-                <span className="xband-lcd-label">BAND</span>
-                <span className="xband-lcd-value xband-lcd-value--large">X-BAND / {wavelengthCm} cm</span>
-              </div>
-            </>
-          ) : (
-            <div className="xband-lcd-fault">ANTENNA ALIGNMENT ISSUE</div>
-          )}
-        </div>
-
-        <div className="xband-controls-row">
-          <div className="xband-dial-section">
-            <div className="xband-dial-label">FREQUENCY</div>
-            <div className="xband-dial-surround">
-              <div
-                className="xband-dial"
-                onMouseDown={onMouseDown}
-                style={{ transform: `rotate(${dialAngle}deg)` }}
-              >
-                <div className="xband-dial-marker" />
-              </div>
-            </div>
-            <div className="xband-dial-range">8 ←──→ 12 GHz</div>
+        <div className="xband-left">
+          <div className="xband-lcd">
+            {aligned ? (
+              <>
+                <div className="xband-lcd-row">
+                  <span className="xband-lcd-label">FREQ</span>
+                  <span className="xband-lcd-value xband-lcd-value--large">{freq.toFixed(1)} GHz</span>
+                </div>
+                <div className="xband-lcd-row">
+                  <span className="xband-lcd-label">BAND</span>
+                  <span className="xband-lcd-value xband-lcd-value--large">X-BAND / {wavelengthCm} cm</span>
+                </div>
+              </>
+            ) : (
+              <div className="xband-lcd-fault">ANTENNA ALIGNMENT ISSUE</div>
+            )}
           </div>
 
           <button className="xband-antenna-btn" disabled={lowPower || aligned} onClick={onAlign}>
             {aligned ? 'ANTENNA ALIGNED' : 'ADJUST ANTENNA ALIGNMENT'}
           </button>
+        </div>
+
+        <div className="xband-dial-section">
+          <div className="xband-dial-label">FREQUENCY</div>
+          <div className="xband-dial-surround">
+            <div
+              className="xband-dial"
+              onMouseDown={onMouseDown}
+              style={{ transform: `rotate(${dialAngle}deg)` }}
+            >
+              <div className="xband-dial-marker" />
+            </div>
+          </div>
+          <div className="xband-dial-range">8 ←→ 12 GHz</div>
         </div>
 
       </div>

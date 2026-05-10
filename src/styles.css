@@ -1082,9 +1082,17 @@ body {
 /* ---------- x-band radio panel ---------- */
 .xband-body {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 10px;
   height: 100%;
+}
+
+.xband-left {
+  flex: 3;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .xband-lcd {
@@ -1094,6 +1102,11 @@ body {
   padding: 8px 10px;
   font-family: 'Courier New', monospace;
   box-shadow: inset 0 0 12px rgba(0, 200, 80, 0.08), 0 0 6px rgba(0, 200, 80, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 62px;
 }
 
 .xband-lcd-row {
@@ -1135,31 +1148,30 @@ body {
   animation: blink 1s infinite;
 }
 
-.xband-controls-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex: 1;
-  min-height: 0;
-}
-
 .xband-dial-section {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  flex-shrink: 0;
+  border-left: 1px solid rgba(120, 120, 120, 0.15);
+  padding-left: 8px;
+  min-width: 0;
 }
 
 .xband-dial-label {
   font-size: 10px;
   color: var(--c-ash-dim);
   letter-spacing: 0.14em;
+  flex-shrink: 0;
 }
 
 .xband-dial-surround {
-  width: 64px;
-  height: 64px;
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: 1;
+  max-width: 100%;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #2a2a2a, #0a0a0a);
   border: 2px solid rgba(160, 160, 160, 0.4);
@@ -1170,8 +1182,8 @@ body {
 }
 
 .xband-dial {
-  width: 52px;
-  height: 52px;
+  width: 84%;
+  height: 84%;
   border-radius: 50%;
   background: radial-gradient(circle at 38% 38%, #333, #111);
   border: 1px solid rgba(120, 120, 120, 0.5);
@@ -1182,26 +1194,27 @@ body {
 
 .xband-dial-marker {
   position: absolute;
-  top: 6px;
+  top: 8%;
   left: 50%;
   transform: translateX(-50%);
-  width: 3px;
-  height: 10px;
+  width: 12%;
+  height: 20%;
+  max-width: 5px;
   background: rgba(0, 220, 100, 0.9);
   border-radius: 2px;
   box-shadow: 0 0 4px rgba(0, 220, 100, 0.8);
 }
 
 .xband-dial-range {
-  font-size: 9.5px;
+  font-size: 9px;
   color: var(--c-ash-dim);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   opacity: 0.6;
+  flex-shrink: 0;
 }
 
 .xband-antenna-btn {
   flex: 1;
-  align-self: stretch;
   padding: 10px;
   background: transparent;
   border: 1px solid rgba(100, 180, 255, 0.4);
