@@ -11,7 +11,7 @@ A narrative browser game built as a fictional military command terminal. The pla
 - **Vite 8** — dev server and build tooling
 - **Vanilla CSS** — single `styles.css` file; no CSS framework or preprocessor
 - **No external runtime dependencies** — React + ReactDOM are the only production dependencies
-- **Deployed to GitHub Pages** via GitHub Actions (`base: '/imperial-space-force/'` in Vite config)
+- **Deployed to GitHub Pages** via GitHub Actions, served at [imperialspaceforce.com](https://imperialspaceforce.com)
 
 ---
 
