@@ -80,7 +80,7 @@ npm install
 npm run dev
 ```
 
-Runs at `http://localhost:5173/imperial-space-force/`
+Runs at `http://localhost:5173/`
 
 ```bash
 npm run build
