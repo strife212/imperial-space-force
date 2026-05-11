@@ -42,7 +42,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, onAdjustAntenna, antennaAligned = false, reactorPlasma = 75, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen }) {
+export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, onAdjustAntenna, antennaAligned = false, reactorPlasma = 75, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen, underAttack = false }) {
 
   // ── Panel init animation ──────────────────────────────────────────────────
   const [litPanels, setLitPanels] = useState(new Set())
@@ -100,8 +100,10 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const admRef          = useRef(null)
   const tensorRef       = useRef(null)
   const coneStateRef    = useRef(null)
+  const coneSubRef      = useRef(null)
   const tachyonRef      = useRef(null)
   const decohereRef     = useRef(null)
+  const decohSubRef     = useRef(null)
   const coreFluxRef     = useRef(null)
   const coreBarRef      = useRef(null)
   const capBankRef      = useRef(null)
@@ -166,6 +168,18 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   useEffect(() => { targetIdxRef.current = targetIdx }, [targetIdx])
   const countdownSecondsRef = useRef(countdownSeconds)
   useEffect(() => { countdownSecondsRef.current = countdownSeconds }, [countdownSeconds])
+  const underAttackRef = useRef(underAttack)
+  useEffect(() => { underAttackRef.current = underAttack }, [underAttack])
+
+  // Sync the two subtitle blink animations so they start at exactly the same time
+  useEffect(() => {
+    if (!underAttack) return
+    const els = [coneSubRef.current, decohSubRef.current].filter(Boolean)
+    els.forEach(el => { el.style.animation = 'none' })
+    // Force reflow so the removal takes effect before we re-apply
+    els.forEach(el => el.getBoundingClientRect())
+    els.forEach(el => { el.style.animation = '' })
+  }, [underAttack])
 
   // ── Log helper ────────────────────────────────────────────────────────────
   const addLog = useCallback((level, msg) => {
@@ -345,15 +359,26 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
     }
 
     const updateCausality = (now) => {
-      const tilt = 0.00027 + Math.abs(Math.sin(now * 0.0005)) * 0.00018
-      if (coneStateRef.current) coneStateRef.current.textContent = `${tilt.toFixed(5)} rad`
+      const atk = underAttackRef.current
+      const tilt = atk
+        ? 0.04217 + Math.abs(Math.sin(now * 0.0005)) * 0.01364
+        : 0.00027 + Math.abs(Math.sin(now * 0.0005)) * 0.00018
+      if (coneStateRef.current) {
+        coneStateRef.current.textContent = `${tilt.toFixed(5)} rad`
+        coneStateRef.current.className   = atk ? 'chrono-state chrono-state--attack' : 'chrono-state ok'
+      }
       const tach = 2.4 + Math.sin(now * 0.0017) * 0.6
       if (tachyonRef.current) {
         tachyonRef.current.textContent = `${tach.toFixed(2)} σ ABOVE BG`
         tachyonRef.current.className = tach >= 3.5 ? 'chrono-state bad' : tach > 2.0 ? 'chrono-state warn' : 'chrono-state ok'
       }
-      const tD = (10 ** -13) * (1 + Math.sin(now * 0.0009) * 0.05)
-      if (decohereRef.current) decohereRef.current.textContent = `τ_D = ${tD.toExponential(2)} s`
+      const tD = atk
+        ? (10 ** -13) * (1 + Math.sin(now * 0.0009) * 0.35)
+        : (10 ** -13) * (1 + Math.sin(now * 0.0009) * 0.05)
+      if (decohereRef.current) {
+        decohereRef.current.textContent = `τ_D = ${tD.toExponential(2)} s`
+        decohereRef.current.className   = atk ? 'chrono-state chrono-state--attack' : 'chrono-state ok'
+      }
     }
 
     const updatePower = (now) => {
@@ -810,8 +835,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
               </div>
               <div className="chrono-cell">
                 <div className="chrono-label">LIGHT CONE TILT</div>
-                <div className="chrono-state ok" ref={coneStateRef} />
-                <div className="chrono-sub">WITHIN TOLERANCE</div>
+                <div className={underAttack ? 'chrono-state chrono-state--attack' : 'chrono-state ok'} ref={coneStateRef} />
+                <div className={`chrono-sub${underAttack ? ' chrono-sub--alert' : ''}`} ref={coneSubRef}>{underAttack ? 'EXCEEDING TOLERANCE' : 'WITHIN TOLERANCE'}</div>
               </div>
               <div className="chrono-cell">
                 <div className="chrono-label">CAUCHY HORIZON</div>
@@ -830,8 +855,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
               </div>
               <div className="chrono-cell">
                 <div className="chrono-label">QUANTUM DECOHERENCE</div>
-                <div className="chrono-state ok" ref={decohereRef} />
-                <div className="chrono-sub">ENVIRONMENT COUPLED</div>
+                <div className={underAttack ? 'chrono-state chrono-state--attack' : 'chrono-state ok'} ref={decohereRef} />
+                <div className={`chrono-sub${underAttack ? ' chrono-sub--alert' : ''}`} ref={decohSubRef}>{underAttack ? 'DECOUPLING IMMINENT' : 'ENVIRONMENT COUPLED'}</div>
               </div>
             </div>
           </div>
