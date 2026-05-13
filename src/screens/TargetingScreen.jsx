@@ -4,7 +4,7 @@ import HudFooter from '../components/HudFooter'
 import { SYSTEMS, TARGETS, findTargetIdx, getTargetInfo } from '../lib/planetData'
 import { setFlag } from '../lib/store'
 
-const CANVAS_SIZE = 600
+const CANVAS_SIZE  = 600
 const STAR_R      = 16
 const PIX_MIN     = 42
 const PIX_MAX     = 272
@@ -130,8 +130,8 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
   )
 
   const stateRef = useRef({
-    lastTime: null,
-    playing:  true,
+    lastTime:  null,
+    simSpeed:  0.5,
     hovered:  -1,                  // flat TARGETS index, or -1
     selected: initialSelectedIdx,  // flat TARGETS index, or -1
     stars:    makeStars(),
@@ -139,7 +139,7 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
 
   const [hoveredIdx,  setHoveredIdx]  = useState(-1)
   const [selectedIdx, setSelectedIdx] = useState(initialSelectedIdx)
-  const [isPlaying,   setIsPlaying]   = useState(true)
+  const [simSpeed,    setSimSpeed]    = useState(0.5)
 
   // Orbit radii for the current system
   const orbitRadii = useMemo(() => computeOrbits(currentSystem), [currentSystem])
@@ -398,11 +398,11 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
       const s = stateRef.current
       const sys = currentSystem
       const angles = angleStateRef.current[sys.id]
-      if (s.lastTime !== null && s.playing) {
+      if (s.lastTime !== null && s.simSpeed > 0) {
         const dt = Math.min(ts - s.lastTime, 100)
         sys.planets.forEach((p, i) => {
-          angles.planetAngles[i] += p.speed * dt
-          p.moons.forEach((m, j) => { angles.moonAngles[i][j] += m.speed * dt })
+          angles.planetAngles[i] += p.speed * dt * s.simSpeed
+          p.moons.forEach((m, j) => { angles.moonAngles[i][j] += m.speed * dt * s.simSpeed })
         })
       }
       s.lastTime = ts
@@ -415,9 +415,9 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
 
   // sync play state
   useEffect(() => {
-    stateRef.current.playing = isPlaying
-    if (!isPlaying) stateRef.current.lastTime = null
-  }, [isPlaying])
+    stateRef.current.simSpeed = simSpeed
+    if (simSpeed === 0) stateRef.current.lastTime = null
+  }, [simSpeed])
 
   // Reset lastTime on system switch so dt doesn't jump
   useEffect(() => {
@@ -596,13 +596,17 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
             />
             <div className="targeting-controls">
               <button
-                className={`targeting-btn${!isPlaying ? ' targeting-btn--active' : ''}`}
-                onClick={() => setIsPlaying(false)}
+                className={`targeting-btn${simSpeed === 0 ? ' targeting-btn--active' : ''}`}
+                onClick={() => setSimSpeed(0)}
               >⏸ PAUSE</button>
               <button
-                className={`targeting-btn${isPlaying ? ' targeting-btn--active' : ''}`}
-                onClick={() => setIsPlaying(true)}
-              >▶ PLAY</button>
+                className={`targeting-btn${simSpeed === 0.5 ? ' targeting-btn--active' : ''}`}
+                onClick={() => setSimSpeed(0.5)}
+              >0.5×</button>
+              <button
+                className={`targeting-btn${simSpeed === 1 ? ' targeting-btn--active' : ''}`}
+                onClick={() => setSimSpeed(1)}
+              >1×</button>
             </div>
           </div>
 
@@ -679,7 +683,7 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
           </em>
         </span>
         <span className="sep">│</span>
-        <span>SIMULATION: <em className={isPlaying ? 'ok' : 'warn'}>{isPlaying ? 'RUNNING' : 'PAUSED'}</em></span>
+        <span>SIMULATION: <em className={simSpeed > 0 ? 'ok' : 'warn'}>{simSpeed === 0 ? 'PAUSED' : simSpeed === 0.5 ? '0.5× SPEED' : '1× SPEED'}</em></span>
       </HudFooter>
       </div>
     </div>
