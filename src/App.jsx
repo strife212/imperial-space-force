@@ -13,7 +13,7 @@ import EncyclopediaScreen from './screens/EncyclopediaScreen'
 import AntennaAlignmentScreen from './screens/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import { INITIAL_MESSAGES, ALL_TRIGGERED_MESSAGES } from './data/messages'
-import { PLANETS, SUN, SUN_IDX } from './lib/planetData'
+import { getTargetName } from './lib/planetData'
 
 const countTrueFlags = () => Object.values(getFlags()).filter(Boolean).length
 
@@ -66,9 +66,7 @@ export default function App() {
 
   const goEncyclopedia = (source) => { setEncyclopediaSource(source); setScreen('encyclopedia') }
 
-  const targetName  = targetIdx === SUN_IDX ? SUN.name
-                    : targetIdx >= 0        ? PLANETS[targetIdx].name
-                    : 'CLASSIFIED'
+  const targetName  = targetIdx >= 0 ? getTargetName(targetIdx) : 'CLASSIFIED'
   const unreadCount = messages.filter(m => !m.read).length
   const markRead    = (id) => setMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m))
   const markReplied = (id) => setRepliedIds(prev => new Set([...prev, id]))

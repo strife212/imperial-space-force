@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { LOG_MESSAGES, PKG_NAMES, SECTION_INFO } from '../lib/constants'
-import { PLANETS, SUN, SUN_IDX } from '../lib/planetData'
+import { PLANETS, SUN, SUN_IDX, getTargetName } from '../lib/planetData'
 import LaunchCodeVerifier from './LaunchCodeVerifier'
 import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
@@ -702,9 +702,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
 
   // ── JSX ───────────────────────────────────────────────────────────────────
   const hasTarget     = targetIdx >= 0
-  const targetName    = targetIdx === SUN_IDX ? SUN.name
-                      : targetIdx >= 0        ? PLANETS[targetIdx].name
-                      : 'None'
+  const targetName    = targetIdx >= 0 ? getTargetName(targetIdx) : 'None'
   const lowPower      = reactorPlasma < 25
   const showArm       = launchPhase === 'idle'
   const showDisarm    = launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown'
