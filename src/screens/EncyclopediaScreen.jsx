@@ -136,7 +136,7 @@ export default function EncyclopediaScreen({ onReturn }) {
               {entry.content.image && (
                 <div className="enc-article-image-block">
                   <img
-                    className={`enc-article-image${imageExpanded ? ' enc-article-image--expanded' : ''}`}
+                    className={`enc-article-image${imageExpanded ? ' enc-article-image--expanded' : ''}${entry.content.image.logo ? ' enc-article-image--logo' : ''}`}
                     src={`${import.meta.env.BASE_URL}${entry.content.image.src}`}
                     alt={entry.content.image.caption}
                     onClick={() => setImageExpanded(x => !x)}
