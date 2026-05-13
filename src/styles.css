@@ -4127,7 +4127,7 @@ body {
 }
 
 .tsys-title {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.28em;
   color: rgba(120, 180, 255, 0.55);
   text-transform: uppercase;
@@ -4166,20 +4166,83 @@ body {
   position: relative;
 }
 
-/* system name overlay on the diagram */
-.targeting-system-name {
+/* system name row — overlaid on the canvas, takes up no layout space */
+.targeting-system-name-row {
   position: absolute;
   top: 12px;
-  left: 50%;
+  left: calc(55%);
   transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.targeting-system-name {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 18px;
+  font-weight: 700;
   letter-spacing: 0.32em;
   color: rgba(180, 215, 255, 0.85);
   text-transform: uppercase;
   text-shadow: 0 0 12px rgba(80, 140, 220, 0.55), 0 0 4px rgba(0, 0, 0, 0.9);
   pointer-events: none;
+}
+
+.targeting-system-nav-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  pointer-events: auto;
+  background: rgba(5, 8, 20, 0.70);
+  border: 2px solid rgba(120, 180, 255, 0.45);
+  border-radius: 3px;
+  color: rgba(140, 200, 255, 0.80);
+  font-size: 22px;
+  line-height: 1;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  text-shadow: 0 0 8px rgba(80, 140, 220, 0.55);
+}
+.targeting-system-nav-btn:hover {
+  background: rgba(120, 180, 255, 0.14);
+  border-color: rgba(120, 180, 255, 0.80);
+  color: rgba(180, 220, 255, 1.00);
+}
+
+.targeting-imperial-banner {
+  position: absolute;
+  top: 38px;
+  left: calc(55%);
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  white-space: nowrap;
+  color: rgba(255, 200, 80, 0.95);
+  text-transform: uppercase;
+  text-shadow:
+    0 0 6px  rgba(255, 190, 60, 0.90),
+    0 0 14px rgba(255, 160, 30, 0.65),
+    0 0 28px rgba(255, 130, 0,  0.35);
+  animation: imperial-banner-pulse 3s ease-in-out infinite;
+  pointer-events: none;
   z-index: 2;
+}
+
+@keyframes imperial-banner-pulse {
+  0%, 100% { opacity: 0.85; text-shadow: 0 0 6px rgba(255,190,60,0.90), 0 0 14px rgba(255,160,30,0.65), 0 0 28px rgba(255,130,0,0.35); }
+  50%       { opacity: 1.00; text-shadow: 0 0 8px rgba(255,210,80,1.00), 0 0 20px rgba(255,180,50,0.80), 0 0 40px rgba(255,140,0,0.50); }
 }
 
 .targeting-canvas {
@@ -4214,9 +4277,9 @@ body {
   color: rgba(160, 210, 255, 0.85);
 }
 .targeting-btn--active {
-  background: rgba(120, 180, 255, 0.12);
-  border-color: rgba(120, 180, 255, 0.7);
-  color: rgba(180, 220, 255, 0.95);
+  background: rgba(120, 180, 255, 0.07);
+  border-color: rgba(120, 180, 255, 0.40);
+  color: rgba(150, 195, 255, 0.65);
 }
 
 /* right column — info panel stacked above list panel */
@@ -4306,7 +4369,7 @@ body {
   flex-direction: column;
   padding: 12px 14px;
   color: var(--c-ash);
-  max-height: 300px;
+  height: 250px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(80, 120, 220, 0.3) transparent;
@@ -4328,10 +4391,10 @@ body {
 }
 
 .tlist-title {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.22em;
   color: rgba(120, 180, 255, 0.6);
-  text-align: center;
+  text-align: left;
   margin-bottom: 6px;
 }
 
@@ -4391,23 +4454,41 @@ body {
   margin: auto 0;
 }
 
+.targeting-selected-label {
+  text-align: center;
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 1.4rem;
+  letter-spacing: 0.08em;
+  color: rgba(120, 180, 255, 0.55);
+  margin-bottom: 6px;
+}
+.targeting-selected-name {
+  color: rgba(80, 220, 120, 0.90);
+}
+.targeting-selected-none {
+  color: rgba(120, 180, 255, 0.38);
+}
+
 .targeting-return-btn {
-  background: transparent;
-  border: 1px solid rgba(120, 180, 255, 0.25);
-  color: rgba(120, 180, 255, 0.5);
+  background: rgba(120, 180, 255, 0.06);
+  border: 1px solid rgba(120, 180, 255, 0.50);
+  color: rgba(160, 210, 255, 0.80);
   font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  padding: 7px 24px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.20em;
+  padding: 10px 32px;
   border-radius: 2px;
   cursor: pointer;
   text-align: center;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 10px rgba(80, 140, 220, 0.18), inset 0 0 8px rgba(80, 140, 220, 0.06);
 }
 .targeting-return-btn:hover {
-  background: rgba(120, 180, 255, 0.07);
-  border-color: rgba(120, 180, 255, 0.5);
-  color: rgba(160, 210, 255, 0.85);
+  background: rgba(120, 180, 255, 0.14);
+  border-color: rgba(140, 200, 255, 0.85);
+  color: rgba(200, 230, 255, 1.00);
+  box-shadow: 0 0 18px rgba(80, 140, 220, 0.40), inset 0 0 12px rgba(80, 140, 220, 0.12);
 }
 
 /* ── Game Over Screen ────────────────────────────────────────────── */

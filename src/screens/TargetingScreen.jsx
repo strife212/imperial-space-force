@@ -116,11 +116,8 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
   const canvasRef  = useRef(null)
   const scalerRef  = useRef(null)
 
-  // System currently being viewed — determined by the initial target's system, or first system
-  const initialSystemId = initialSelectedIdx >= 0
-    ? TARGETS[initialSelectedIdx]?.systemId ?? SYSTEMS[0].id
-    : SYSTEMS[0].id
-  const [currentSystemId, setCurrentSystemId] = useState(initialSystemId)
+  // Always open on the Novaraya System regardless of which target was previously selected
+  const [currentSystemId, setCurrentSystemId] = useState('throne-system')
   const currentSystem = useMemo(() => SYSTEMS.find(s => s.id === currentSystemId), [currentSystemId])
 
   // Per-system angle state — kept in refs across system switches so motion resumes naturally.
@@ -574,7 +571,20 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
           </div>
 
           <div className="targeting-canvas-wrap">
-            <div className="targeting-system-name">{currentSystem.name}</div>
+            <div className="targeting-system-name-row">
+              <div className="targeting-system-name">{currentSystem.name}</div>
+            </div>
+            {currentSystem.imperial && (
+              <div className="targeting-imperial-banner">IMPERIAL CONTROLLED SYSTEM</div>
+            )}
+            <button
+              className="targeting-system-nav-btn"
+              onClick={() => {
+                const idx = SYSTEMS.findIndex(s => s.id === currentSystemId)
+                switchSystem(SYSTEMS[(idx + 1) % SYSTEMS.length].id)
+              }}
+              title="Next system"
+            >›</button>
             <canvas
               ref={canvasRef}
               className="targeting-canvas"
@@ -648,6 +658,12 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
           </div>
         </div>
 
+        <div className="targeting-selected-label">
+          TARGET SELECTED:{' '}
+          <span className={selectedIdx >= 0 ? 'targeting-selected-name' : 'targeting-selected-none'}>
+            {selectedIdx >= 0 ? TARGETS[selectedIdx].body.name : 'None'}
+          </span>
+        </div>
         <button className="targeting-return-btn" onClick={() => onBack(selectedIdx)}>
           ← RETURN TO INSTALLATION VIEW
         </button>
