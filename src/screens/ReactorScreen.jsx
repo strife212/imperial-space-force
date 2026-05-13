@@ -456,7 +456,13 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, u
           <div className={`reactor-status-label${redlineActive ? ' rsl--overload' : plasmaDensity < 25 ? ' rsl--low' : ' rsl--nominal'}`}>
             {redlineActive ? 'OVERLOAD' : plasmaDensity < 25 ? 'LOW POWER — INCREASE PLASMA' : 'STATUS NOMINAL'}
           </div>
-          <button className="monitor-return-btn" onClick={() => { playClick(); onReturn(plasmaRef.current) }} disabled={redlineActive}>RETURN TO INSTALLATION VIEW</button>
+          <button
+            className={`monitor-return-btn${plasmaDensity >= 25 && plasmaDensity < 80 ? ' monitor-return-btn--ready' : ''}`}
+            onClick={() => { playClick(); onReturn(plasmaRef.current) }}
+            disabled={redlineActive}
+          >
+            RETURN TO INSTALLATION VIEW
+          </button>
         </div>
 
         {/* ── Status metrics ───────────────────────────────────────────────── */}

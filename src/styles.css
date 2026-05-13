@@ -3329,6 +3329,23 @@ body {
   color: rgba(220, 80, 60, 0.6);
 }
 
+/* Glow when reactor power is in the ideal range — hints at next step */
+.monitor-return-btn--ready {
+  border-color: rgba(80, 160, 255, 0.85);
+  color: #d0e8ff;
+  animation: ret-btn-glow 2.4s ease-in-out infinite;
+}
+.monitor-return-btn--ready:hover:not(:disabled) {
+  animation: none;
+  background: rgba(26, 100, 255, 0.18);
+  border-color: rgba(120, 180, 255, 1);
+  box-shadow: 0 0 22px rgba(60, 140, 255, 0.55);
+}
+@keyframes ret-btn-glow {
+  0%, 100% { box-shadow: 0 0 8px  rgba(60, 140, 255, 0.25); }
+  50%      { box-shadow: 0 0 22px rgba(80, 160, 255, 0.55); }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    REACTOR SCREEN
    ═══════════════════════════════════════════════════════════════════════════ */
