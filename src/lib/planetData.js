@@ -29,7 +29,7 @@ export const SYSTEMS = [
         speed:   0.00048,
         r:       12,
         color:   '#7090d0',
-        description: `Capital of the empire. Officially designated as such by the First Empress and never since renamed, an unusual omission for an institution that habitually renames every other facet of its environment. Temperate, oceanic, with the imperial capital (also unnamed in formal usage) set on the continent of Aurelia.\n\nApproximately twelve billion subjects reside on Throneworld, the vast majority within the orbital ring's downward shadow. The Empress's residence is the Cathedra, a structure whose internal volume exceeds that of any other sovereign palace ever constructed.`,
+        description: `The Novarayan Throneworld, home to the towering Cathedra and around it, the greatest city there ever was or ever will be.\n\nHost to the Imperial Academy of Sciences, the Synod of the Universal Order, the Admiralty and countless other ancient institutions of the arts, sciences and war.`,
         moons: [
           {
             name: 'The Ecumenologion',
