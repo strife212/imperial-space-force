@@ -35,6 +35,8 @@ export const ENCYCLOPEDIA = [
           `The Imperial Space Force, also known as the Imperial Navy, is the empire's roughly three thousand ships and, by every accounting that signifies, the most powerful force in known space. Its existence is the empire's settled position on the question of who rules the heavens.`,
           `For all this, the fleet has not fought a fleet engagement in a generation. The last great war ended before most current officers were born and the empire has been at peace since. This peace is the fleet's vindication; it is also, increasingly, its mood. A captain today is more likely to spend her career escorting a Princess to a treaty signing, conducting an antiquarian survey of some long-quiet system, or running anti-piracy sweeps along the trade routes than to fire her primary armament in earnest. Drills are kept and doctrine is rehearsed, but the fleet has learned, slowly, the habits of a parade: polished surfaces, exact formations, the careful ceremony of arriving in order.`,
           `Some among the Empress's councilors have begun, in private, to wonder what would happen if the Navy were ever again asked to be a blade rather than a banner. The fleet would say, of course, that it is ready.`,
+          `*"Remember Astraia's holy ship\nThat broke the rebel fleet at Sinn;\nRemember Berenike's lance\nThat sounded down the chaos' din;\nA thousand saints have sailed before\nWith banners high and hearts held true,\nAnd all that they have done in arms,\nWe dedicate again to do."*`,
+          `Verse II of **Sound the Lance!**, the navy's war song`,
         ],
         null,
         { src: 'logo.png', caption: 'Seal of the Imperial Space Force.', logo: true },
