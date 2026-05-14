@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react'
 import { getFlags } from '../lib/store'
 
+const FAIL_INTRO_TEXT = "Astraia! What in the throne are you doing? The deep space array is showing that the Annunciator has launched towards the Throne System. You'd destroy the Universal Order?"
+const TYPE_SPEED_MS   = 35
+const INTRO_HOLD_MS   = 1000
+const INTRO_FADE_MS   = 500
+
 export default function GameOverScreen({ initialFlagCount = 0, onEncyclopedia, fail = false }) {
   const currentFlagCount = Object.values(getFlags()).filter(Boolean).length
   const hasNewUnlocks    = currentFlagCount > initialFlagCount
+
+  // ── Fail intro state ──────────────────────────────────────────────────────
+  // 'typing' → 'fading' → 'done' (intro hidden, dossier shown)
+  const [introPhase, setIntroPhase] = useState(fail ? 'typing' : 'done')
+  const [typedChars, setTypedChars] = useState(0)
 
   // ── Fail sequence state ───────────────────────────────────────────────────
   const [rankRevoked,      setRankRevoked]      = useState(false)
@@ -13,8 +23,26 @@ export default function GameOverScreen({ initialFlagCount = 0, onEncyclopedia, f
   const [idFading,         setIdFading]         = useState(false)
   const [idGone,           setIdGone]           = useState(false)
 
+  // ── Intro driver: type chars → hold → fade → done ────────────────────────
   useEffect(() => {
     if (!fail) return
+    if (introPhase === 'typing') {
+      if (typedChars < FAIL_INTRO_TEXT.length) {
+        const id = setTimeout(() => setTypedChars(c => c + 1), TYPE_SPEED_MS)
+        return () => clearTimeout(id)
+      }
+      const id = setTimeout(() => setIntroPhase('fading'), INTRO_HOLD_MS)
+      return () => clearTimeout(id)
+    }
+    if (introPhase === 'fading') {
+      const id = setTimeout(() => setIntroPhase('done'), INTRO_FADE_MS)
+      return () => clearTimeout(id)
+    }
+  }, [fail, introPhase, typedChars])
+
+  // ── Dossier revocation timers — only start after intro is done ────────────
+  useEffect(() => {
+    if (!fail || introPhase !== 'done') return
     const timers = [
       setTimeout(() => setRankRevoked(true),      3600),
       setTimeout(() => setClearanceRevoked(true), 4440),
@@ -24,7 +52,19 @@ export default function GameOverScreen({ initialFlagCount = 0, onEncyclopedia, f
       setTimeout(() => setIdGone(true),           10920),
     ]
     return () => timers.forEach(clearTimeout)
-  }, [fail])
+  }, [fail, introPhase])
+
+  // ── Fail intro render ─────────────────────────────────────────────────────
+  if (fail && introPhase !== 'done') {
+    return (
+      <div id="game-over-screen">
+        <div className={`go-fail-intro${introPhase === 'fading' ? ' go-fail-intro--fading' : ''}`}>
+          {FAIL_INTRO_TEXT.slice(0, typedChars)}
+          {typedChars < FAIL_INTRO_TEXT.length && <span className="go-fail-intro-cursor">▌</span>}
+        </div>
+      </div>
+    )
+  }
 
   // ── Fail sequence render ──────────────────────────────────────────────────
   if (fail && !idGone) {
