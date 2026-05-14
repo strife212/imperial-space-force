@@ -585,15 +585,23 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
               }}
               title="Next system"
             >›</button>
-            <canvas
-              ref={canvasRef}
-              className="targeting-canvas"
-              width={CANVAS_SIZE}
-              height={CANVAS_SIZE}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
-              onClick={handleClick}
-            />
+            <div className="targeting-canvas-container">
+              <canvas
+                ref={canvasRef}
+                className="targeting-canvas"
+                width={CANVAS_SIZE}
+                height={CANVAS_SIZE}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+                onClick={handleClick}
+              />
+              <div className="targeting-selected-label">
+                TARGET SELECTED:{' '}
+                <span className={selectedIdx >= 0 ? 'targeting-selected-name' : 'targeting-selected-none'}>
+                  {selectedIdx >= 0 ? TARGETS[selectedIdx].body.name : 'None'}
+                </span>
+              </div>
+            </div>
             <div className="targeting-controls">
               <button
                 className={`targeting-btn${simSpeed === 0 ? ' targeting-btn--active' : ''}`}
@@ -633,6 +641,8 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
               <div className="tip-divider" />
               <div className="tip-row"><span className="tip-key">CLIMATE</span> <span className="tip-val">{displayTarget.body.climate}</span></div>
               <div className="tip-row"><span className="tip-key">DISTANCE FROM STAR</span> <span className="tip-val">{displayTarget.body.distAU.toFixed(2)} AU</span></div>
+              <div className="tip-row"><span className="tip-key">DIAMETER</span> <span className="tip-val">{displayTarget.body.diameter}</span></div>
+              <div className="tip-row"><span className="tip-key">GRAVITY</span> <span className="tip-val">{displayTarget.body.gravity}</span></div>
             </>
           ) : displayTarget?.kind === 'moon' ? (
             <>
@@ -662,12 +672,6 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
           </div>
         </div>
 
-        <div className="targeting-selected-label">
-          TARGET SELECTED:{' '}
-          <span className={selectedIdx >= 0 ? 'targeting-selected-name' : 'targeting-selected-none'}>
-            {selectedIdx >= 0 ? TARGETS[selectedIdx].body.name : 'None'}
-          </span>
-        </div>
         <button className="targeting-return-btn" onClick={() => onBack(selectedIdx)}>
           ← RETURN TO INSTALLATION VIEW
         </button>

@@ -24,6 +24,8 @@ export const SYSTEMS = [
         name:    'Throneworld',
         climate: 'Imperial Capital / Temperate',
         distAU:  1.00,
+        diameter: '12,742 km',
+        gravity:  '1.02 g',
         speed:   0.00048,
         r:       12,
         color:   '#7090d0',
@@ -56,39 +58,39 @@ export const SYSTEMS = [
     },
     planets: [
       {
-        name: 'Verath', climate: 'Scorched / Barren', distAU: 0.39, speed: 0.00090, r: 5, color: '#b87040', moons: [],
+        name: 'Verath', climate: 'Scorched / Barren', distAU: 0.39, speed: 0.00090, r: 5, color: '#b87040', moons: [], diameter: '4,879 km', gravity: '0.38 g',
         description: `Innermost world of Karath System. A scorched, barren rock with surface temperatures regularly exceeding nine hundred kelvin on the dayside. No atmosphere of note. The crust is iron-rich and tectonically dead.\n\nOf academic interest only, though several metallurgical concessions have been informally proposed in council. None has yet been ratified.`,
       },
       {
-        name: 'Solen II', climate: 'Arid / Volcanic', distAU: 0.72, speed: 0.00065, r: 7, color: '#d4a843', moons: [],
+        name: 'Solen II', climate: 'Arid / Volcanic', distAU: 0.72, speed: 0.00065, r: 7, color: '#d4a843', moons: [], diameter: '12,103 km', gravity: '0.91 g',
         description: `An arid, volcanic world with continuous tectonic disruption visible from orbit. Its name presupposes a Solen I that long-range survey has yet to identify; current orthodoxy holds the body to be a misnaming, but the appellation has persisted through three catalogue revisions.\n\nAtmosphere is thick with sulphurous compounds. The surface is unsuited for any conceivable Imperial presence.`,
       },
       {
-        name: 'Aethon', climate: 'Temperate / Oceanic', distAU: 1.00, speed: 0.00048, r: 9, color: '#4a8fd4', moons: [],
+        name: 'Aethon', climate: 'Temperate / Oceanic', distAU: 1.00, speed: 0.00048, r: 9, color: '#4a8fd4', moons: [], diameter: '13,261 km', gravity: '1.08 g',
         description: `A temperate oceanic world bearing strong superficial resemblance to several core Imperial worlds. Continental coverage approximately thirty percent. Atmospheric composition is breathable within tolerance.\n\nLong-range spectroscopy is ambiguous on the question of biology; the signatures are consistent with either a complex biosphere or with mineralogical artefacts of similar appearance. Flagged for priority survey.`,
       },
       {
-        name: 'Maren', climate: 'Cold / Arid Desert', distAU: 1.52, speed: 0.00033, r: 6, color: '#c4714a', moons: [],
+        name: 'Maren', climate: 'Cold / Arid Desert', distAU: 1.52, speed: 0.00033, r: 6, color: '#c4714a', moons: [], diameter: '6,779 km', gravity: '0.38 g',
         description: `A cold, arid desert world. Atmosphere thin enough to walk under unprotected, though only just, and only briefly. No standing water in any meaningful quantity. The surface is a uniform rust-coloured regolith broken by long, shallow canyon systems.\n\nAncient watercourses suggest a wetter past. The empire's astrobiologists consider Maren the more interesting of the two candidate worlds in this system.`,
       },
       {
-        name: 'Joras', climate: 'Gas Giant / Tempestuous', distAU: 2.80, speed: 0.00018, r: 20, color: '#c4a875', moons: [],
+        name: 'Joras', climate: 'Gas Giant / Tempestuous', distAU: 2.80, speed: 0.00018, r: 20, color: '#c4a875', moons: [], diameter: '142,984 km', gravity: '2.53 g',
         description: `A tempestuous gas giant with continuous storms visible across its equatorial bands at every observed wavelength. Eight known moons, none catalogued in detail. Estimated mass approximately three hundred Imperial reference units.\n\nIts magnetosphere extends well past the orbit of its outermost moon; any future expedition would require shielding well beyond Standard Imperial Survey grade.`,
       },
       {
-        name: 'Calveth', climate: 'Gas Giant / Ringed', distAU: 4.50, speed: 0.00010, r: 16, color: '#d4c4a0', moons: [],
+        name: 'Calveth', climate: 'Gas Giant / Ringed', distAU: 4.50, speed: 0.00010, r: 16, color: '#d4c4a0', moons: [], diameter: '116,464 km', gravity: '1.07 g',
         description: `A ringed gas giant of striking aesthetic interest. The rings are unusually dense and consist primarily of ice fragments measuring under a metre across. Three distinct gaps are visible at high magnification, suggesting unconfirmed shepherd moons.\n\nThe empire's poets, of whom there is no shortage, have used Calveth's image more times than any other body outside the throneworld system.`,
       },
       {
-        name: 'Ulren', climate: 'Ice Giant / Frozen', distAU: 6.20, speed: 0.000060, r: 13, color: '#7ab4d4', moons: [],
+        name: 'Ulren', climate: 'Ice Giant / Frozen', distAU: 6.20, speed: 0.000060, r: 13, color: '#7ab4d4', moons: [], diameter: '50,724 km', gravity: '0.90 g',
         description: `A frozen ice giant in the outer reaches of Karath System. Methane and ammonia dominate the upper atmosphere. Surface temperature, to whatever extent that word is meaningful here, is below eighty kelvin.\n\nNothing is known of its interior. Survey priority: low.`,
       },
       {
-        name: 'Nethis', climate: 'Ice Giant / Methane', distAU: 8.00, speed: 0.000040, r: 12, color: '#4a6ab4', moons: [],
+        name: 'Nethis', climate: 'Ice Giant / Methane', distAU: 8.00, speed: 0.000040, r: 12, color: '#4a6ab4', moons: [], diameter: '49,244 km', gravity: '1.14 g',
         description: `A methane-rich ice giant with a distinct deep-blue colouration. The outermost gas world in Karath System. Its axial tilt is anomalously steep, suggesting a violent event in its early history; theories remain speculative.\n\nLong-period oscillations in its orbit have been detected but not yet explained.`,
       },
       {
-        name: 'Vorax', climate: 'Frozen / Dwarf World', distAU: 9.50, speed: 0.000028, r: 4, color: '#a0b4c4', moons: [],
+        name: 'Vorax', climate: 'Frozen / Dwarf World', distAU: 9.50, speed: 0.000028, r: 4, color: '#a0b4c4', moons: [], diameter: '2,376 km', gravity: '0.063 g',
         description: `A frozen dwarf world at the system's edge. Its eccentric orbit periodically brings it inward of Nethis, and its inclination is sharply offset from the system's ecliptic, suggesting it may have been captured rather than formed in place.\n\nComposition appears similar to the kuiper-belt objects observed in other catalogued systems. Diameter approximately twelve hundred kilometres.`,
       },
     ],
