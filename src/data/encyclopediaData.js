@@ -103,7 +103,10 @@ For the Day when the Discord comes to Naught."*`,
         'empressPanelVisited',
         { src: 'darkness.webp', caption: 'A veiled star.' },
       ),
-      entry('throneworld',               'Throneworld',                      PENDING, 'throneworldTargeted'),
+      entry('throneworld', 'Throneworld', [
+          `The Novarayan Throneworld, home to the towering Cathedra and around it, the greatest city there ever was or ever will be.`,
+          `Host to the Imperial Academy of Sciences, the Synod of the Universal Order, the Admiralty and countless other ancient institutions of the arts, sciences and war.`,
+        ], 'throneworldTargeted'),
       entry('ecumenologion ', "The Ecumenologion; 'Litania Magna'",
         [
           `The Ecumenologion (World Computer), named Litania Magna (the Great Litany).`,
