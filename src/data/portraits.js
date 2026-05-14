@@ -7,5 +7,6 @@
 const base = import.meta.env.BASE_URL
 
 export const SENDER_PORTRAITS = {
-  'Princess Lucia': `${base}mail_portraits/princess_lucia.png`,
+  'Princess Lucia':    `${base}mail_portraits/princess_lucia.png`,
+  'Admiralty Command': `${base}imperial_empress_emblem.svg`,
 }

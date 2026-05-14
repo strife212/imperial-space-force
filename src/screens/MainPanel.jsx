@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { LOG_MESSAGES, PKG_NAMES, SECTION_INFO } from '../lib/constants'
 import { PLANETS, SUN, SUN_IDX, getTargetName } from '../lib/planetData'
 import LaunchCodeVerifier from './LaunchCodeVerifier'
@@ -138,6 +139,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const [cdVisible,       setCdVisible]       = useState(true)
   const [authCActive,     setAuthCActive]     = useState(false)
   const [threatHovered,   setThreatHovered]   = useState(false)
+  const [threatScreenPos, setThreatScreenPos] = useState(null)
 
   // ── Refs mirroring state (for use inside RAF closure) ─────────────────────
   const radarViewRef    = useRef('radar')
@@ -238,6 +240,14 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   useEffect(() => { countdownSecondsRef.current = countdownSeconds }, [countdownSeconds])
   const underAttackRef = useRef(underAttack)
   useEffect(() => { underAttackRef.current = underAttack }, [underAttack])
+
+  // ── Darkness flash on attack start ───────────────────────────────────────
+  const [darknessKey, setDarknessKey] = useState(0)
+  const prevUnderAttack = useRef(false)
+  useEffect(() => {
+    if (underAttack && !prevUnderAttack.current) setDarknessKey(k => k + 1)
+    prevUnderAttack.current = underAttack
+  }, [underAttack])
 
   // Sync the two subtitle blink animations so they start at exactly the same time
   useEffect(() => {
@@ -529,7 +539,10 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
         const tx = cx + R * 0.62 * Math.cos(angle)
         const ty = cy + R * 0.62 * Math.sin(angle)
         const labelY = ty - 36                           // label sits above triangle
-        threatPosRef.current = { x: tx, y: ty, labelY }
+        // bounding box enclosing label + triangle
+        const hitLeft  = tx - 100, hitRight = tx + 100
+        const hitTop   = labelY - 22, hitBottom = ty + 14
+        threatPosRef.current = { x: tx, y: ty, labelY, hitLeft, hitRight, hitTop, hitBottom }
 
         // pulsing glow radius + opacity
         const pulse     = 0.5 + 0.5 * Math.sin(now * 0.0025)  // 0→1 oscillation
@@ -830,6 +843,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   return (
     <div id="main-screen" className={underAttack ? 'main-screen--glitch' : ''}>
       {underAttack && <GlitchOverlay />}
+      {darknessKey > 0 && <img key={darknessKey} src="/darkness.webp" className="darkness-flash-overlay" alt="" />}
       <div className="main-scaler" ref={scalerRef}>
       <HudHeader
         onLogout={onLogout}
@@ -890,18 +904,25 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
                   const cv = radarCanvasRef.current
                   if (!cv) return
                   const rect = cv.getBoundingClientRect()
-                  const mx = (e.clientX - rect.left) * (cv.clientWidth  / rect.width)
-                  const my = (e.clientY - rect.top)  * (cv.clientHeight / rect.height)
-                  const { x, y, labelY } = threatPosRef.current
-                  // hit: triangle body (circle) OR label text area (rect above triangle)
-                  const overTriangle = Math.hypot(mx - x, my - y) < 24
-                  const overLabel    = Math.abs(mx - x) < 90 && my >= labelY - 20 && my <= labelY + 4
-                  setThreatHovered(overTriangle || overLabel)
+                  const scaleX = cv.clientWidth  / rect.width
+                  const scaleY = cv.clientHeight / rect.height
+                  const mx = (e.clientX - rect.left) * scaleX
+                  const my = (e.clientY - rect.top)  * scaleY
+                  const { hitLeft, hitRight, hitTop, hitBottom } = threatPosRef.current
+                  const over = mx >= hitLeft && mx <= hitRight && my >= hitTop && my <= hitBottom
+                  setThreatHovered(over)
+                  if (over) {
+                    setThreatScreenPos({
+                      x: rect.left + ((hitLeft + hitRight) / 2) / scaleX - 137.5,
+                      y: rect.top  + hitBottom / scaleY,
+                    })
+                  }
                 }}
                 onMouseLeave={() => setThreatHovered(false)}
               />
-              {threatHovered && underAttack && (
-                <div className="radar-threat-infobox">
+              {threatHovered && underAttack && threatScreenPos && createPortal(
+                <div className="radar-threat-infobox" style={{ position: 'fixed', top: threatScreenPos.y, left: threatScreenPos.x }}>
+                  <div className="radar-threat-title">THREAT DETECTED</div>
                   <img
                     className="radar-threat-img"
                     src={`${import.meta.env.BASE_URL}darkness.webp`}
@@ -915,7 +936,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
                   <div className="radar-threat-reading">TACHYONIC EMISSION ORIGIN POINT</div>
                   <div className="radar-threat-divider" />
                   <div className="radar-threat-codered">CODE RED</div>
-                </div>
+                </div>,
+                document.body
               )}
               <div className="radar-readout">
                 <div><span className="k">CONTACTS:</span><span className="v" ref={contactCountRef} /></div>

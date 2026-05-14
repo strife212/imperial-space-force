@@ -838,6 +838,24 @@ body {
   overflow: hidden;
 }
 
+/* ── Darkness flash overlay ────────────────────────────────── */
+.darkness-flash-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  z-index: 49;
+  animation: darkness-flash 4.2s ease-out forwards;
+}
+
+@keyframes darkness-flash {
+  0%   { opacity: 0; }
+  25%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* ── Glitch overlay ────────────────────────────────────────── */
 .glitch-overlay-canvas {
   position: fixed;
@@ -1482,38 +1500,46 @@ body {
 .radar-body { padding: 0; display: flex; flex-direction: column; }
 
 #radar-canvas-wrap { position: relative; }
+#panel-radar { overflow: visible; z-index: 10; }
 
 .radar-threat-infobox {
-  position: absolute;
-  bottom: 48px;
-  right: 12px;
-  width: 230px;
+  width: 275px;
   background: rgba(4, 6, 16, 0.96);
   border: 1px solid rgba(200, 20, 20, 0.55);
   border-radius: 3px;
-  box-shadow: 0 0 18px rgba(180, 0, 0, 0.35), inset 0 0 12px rgba(120, 0, 0, 0.15);
-  padding: 10px;
-  z-index: 10;
+  box-shadow: 0 0 20px rgba(180, 0, 0, 0.35), inset 0 0 14px rgba(120, 0, 0, 0.15);
+  padding: 11px;
+  z-index: 100;
   pointer-events: none;
   font-family: var(--font-mono);
+  overflow: visible;
+}
+.radar-threat-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.20em;
+  color: rgba(255, 180, 180, 0.95);
+  text-align: center;
+  margin-bottom: 8px;
+  text-shadow: 0 0 8px rgba(255, 60, 60, 0.60);
 }
 .radar-threat-img {
   width: 100%;
   border-radius: 2px;
-  margin-bottom: 8px;
+  margin-bottom: 9px;
   display: block;
   border: 1px solid rgba(180, 20, 20, 0.35);
 }
 .radar-threat-divider {
   height: 1px;
   background: rgba(180, 20, 20, 0.30);
-  margin: 6px 0;
+  margin: 7px 0;
 }
 .radar-threat-row {
   display: flex;
-  gap: 6px;
+  gap: 7px;
   align-items: baseline;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.10em;
 }
 .radar-threat-key {
@@ -1524,19 +1550,19 @@ body {
   color: rgba(220, 180, 180, 0.90);
 }
 .radar-threat-reading {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.08em;
   color: rgba(220, 160, 160, 0.80);
   margin: 3px 0;
 }
 .radar-threat-codered {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.22em;
   color: rgba(255, 30, 30, 0.95);
-  text-shadow: 0 0 8px rgba(255, 0, 0, 0.70), 0 0 20px rgba(200, 0, 0, 0.40);
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.70), 0 0 22px rgba(200, 0, 0, 0.40);
   text-align: center;
-  margin-top: 4px;
+  margin-top: 5px;
   animation: imperial-banner-pulse 1.5s ease-in-out infinite;
 }
 #radar-canvas {
