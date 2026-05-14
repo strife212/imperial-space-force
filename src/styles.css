@@ -1378,6 +1378,52 @@ body {
   padding: 6px 8px;
 }
 .chrono-label { color: var(--c-ash-dim); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; }
+/* ── Light cone tooltip ─────────────────────────────────────── */
+.lc-tooltip {
+  width: 240px;
+  background: rgba(2, 5, 22, 0.97);
+  border: 1px solid rgba(60, 180, 255, 0.35);
+  border-radius: 3px;
+  box-shadow: 0 0 20px rgba(0, 140, 255, 0.20), inset 0 0 12px rgba(0, 80, 180, 0.10);
+  padding: 10px;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  z-index: 200;
+}
+.lc-tooltip-title {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: rgba(120, 210, 255, 0.80);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.lc-tooltip-canvas-wrap {
+  width: 100%;
+  height: 190px;
+  border: 1px solid rgba(40, 140, 220, 0.20);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.lc-tooltip-sub {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: rgba(80, 170, 220, 0.55);
+  text-align: center;
+  margin-top: 7px;
+}
+
+.chrono-cell--info { position: relative; cursor: default; }
+.chrono-info-icon {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  color: rgba(100, 180, 255, 0.75);
+  font-size: 16px;
+  letter-spacing: 0;
+  line-height: 1;
+  cursor: default;
+}
 .chrono-state { font-size: 13px; color: var(--c-rose); text-shadow: var(--glow-soft); margin-top: 2px; letter-spacing: 0.06em; }
 .chrono-state.warn { color: var(--c-ember); }
 .chrono-state.bad  { color: var(--c-scarlet); text-shadow: var(--glow-hard); animation: blink 1s infinite; }

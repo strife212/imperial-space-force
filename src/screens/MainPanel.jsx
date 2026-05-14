@@ -73,6 +73,145 @@ function GlitchOverlay() {
   return <canvas ref={canvasRef} className="glitch-overlay-canvas" />
 }
 
+// ── Light Cone Tooltip Canvas ────────────────────────────────────────────────
+const LC_TILT = Math.PI / 4          // 45° tilt of cone axis toward +X
+const LC_cT   = Math.cos(LC_TILT), LC_sT = Math.sin(LC_TILT)
+const LC_N    = 32, LC_RINGS = 5, LC_MERIDIANS = 12, LC_H = 0.40
+
+function lcProj(x0, y0, z0, cx, cy, scale, ry) {
+  // tilt the cone axis 45° (rotate around Z)
+  const x = x0 * LC_cT - y0 * LC_sT
+  const y = x0 * LC_sT + y0 * LC_cT
+  const z = z0
+  // slow Y-axis animation rotation
+  const cosY = Math.cos(ry), sinY = Math.sin(ry)
+  const x1 =  x * cosY + z * sinY
+  const z1 = -x * sinY + z * cosY
+  const d = 3.2, pz = d + z1
+  return { x: (x1 / pz) * scale + cx, y: (y / pz) * scale + cy, z: z1 }
+}
+
+function lcRing(h, cx, cy, scale, ry) {
+  const r = Math.abs(h)
+  return Array.from({ length: LC_N + 1 }, (_, i) => {
+    const a = (i / LC_N) * Math.PI * 2
+    return lcProj(r * Math.cos(a), h, r * Math.sin(a), cx, cy, scale, ry)
+  })
+}
+
+function LightConeCanvas({ underAttack }) {
+  const cvRef  = useRef(null)
+  const atkRef = useRef(underAttack)
+  useEffect(() => { atkRef.current = underAttack }, [underAttack])
+
+  useEffect(() => {
+    const cv = cvRef.current
+    if (!cv) return
+    const dpr = window.devicePixelRatio || 1
+    const fit = () => {
+      const r = cv.getBoundingClientRect()
+      cv.width  = r.width  * dpr
+      cv.height = r.height * dpr
+      cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+    fit()
+    let rafId, ry = 0
+
+    const polyline = (ctx, pts) => {
+      ctx.beginPath()
+      pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y))
+      ctx.stroke()
+    }
+    const depth = pt => Math.max(0, Math.min(1, (pt.z + 1.5) / 3))
+
+    const loop = () => {
+      ry += 0.006
+      const ctx = cv.getContext('2d')
+      const w = cv.clientWidth, h = cv.clientHeight
+      const cx = w * 0.5, cy = h * 0.5
+      const scale = Math.min(w, h) * 1.55
+      ctx.clearRect(0, 0, w, h)
+
+      const atk = atkRef.current
+
+      // colour palettes
+      const planeCol  = atk ? 'rgba(210,50,50,0.22)'   : 'rgba(0,190,210,0.22)'
+      const axisCol   = atk ? 'rgba(255,140,140,0.45)'  : 'rgba(160,235,255,0.45)'
+      const futRing   = atk
+        ? d => `rgba(255,70,70,${(0.18 + d * 0.60).toFixed(2)})`
+        : d => `rgba(80,210,255,${(0.18 + d * 0.60).toFixed(2)})`
+      const futMer    = atk
+        ? d => `rgba(255,100,100,${(0.22 + d * 0.65).toFixed(2)})`
+        : d => `rgba(110,220,255,${(0.22 + d * 0.65).toFixed(2)})`
+      const pastRing  = atk
+        ? d => `rgba(200,40,40,${(0.14 + d * 0.48).toFixed(2)})`
+        : d => `rgba(50,160,220,${(0.14 + d * 0.48).toFixed(2)})`
+      const pastMer   = atk
+        ? d => `rgba(220,55,55,${(0.16 + d * 0.52).toFixed(2)})`
+        : d => `rgba(70,180,230,${(0.16 + d * 0.52).toFixed(2)})`
+
+      // ── Hypersurface plane ──────────────────────────────────────────────
+      const pR = LC_H * 1.15, pN = 4
+      ctx.strokeStyle = planeCol
+      ctx.lineWidth = 0.8
+      // rim circle
+      polyline(ctx, Array.from({ length: LC_N + 1 }, (_, i) => {
+        const a = (i / LC_N) * Math.PI * 2
+        return lcProj(pR * Math.cos(a), 0, pR * Math.sin(a), cx, cy, scale, ry)
+      }))
+      // cross-hair lines on the plane
+      for (let i = 0; i < pN; i++) {
+        const a = (i / pN) * Math.PI
+        const A = lcProj(pR * Math.cos(a), 0, pR * Math.sin(a), cx, cy, scale, ry)
+        const B = lcProj(-pR * Math.cos(a), 0, -pR * Math.sin(a), cx, cy, scale, ry)
+        polyline(ctx, [A, B])
+      }
+
+      const apex = lcProj(0, 0, 0, cx, cy, scale, ry)
+
+      // ── Cone helper: rings + meridians ──────────────────────────────────
+      const drawCone = (sign, ringColor, merColor) => {
+        for (let ri = 1; ri <= LC_RINGS; ri++) {
+          const hv = sign * (ri / LC_RINGS) * LC_H
+          const pts = lcRing(hv, cx, cy, scale, ry)
+          const d = depth(pts[0])
+          ctx.strokeStyle = ringColor(d)
+          ctx.lineWidth = 0.85
+          polyline(ctx, pts)
+        }
+        for (let mi = 0; mi < LC_MERIDIANS; mi++) {
+          const a = (mi / LC_MERIDIANS) * Math.PI * 2
+          const rim = lcProj(LC_H * Math.cos(a), sign * LC_H, LC_H * Math.sin(a), cx, cy, scale, ry)
+          const d = depth(rim)
+          ctx.strokeStyle = merColor(d)
+          ctx.lineWidth = 1.0
+          ctx.beginPath(); ctx.moveTo(apex.x, apex.y); ctx.lineTo(rim.x, rim.y); ctx.stroke()
+        }
+      }
+
+      // Future cone — brighter
+      drawCone(+1, futRing, futMer)
+      // Past cone — slightly dimmer
+      drawCone(-1, pastRing, pastMer)
+
+      // ── Time axis (dashed) ──────────────────────────────────────────────
+      const top = lcProj(0,  LC_H * 1.3, 0, cx, cy, scale, ry)
+      const bot = lcProj(0, -LC_H * 1.3, 0, cx, cy, scale, ry)
+      ctx.strokeStyle = axisCol
+      ctx.lineWidth = 0.9
+      ctx.setLineDash([4, 4])
+      ctx.beginPath(); ctx.moveTo(top.x, top.y); ctx.lineTo(bot.x, bot.y); ctx.stroke()
+      ctx.setLineDash([])
+
+      rafId = requestAnimationFrame(loop)
+    }
+    rafId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(rafId)
+  }, [])
+
+  return <canvas ref={cvRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+}
+
 // ── Utilities ────────────────────────────────────────────────────────────────
 const t0      = Date.now() - 86400_000 * 17 - 3600_000 * 4 - 60_000 * 22
 const rand    = (a, b) => a + Math.random() * (b - a)
@@ -140,6 +279,10 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const [authCActive,     setAuthCActive]     = useState(false)
   const [threatHovered,   setThreatHovered]   = useState(false)
   const [threatScreenPos, setThreatScreenPos] = useState(null)
+  const [coneTipVisible,  setConeTipVisible]  = useState(false)
+  const [coneTipPos,      setConeTipPos]      = useState(null)
+  const coneCellRef    = useRef(null)
+  const tiltTooltipRef = useRef(null)   // DOM ref inside the tooltip label
 
   // ── Refs mirroring state (for use inside RAF closure) ─────────────────────
   const radarViewRef    = useRef('radar')
@@ -445,6 +588,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
         coneStateRef.current.textContent = `${tilt.toFixed(5)} rad`
         coneStateRef.current.className   = atk ? 'chrono-state chrono-state--attack' : 'chrono-state ok'
       }
+      if (tiltTooltipRef.current) tiltTooltipRef.current.textContent = `${tilt.toFixed(5)} rad`
       const tach = atk
         ? 4.8 + Math.sin(now * 0.0017) * 0.9
         : 2.4 + Math.sin(now * 0.0017) * 0.6
@@ -841,6 +985,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const showCodeVerify= launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown' || launchPhase === 'fired' || launchPhase === 'notarget'
 
   return (
+    <>
     <div id="main-screen" className={underAttack ? 'main-screen--glitch' : ''}>
       {underAttack && <GlitchOverlay />}
       {darknessKey > 0 && <img key={darknessKey} src="/darkness.webp" className="darkness-flash-overlay" alt="" />}
@@ -1005,7 +1150,16 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
                 <div className="chrono-state ok">NEGATIVE</div>
                 <div className="chrono-sub">δτ ∮ &lt; 10⁻⁴² s</div>
               </div>
-              <div className="chrono-cell">
+              <div
+                className="chrono-cell chrono-cell--info"
+                ref={coneCellRef}
+                onMouseEnter={() => {
+                  const r = coneCellRef.current?.getBoundingClientRect()
+                  if (r) { setConeTipPos({ x: r.left + r.width / 2, y: r.top }); setConeTipVisible(true) }
+                }}
+                onMouseLeave={() => setConeTipVisible(false)}
+              >
+                <span className="chrono-info-icon">ⓘ</span>
                 <div className="chrono-label">LIGHT CONE TILT</div>
                 <div className={underAttack ? 'chrono-state chrono-state--attack' : 'chrono-state ok'} ref={coneStateRef} />
                 <div className={`chrono-sub${underAttack ? ' chrono-sub--alert' : ''}`} ref={coneSubRef}>{underAttack ? 'EXCEEDING TOLERANCE' : 'WITHIN TOLERANCE'}</div>
@@ -1220,5 +1374,21 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
       )}
       </div>
     </div>
+
+    {/* ── Light cone tooltip portal ────────────────────────────────────── */}
+    {coneTipVisible && coneTipPos && createPortal(
+      <div className="lc-tooltip" style={{ position: 'fixed', left: coneTipPos.x, top: coneTipPos.y, transform: 'translate(-50%, -100%) translateY(-8px)' }}>
+        <div className="lc-tooltip-title">LIGHT CONE TILT</div>
+        <div className="lc-tooltip-canvas-wrap">
+          <LightConeCanvas underAttack={underAttack} />
+        </div>
+        <div className="lc-tooltip-sub">
+          <div ref={tiltTooltipRef} />
+          <div>{underAttack ? 'EXCEEDING TOLERANCE' : 'WITHIN TOLERANCE'}</div>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   )
 }
