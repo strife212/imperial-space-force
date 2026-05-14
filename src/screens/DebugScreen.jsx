@@ -11,11 +11,12 @@ const SCREENS_COL1 = [
 ]
 
 const SCREENS_COL2 = [
-  { key: 'reactor',      label: 'Reactor Control Screen' },
-  { key: 'targeting',    label: 'Targeting Screen'        },
-  { key: 'gameover',     label: 'Game Over Screen'        },
-  { key: 'encyclopedia', label: 'Encyclopedia Screen'     },
-  { key: 'antenna',      label: 'Antenna Alignment Screen'},
+  { key: 'reactor',         label: 'Reactor Control Screen'   },
+  { key: 'targeting',       label: 'Targeting Screen'          },
+  { key: 'gameover',        label: 'Game Over Screen'          },
+  { key: 'encyclopedia',    label: 'Encyclopedia Screen'       },
+  { key: 'antenna',         label: 'Antenna Alignment Screen'  },
+  { key: 'launch-sequence', label: 'Launch Sequence Dialogue'  },
 ]
 
 const FLAG_LABELS = {

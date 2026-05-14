@@ -10,6 +10,7 @@ import ReactorScreen from './screens/ReactorScreen'
 import TargetingScreen from './screens/TargetingScreen'
 import GameOverScreen from './screens/GameOverScreen'
 import EncyclopediaScreen from './screens/EncyclopediaScreen'
+import LaunchSequenceScreen from './screens/LaunchSequenceScreen'
 import AntennaAlignmentScreen from './screens/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import { INITIAL_MESSAGES, ALL_TRIGGERED_MESSAGES } from './data/messages'
@@ -88,7 +89,8 @@ export default function App() {
       {screen === 'targeting' && <TargetingScreen onBack={(idx) => { setTargetIdx(idx); setScreen(targetingSource) }} initialSelectedIdx={targetIdx} {...mailProps} />}
       {screen === 'gameover'      && <GameOverScreen initialFlagCount={initialFlagCount} onEncyclopedia={() => goEncyclopedia('gameover')} fail={gameOverFail} />}
       {screen === 'encyclopedia'  && <EncyclopediaScreen onReturn={() => setScreen(encyclopediaSource)} />}
-      {screen === 'antenna'       && <AntennaAlignmentScreen onBack={() => setScreen('main')} onAlignComplete={() => { setAntennaAligned(true); triggerFlag('antennaAligned') }} {...mailProps} />}
+      {screen === 'antenna'         && <AntennaAlignmentScreen onBack={() => setScreen('main')} onAlignComplete={() => { setAntennaAligned(true); triggerFlag('antennaAligned') }} {...mailProps} />}
+      {screen === 'launch-sequence' && <LaunchSequenceScreen onReturn={() => setScreen('debug')} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
       {toastVisible && <>
         <div key={`dim-${toastKey}`} className="msg-toast-dim" onAnimationEnd={() => setToastVisible(false)} />

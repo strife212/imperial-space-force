@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import DischargeDiagram from '../components/DischargeDiagram'
 
 const CHARS     = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 const BOX_COUNT = 15
@@ -167,8 +168,10 @@ export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchP
         )}
 
         {isCountdown && (
-          <div className="cvl-warning-body">
+          <div className="cvl-warning-body cvl-warning-body--countdown">
             <div className="cvl-warning-text">⚠ WARNING — LAUNCH INITIATED ⚠</div>
+            <div className="dd-label">MASS DRIVER CHARGING</div>
+            <DischargeDiagram />
             <div className="cvl-warning-cd">! T−&nbsp;<span key={launchCdText} className="cvl-cd-num--flash">{launchCdText.slice(-2)}</span> !</div>
           </div>
         )}

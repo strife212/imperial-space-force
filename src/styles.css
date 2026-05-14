@@ -2163,6 +2163,107 @@ body {
   animation: cd-flash 0.5s ease-out forwards;
 }
 
+/* ── Discharge diagram ─────────────────────────────────────────────── */
+.cvl-warning-body--countdown {
+  gap: 14px;
+}
+.dd-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(140, 220, 255, 0.85);
+  text-shadow: 0 0 10px rgba(80, 200, 255, 0.45);
+  margin-bottom: -4px;
+}
+.dd-svg {
+  width: 460px;
+  max-width: 95%;
+  height: auto;
+  display: block;
+}
+.dd-discharge-box {
+  fill: rgba(20, 60, 120, 0.35);
+  stroke: rgba(120, 220, 255, 0.85);
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 8px rgba(80, 200, 255, 0.45));
+}
+.dd-discharge-title {
+  fill: rgba(180, 230, 255, 0.95);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+.dd-discharge-pct {
+  fill: rgba(120, 230, 255, 1);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+}
+.dd-wire {
+  stroke: rgba(120, 200, 255, 0.55);
+  stroke-width: 1.4;
+  fill: none;
+}
+/* Animated energy flow — dashes moving toward discharge point (up + outward→in) */
+.dd-flow-v {
+  stroke-dasharray: 4 7;
+  animation: dd-flow-v 0.55s linear infinite;
+}
+.dd-flow-h {
+  stroke-dasharray: 4 7;
+  animation: dd-flow-h 0.7s linear infinite;
+}
+@keyframes dd-flow-v { to { stroke-dashoffset: 11; } }
+@keyframes dd-flow-h { to { stroke-dashoffset: 11; } }
+
+.dd-pin {
+  fill: rgba(180, 230, 255, 0.85);
+}
+
+/* Switch: open arm + closed arm — toggled via animation */
+.dd-switch-open {
+  stroke: rgba(255, 180, 60, 0.85);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  animation: dd-switch-vanish 0.4s linear forwards;
+}
+.dd-switch-closed {
+  stroke: rgba(140, 230, 255, 0.95);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0;
+  animation: dd-switch-appear 0.4s linear forwards;
+  filter: drop-shadow(0 0 4px rgba(120, 220, 255, 0.6));
+}
+@keyframes dd-switch-vanish { to { opacity: 0; } }
+@keyframes dd-switch-appear { to { opacity: 1; } }
+
+/* Capacitor outline + plates */
+.dd-cap-outline {
+  fill: rgba(8, 20, 40, 0.70);
+  stroke: rgba(120, 200, 255, 0.65);
+  stroke-width: 1.2;
+}
+.dd-cap-plate {
+  stroke: rgba(180, 230, 255, 0.70);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+/* Capacitor charge fill — grows from bottom over 10s */
+.dd-cap-fill {
+  fill: rgba(80, 200, 255, 0.45);
+  transform: scaleY(0);
+  transform-box: fill-box;
+  transform-origin: 0 100%;
+  animation: dd-cap-charge 10s linear forwards;
+}
+@keyframes dd-cap-charge {
+  to { transform: scaleY(1); }
+}
+
 .cvl-warning-body .cvl-warning-text {
   animation: warning-pulse 1s step-end infinite;
 }
@@ -3008,6 +3109,46 @@ body {
   background: rgba(26,100,255,0.08);
   border-color: rgba(60,140,255,0.65);
   color: #b3d4ff;
+}
+
+/* ── Launch Sequence Screen ──────────────────────────────────────── */
+#launch-sequence-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #020408;
+}
+.lss-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+.lss-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: rgba(100, 160, 255, 0.45);
+}
+.lss-verifier-wrap {
+  position: relative;
+}
+.lss-return-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(100, 200, 255, 0.80);
+  background: transparent;
+  border: 1px solid rgba(60, 140, 255, 0.35);
+  padding: 10px 28px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.lss-return-btn:hover {
+  border-color: rgba(100, 180, 255, 0.70);
+  color: rgba(160, 220, 255, 1);
 }
 
 /* ── Debug Screen ────────────────────────────────────────────────── */
