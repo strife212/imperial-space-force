@@ -227,7 +227,7 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
         ctx.lineWidth = 1
         ctx.setLineDash([])
       } else {
-        ctx.strokeStyle = 'rgba(80,120,220,0.32)'
+        ctx.strokeStyle = 'rgba(100,150,255,0.40)'
         ctx.lineWidth = 1
         ctx.setLineDash([3, 6])
       }
