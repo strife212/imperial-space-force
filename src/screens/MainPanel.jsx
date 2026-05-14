@@ -1,25 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import UrgentMessageOverlay from '../components/UrgentMessageOverlay'
-
-// ── Urgent-message sequence triggered by under-attack ────────────────────────
-const URGENT_ATTACK_SEQ = [
-  {
-    sender:  'Admiralty Command',
-    subject: 'CHRONOLOGY PROTECTION ALERT',
-    body:    'The chronology protection readings have gone off the charts... what is happening over there?',
-  },
-  {
-    sender:   'UNKNOWN SENDER',
-    portrait: `${import.meta.env.BASE_URL}darkness.webp`,
-    body:     '▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓...',
-  },
-  {
-    sender:  'Admiralty Command',
-    subject: 'THREAT ASSESSMENT',
-    body:    '**TIER 1 THREAT DETECTED**\n\n**STRATCON ONE**\n\n##WEAPONS FREE##',
-  },
-]
 import { LOG_MESSAGES, PKG_NAMES, SECTION_INFO } from '../lib/constants'
 import { PLANETS, SUN, SUN_IDX, getTargetName } from '../lib/planetData'
 import LaunchCodeVerifier from './LaunchCodeVerifier'
@@ -404,20 +384,6 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const underAttackRef = useRef(underAttack)
   useEffect(() => { underAttackRef.current = underAttack }, [underAttack])
 
-  // ── Darkness flash + urgent-message sequence on attack start ─────────────
-  const [darknessKey,  setDarknessKey]  = useState(0)
-  const [urgentIdx,    setUrgentIdx]    = useState(null)
-  const prevUnderAttack = useRef(false)
-  const urgentTimerRef  = useRef(null)
-  useEffect(() => {
-    if (underAttack && !prevUnderAttack.current) {
-      setDarknessKey(k => k + 1)
-      // darkness-flash animation is 4.2s; first message arrives 1s after fade-out
-      urgentTimerRef.current = setTimeout(() => setUrgentIdx(0), 5200)
-    }
-    prevUnderAttack.current = underAttack
-  }, [underAttack])
-  useEffect(() => () => clearTimeout(urgentTimerRef.current), [])
 
   // Sync the two subtitle blink animations so they start at exactly the same time
   useEffect(() => {
@@ -477,10 +443,19 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
     setLaunchStatus({ text: '⚠ ARMED — LAUNCH ENABLED', cls: 'launch-status armed' })
   }, [])
 
+  const [rejectionMessage, setRejectionMessage] = useState('NO TARGET SELECTED — LAUNCH CODES UNAVAILABLE')
+
   const handleArm = useCallback(() => {
     if (launchPhaseRef.current === 'idle') {
-      if (targetIdxRef.current < 0) {
+      if (!underAttackRef.current) {
+        // Not under attack — STRATCON 1 required
+        setRejectionMessage('STRATCON 1 REQUIRED — LAUNCH CODES UNAVAILABLE')
+        launchPhaseRef.current = 'notarget'
+        setLaunchPhase('notarget')
+        addLog('WARN', 'LAUNCH REJECTED // STRATCON 1 NOT IN EFFECT')
+      } else if (targetIdxRef.current < 0) {
         // No target — show rejection sequence
+        setRejectionMessage('NO TARGET SELECTED — LAUNCH CODES UNAVAILABLE')
         launchPhaseRef.current = 'notarget'
         setLaunchPhase('notarget')
         addLog('WARN', 'LAUNCH REJECTED // NO TARGET DESIGNATED')
@@ -1015,7 +990,6 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
     <>
     <div id="main-screen" className={underAttack ? 'main-screen--glitch' : ''}>
       {underAttack && <GlitchOverlay />}
-      {darknessKey > 0 && <img key={darknessKey} src="/darkness.webp" className="darkness-flash-overlay" alt="" />}
       <div className="main-scaler" ref={scalerRef}>
       <HudHeader
         onLogout={onLogout}
@@ -1348,13 +1322,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
                 <div className="launch-pkg-name">{PKG_NAMES[selectedPkg]}</div>
                 <div className={launchStatus.cls}>{launchStatus.text}</div>
                 {showArm && (
-                  <button
-                    className={`arm-btn arm-btn--full${underAttack ? '' : ' arm-btn--locked'}`}
-                    onClick={underAttack ? handleArm : undefined}
-                    disabled={!underAttack}
-                  >
-                    {underAttack ? 'ARM' : 'LOCKED UNTIL STRATCON 1'}
-                  </button>
+                  <button className="arm-btn arm-btn--full" onClick={handleArm}>ARM</button>
                 )}
                 {showDisarm && (
                   <button className="disarm-btn disarm-btn--full" onClick={handleArm}>DISARM</button>
@@ -1381,6 +1349,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
           launchCdText={launchCdText}
           cdVisible={cdVisible}
           noTarget={launchPhase === 'notarget'}
+          rejectionMessage={rejectionMessage}
           onDismiss={handleReset}
         />
       )}
@@ -1407,19 +1376,6 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
       )}
       </div>
     </div>
-
-    {/* ── Urgent-message overlay ───────────────────────────────────────── */}
-    {urgentIdx !== null && urgentIdx < URGENT_ATTACK_SEQ.length && (
-      <UrgentMessageOverlay
-        key={urgentIdx}
-        {...URGENT_ATTACK_SEQ[urgentIdx]}
-        onClose={() => {
-          const next = urgentIdx + 1 < URGENT_ATTACK_SEQ.length ? urgentIdx + 1 : null
-          setUrgentIdx(null)
-          if (next !== null) setTimeout(() => setUrgentIdx(next), 200)
-        }}
-      />
-    )}
 
     {/* ── Light cone tooltip portal ────────────────────────────────────── */}
     {coneTipVisible && coneTipPos && createPortal(

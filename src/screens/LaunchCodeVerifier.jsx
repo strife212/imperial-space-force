@@ -13,7 +13,7 @@ const NT_FILL_INTERVAL = 80   // ms between each ? locking in
 const NT_ERROR_DELAY   = BOX_COUNT * NT_FILL_INTERVAL + 300  // switch to error msg
 const NT_DISMISS_DELAY = NT_ERROR_DELAY + 2200 + 1000        // flash (2s) + 1s hold
 
-export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchPhase, launchLabel, launchFiring, launchCdText, cdVisible, noTarget, onDismiss }) {
+export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchPhase, launchLabel, launchFiring, launchCdText, cdVisible, noTarget, rejectionMessage = 'NO TARGET SELECTED — LAUNCH CODES UNAVAILABLE', onDismiss }) {
   const [symbols,     setSymbols]     = useState(() => Array.from({ length: BOX_COUNT }, randChar))
   const [lockedCount, setLockedCount] = useState(0)
   const [ntPhase,     setNtPhase]     = useState('filling') // 'filling' | 'error'
@@ -135,7 +135,7 @@ export default function LaunchCodeVerifier({ onComplete, onTick, onFire, launchP
               ))}
             </div>
             <div className="cvl-no-target-msg">
-              NO TARGET SELECTED — LAUNCH CODES UNAVAILABLE
+              {rejectionMessage}
             </div>
           </>
         )}

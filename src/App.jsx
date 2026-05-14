@@ -13,10 +13,30 @@ import EncyclopediaScreen from './screens/EncyclopediaScreen'
 import LaunchSequenceScreen from './screens/LaunchSequenceScreen'
 import AntennaAlignmentScreen from './screens/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
+import UrgentMessageOverlay from './components/UrgentMessageOverlay'
 import { INITIAL_MESSAGES, ALL_TRIGGERED_MESSAGES } from './data/messages'
 import { getTargetName, TARGETS } from './lib/planetData'
 
 const countTrueFlags = () => Object.values(getFlags()).filter(Boolean).length
+
+// ── Urgent-message sequence triggered by under-attack ────────────────────────
+const URGENT_ATTACK_SEQ = [
+  {
+    sender:  'Admiralty Command',
+    subject: 'CHRONOLOGY PROTECTION ALERT',
+    body:    'The chronology protection readings have gone off the charts... what is happening over there?',
+  },
+  {
+    sender:   'UNKNOWN SENDER',
+    portrait: `${import.meta.env.BASE_URL}darkness.webp`,
+    body:     '▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓...',
+  },
+  {
+    sender:  'Admiralty Command',
+    subject: 'THREAT ASSESSMENT',
+    body:    '**TIER 1 THREAT DETECTED**\n\n**STRATCON ONE**\n\n##WEAPONS FREE##',
+  },
+]
 
 export default function App() {
   const [screen,            setScreen]            = useState('login')
@@ -39,6 +59,29 @@ export default function App() {
   const [gameOverFail,       setGameOverFail]       = useState(false)
   const [underAttack,        setUnderAttack]        = useState(false)
   const [radioFreq,          setRadioFreq]          = useState(8.0)
+  const [darknessKey,        setDarknessKey]        = useState(0)
+  const [urgentIdx,          setUrgentIdx]          = useState(null)
+  const [sequenceLocked,     setSequenceLocked]     = useState(false)
+  const prevUnderAttack = useRef(false)
+  const urgentTimerRef  = useRef(null)
+
+  // ── Under-attack sequence: darkness flash → blocker → 3 urgent messages ──
+  // Triggers exactly once when underAttack transitions false→true and
+  // persists across screen navigation.
+  useEffect(() => {
+    if (underAttack && !prevUnderAttack.current) {
+      setDarknessKey(k => k + 1)
+      setSequenceLocked(true)
+      urgentTimerRef.current = setTimeout(() => setUrgentIdx(0), 5200)
+    } else if (!underAttack && prevUnderAttack.current) {
+      // reset on attack-off so a future attack can trigger fresh
+      clearTimeout(urgentTimerRef.current)
+      setSequenceLocked(false)
+      setUrgentIdx(null)
+    }
+    prevUnderAttack.current = underAttack
+  }, [underAttack])
+  useEffect(() => () => clearTimeout(urgentTimerRef.current), [])
 
   const triggerFlag = (name) => setSessionFlags(prev => new Set([...prev, name]))
 
@@ -87,11 +130,28 @@ export default function App() {
       {screen === 'debug'     && <DebugScreen onNavigate={(s) => { if (s === 'targeting') setTargetingSource('debug'); setGameOverFail(false); setUnderAttack(false); setScreen(s) }} onDebugMain={() => { setPlasmaLevel(75); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(false); setScreen('main') }} onDebugAttack={() => { setPlasmaLevel(75); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(true); setScreen('main') }} onDebugFail={() => { setGameOverFail(true); setScreen('gameover') }} />}
       {screen === 'reactor'   && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); if (density >= 25) triggerFlag('reactorPoweredUp'); setScreen('main') }} onLogout={() => setScreen('main')} initialPlasma={plasmaLevel} {...mailProps} />}
       {screen === 'targeting' && <TargetingScreen onBack={(idx) => { setTargetIdx(idx); setScreen(targetingSource) }} initialSelectedIdx={targetIdx} {...mailProps} />}
-      {screen === 'gameover'      && <GameOverScreen initialFlagCount={initialFlagCount} onEncyclopedia={() => goEncyclopedia('gameover')} fail={gameOverFail} />}
+      {screen === 'gameover'      && <GameOverScreen initialFlagCount={initialFlagCount} onEncyclopedia={() => goEncyclopedia('gameover')} fail={gameOverFail} targetName={targetName} />}
       {screen === 'encyclopedia'  && <EncyclopediaScreen onReturn={() => setScreen(encyclopediaSource)} />}
       {screen === 'antenna'         && <AntennaAlignmentScreen onBack={() => setScreen('main')} onAlignComplete={() => { setAntennaAligned(true); triggerFlag('antennaAligned') }} {...mailProps} />}
       {screen === 'launch-sequence' && <LaunchSequenceScreen onReturn={() => setScreen('debug')} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
+
+      {/* ── Under-attack sequence overlays ────────────────────────────── */}
+      {darknessKey > 0 && <img key={darknessKey} src={`${import.meta.env.BASE_URL}darkness.webp`} className="darkness-flash-overlay" alt="" />}
+      {sequenceLocked && <div className="attack-seq-blocker" />}
+      {urgentIdx !== null && urgentIdx < URGENT_ATTACK_SEQ.length && (
+        <UrgentMessageOverlay
+          key={urgentIdx}
+          {...URGENT_ATTACK_SEQ[urgentIdx]}
+          onClose={() => {
+            const next = urgentIdx + 1 < URGENT_ATTACK_SEQ.length ? urgentIdx + 1 : null
+            setUrgentIdx(null)
+            if (next !== null) setTimeout(() => setUrgentIdx(next), 200)
+            else setSequenceLocked(false)
+          }}
+        />
+      )}
+
       {toastVisible && <>
         <div key={`dim-${toastKey}`} className="msg-toast-dim" onAnimationEnd={() => setToastVisible(false)} />
         <div key={toastKey} className="msg-toast"><span>✉</span>NEW MESSAGE RECEIVED</div>

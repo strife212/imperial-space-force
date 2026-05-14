@@ -1,14 +1,30 @@
 import { useState, useEffect } from 'react'
 import { getFlags } from '../lib/store'
+import UrgentMessageOverlay from '../components/UrgentMessageOverlay'
 
 const FAIL_INTRO_TEXT = "Astraia! What in the throne are you doing? The deep space array is showing that the Annunciator has launched towards the Throne System. You'd destroy the Universal Order?"
 const TYPE_SPEED_MS   = 35
 const INTRO_HOLD_MS   = 1000
 const INTRO_FADE_MS   = 500
 
-export default function GameOverScreen({ initialFlagCount = 0, onEncyclopedia, fail = false }) {
+const SUCCESS_AETHON = {
+  sender:  'Admiralty Command',
+  subject: 'LAUNCH CONFIRMED',
+  body:    'Weapon away. Good launch.\n\nThus begin the last days.',
+}
+const SUCCESS_OFF_TARGET = {
+  sender:  'Admiralty Command',
+  subject: 'LAUNCH ASSESSMENT',
+  body:    'Sensors show the package slightly off target. Charge the supercapacitors, launch again!',
+}
+
+export default function GameOverScreen({ initialFlagCount = 0, onEncyclopedia, fail = false, targetName = '' }) {
   const currentFlagCount = Object.values(getFlags()).filter(Boolean).length
   const hasNewUnlocks    = currentFlagCount > initialFlagCount
+
+  // ── Success-route urgent message (non-fail only) ──────────────────────────
+  const isAethon = /aethon/i.test(targetName)
+  const [successMsgShown, setSuccessMsgShown] = useState(!fail)
 
   // ── Fail intro state ──────────────────────────────────────────────────────
   // 'typing' → 'fading' → 'done' (intro hidden, dossier shown)
@@ -114,6 +130,18 @@ export default function GameOverScreen({ initialFlagCount = 0, onEncyclopedia, f
             </div>
           </div>
         </div>
+      </div>
+    )
+  }
+
+  // ── Success-route urgent message (shown before the end screen) ────────────
+  if (!fail && successMsgShown) {
+    return (
+      <div id="game-over-screen">
+        <UrgentMessageOverlay
+          {...(isAethon ? SUCCESS_AETHON : SUCCESS_OFF_TARGET)}
+          onClose={() => setSuccessMsgShown(false)}
+        />
       </div>
     )
   }

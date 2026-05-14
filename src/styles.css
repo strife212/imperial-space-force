@@ -1865,17 +1865,6 @@ body {
   box-shadow: 0 0 18px rgba(255,69,0,0.65), inset 0 0 10px rgba(255,69,0,0.15);
   animation: btn-active-glow 1.2s ease-in-out infinite;
 }
-.arm-btn--locked {
-  font-size: 11px;
-  letter-spacing: 0.20em;
-  cursor: default;
-}
-.arm-btn--locked:hover {
-  border-color: #dc143c;
-  background: rgba(139,0,0,0.18);
-  color: #ff6b6b;
-  box-shadow: 0 0 12px rgba(220,20,60,0.4), inset 0 0 8px rgba(220,20,60,0.08);
-}
 
 .launch-btn-row {
   display: flex;
@@ -2172,6 +2161,15 @@ body {
 
 .cvl-cd-num--flash {
   animation: cd-flash 0.5s ease-out forwards;
+}
+
+/* ── Attack sequence input blocker (transparent, blocks clicks) ────── */
+.attack-seq-blocker {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  background: transparent;
+  cursor: default;
 }
 
 /* ── Urgent Message Overlay ────────────────────────────────────────── */
