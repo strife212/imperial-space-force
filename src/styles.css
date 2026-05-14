@@ -3221,6 +3221,7 @@ body {
 
 .menu-ship-img {
   width: 100%;
+  aspect-ratio: 1291 / 816;
   display: block;
   border-radius: 4px;
 }
