@@ -21,7 +21,7 @@ const DIAL_TICKS = Array.from({ length: 41 }, (_, i) => {
   }
 })
 
-export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }) {
+export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign, onFreqChange }) {
   const [freq,      setFreq]      = useState(8.0)
   const [dialAngle, setDialAngle] = useState(-90)
   const freqRef      = useRef(8.0)
@@ -51,6 +51,7 @@ export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign }
       ) / 10
       freqRef.current = newFreq
       setFreq(newFreq)
+      onFreqChange?.(newFreq)
     }
 
     dialAngleRef.current += dx * 2

@@ -1455,6 +1455,65 @@ body {
 
 /* ---------- radar ---------- */
 .radar-body { padding: 0; display: flex; flex-direction: column; }
+
+#radar-canvas-wrap { position: relative; }
+
+.radar-threat-infobox {
+  position: absolute;
+  bottom: 48px;
+  right: 12px;
+  width: 230px;
+  background: rgba(4, 6, 16, 0.96);
+  border: 1px solid rgba(200, 20, 20, 0.55);
+  border-radius: 3px;
+  box-shadow: 0 0 18px rgba(180, 0, 0, 0.35), inset 0 0 12px rgba(120, 0, 0, 0.15);
+  padding: 10px;
+  z-index: 10;
+  pointer-events: none;
+  font-family: var(--font-mono);
+}
+.radar-threat-img {
+  width: 100%;
+  border-radius: 2px;
+  margin-bottom: 8px;
+  display: block;
+  border: 1px solid rgba(180, 20, 20, 0.35);
+}
+.radar-threat-divider {
+  height: 1px;
+  background: rgba(180, 20, 20, 0.30);
+  margin: 6px 0;
+}
+.radar-threat-row {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 9px;
+  letter-spacing: 0.10em;
+}
+.radar-threat-key {
+  color: rgba(180, 100, 100, 0.70);
+  white-space: nowrap;
+}
+.radar-threat-val {
+  color: rgba(220, 180, 180, 0.90);
+}
+.radar-threat-reading {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(220, 160, 160, 0.80);
+  margin: 3px 0;
+}
+.radar-threat-codered {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(255, 30, 30, 0.95);
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.70), 0 0 20px rgba(200, 0, 0, 0.40);
+  text-align: center;
+  margin-top: 4px;
+  animation: imperial-banner-pulse 1.5s ease-in-out infinite;
+}
 #radar-canvas {
   flex: 1 1 auto;
   display: block;
@@ -2627,6 +2686,16 @@ body {
   line-height: 1.85;
   color: rgba(170, 205, 240, 0.8);
   letter-spacing: 0.03em;
+}
+.mail-body-para {
+  margin: 0 0 0.9em;
+}
+.mail-body-para:last-child {
+  margin-bottom: 0;
+}
+.mail-text-highlight {
+  color: rgba(80, 220, 120, 0.95);
+  text-shadow: 0 0 6px rgba(40, 180, 80, 0.45);
 }
 
 .mail-reply-wrap {

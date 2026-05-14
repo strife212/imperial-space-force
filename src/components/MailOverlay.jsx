@@ -1,6 +1,27 @@
 import { useState, useEffect, useRef } from 'react'
 import { SENDER_PORTRAITS } from '../data/portraits'
 
+// Inline formatter: **bold**, !!red!!, \n line breaks
+const renderMailInline = (text) => {
+  const result = []
+  const regex = /\*\*([^*]+)\*\*|!!([^!]+)!!/g
+  let last = 0, match
+  const addText = (str, key) =>
+    str.split('\n').flatMap((line, i, a) =>
+      i < a.length - 1 ? [line, <br key={`${key}-${i}`} />] : [line]
+    )
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) result.push(...addText(text.slice(last, match.index), `t${last}`))
+    if (match[1] !== undefined)
+      result.push(<strong key={match.index}>{match[1]}</strong>)
+    else
+      result.push(<strong key={match.index} className="mail-text-highlight">{match[2]}</strong>)
+    last = match.index + match[0].length
+  }
+  if (last < text.length) result.push(...addText(text.slice(last), `t${last}`))
+  return result
+}
+
 export default function MailOverlay({ messages, onRead, onClose, repliedIds, onReply }) {
   const [selected,     setSelected]     = useState(null)
   const [typingId,     setTypingId]     = useState(null)
@@ -85,7 +106,13 @@ export default function MailOverlay({ messages, onRead, onClose, repliedIds, onR
                   </div>
                 </div>
                 <div className="mail-content-divider" />
-                <div className="mail-content-body">{selected.body}</div>
+                <div className="mail-content-body">
+                  {selected.body.split('\n\n').map((para, i) => (
+                    <p key={i} className="mail-body-para">
+                      {renderMailInline(para)}
+                    </p>
+                  ))}
+                </div>
 
                 {selected.reply && (
                   <div className="mail-reply-wrap">

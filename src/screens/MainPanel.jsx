@@ -42,7 +42,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, onAdjustAntenna, antennaAligned = false, reactorPlasma = 75, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen, underAttack = false }) {
+export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, onAdjustAntenna, antennaAligned = false, reactorPlasma = 75, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen, underAttack = false, onRadioFreq }) {
 
   // ── Panel init animation ──────────────────────────────────────────────────
   const [litPanels, setLitPanels] = useState(new Set())
@@ -72,6 +72,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const [launchCdText,    setLaunchCdText]    = useState('')
   const [cdVisible,       setCdVisible]       = useState(true)
   const [authCActive,     setAuthCActive]     = useState(false)
+  const [threatHovered,   setThreatHovered]   = useState(false)
 
   // ── Refs mirroring state (for use inside RAF closure) ─────────────────────
   const radarViewRef    = useRef('radar')
@@ -83,6 +84,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const radarCanvasRef  = useRef(null)
   const railgunCanvasRef= useRef(null)
   const targetCanvasRef = useRef(null)
+  const threatPosRef    = useRef(null)   // {x, y} canvas coords of threat marker
 
   // ── Telemetry DOM refs (direct mutation in RAF loop) ──────────────────────
   const clockRef        = useRef(null)
@@ -102,6 +104,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const coneStateRef    = useRef(null)
   const coneSubRef      = useRef(null)
   const tachyonRef      = useRef(null)
+  const tachSubRef      = useRef(null)
   const decohereRef     = useRef(null)
   const decohSubRef     = useRef(null)
   const coreFluxRef     = useRef(null)
@@ -174,7 +177,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   // Sync the two subtitle blink animations so they start at exactly the same time
   useEffect(() => {
     if (!underAttack) return
-    const els = [coneSubRef.current, decohSubRef.current].filter(Boolean)
+    const els = [coneSubRef.current, tachSubRef.current, decohSubRef.current].filter(Boolean)
     els.forEach(el => { el.style.animation = 'none' })
     // Force reflow so the removal takes effect before we re-apply
     els.forEach(el => el.getBoundingClientRect())
@@ -367,10 +370,12 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
         coneStateRef.current.textContent = `${tilt.toFixed(5)} rad`
         coneStateRef.current.className   = atk ? 'chrono-state chrono-state--attack' : 'chrono-state ok'
       }
-      const tach = 2.4 + Math.sin(now * 0.0017) * 0.6
+      const tach = atk
+        ? 4.8 + Math.sin(now * 0.0017) * 0.9
+        : 2.4 + Math.sin(now * 0.0017) * 0.6
       if (tachyonRef.current) {
         tachyonRef.current.textContent = `${tach.toFixed(2)} σ ABOVE BG`
-        tachyonRef.current.className = tach >= 3.5 ? 'chrono-state bad' : tach > 2.0 ? 'chrono-state warn' : 'chrono-state ok'
+        tachyonRef.current.className = atk ? 'chrono-state chrono-state--attack' : tach >= 3.5 ? 'chrono-state bad' : tach > 2.0 ? 'chrono-state warn' : 'chrono-state ok'
       }
       const tD = atk
         ? (10 ** -13) * (1 + Math.sin(now * 0.0009) * 0.35)
@@ -409,7 +414,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
     }
 
     // ── Canvas draw functions ────────────────────────────────────────────
-    const drawRadar = (dt) => {
+    const drawRadar = (dt, now = 0) => {
       const cv = radarCanvasRef.current
       if (!cv) return
       const ctx = cv.getContext('2d')
@@ -452,6 +457,53 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
       if (contactCountRef.current) contactCountRef.current.textContent = String(contactsRef.current.length)
       ctx.fillStyle = 'rgba(106,173,255,1)'; ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill()
       ctx.strokeStyle = 'rgba(106,173,255,0.7)'; ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.stroke()
+
+      // ── Threat marker (under attack only) ───────────────────────────────
+      if (underAttackRef.current) {
+        const angle  = Math.PI / 4                       // 45° = bottom-right
+        const tx = cx + R * 0.62 * Math.cos(angle)
+        const ty = cy + R * 0.62 * Math.sin(angle)
+        const labelY = ty - 36                           // label sits above triangle
+        threatPosRef.current = { x: tx, y: ty, labelY }
+
+        // pulsing glow radius + opacity
+        const pulse     = 0.5 + 0.5 * Math.sin(now * 0.0025)  // 0→1 oscillation
+        const glowR     = 34 + pulse * 16
+        const glowAlpha = 0.45 + pulse * 0.35
+
+        const glowGrad = ctx.createRadialGradient(tx, ty, 0, tx, ty, glowR)
+        glowGrad.addColorStop(0,   `rgba(200,0,0,${glowAlpha})`)
+        glowGrad.addColorStop(0.45,`rgba(150,0,0,${glowAlpha * 0.45})`)
+        glowGrad.addColorStop(1,   'rgba(100,0,0,0)')
+        ctx.fillStyle = glowGrad
+        ctx.beginPath(); ctx.arc(tx, ty, glowR, 0, Math.PI * 2); ctx.fill()
+
+        // triangle body
+        ctx.save()
+        ctx.shadowColor = `rgba(255,30,0,${0.7 + pulse * 0.3})`
+        ctx.shadowBlur  = 16 + pulse * 10
+        ctx.fillStyle   = 'rgba(215,25,25,1)'
+        ctx.beginPath()
+        ctx.moveTo(tx,       ty - 16)
+        ctx.lineTo(tx + 14,  ty + 10)
+        ctx.lineTo(tx - 14,  ty + 10)
+        ctx.closePath()
+        ctx.fill()
+        ctx.restore()
+
+        // "THREAT DETECTED" label above triangle
+        ctx.save()
+        ctx.font         = 'bold 18px "Cascadia Mono", Consolas, monospace'
+        ctx.textAlign    = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.shadowColor  = `rgba(255,60,60,${0.6 + pulse * 0.4})`
+        ctx.shadowBlur   = 8 + pulse * 6
+        ctx.fillStyle    = `rgba(255,220,220,${0.85 + pulse * 0.15})`
+        ctx.fillText('THREAT DETECTED', tx, labelY)
+        ctx.restore()
+      } else {
+        threatPosRef.current = null
+      }
     }
 
     const drawRailgun = (dt) => {
@@ -668,7 +720,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
       updatePower(now)
       updateTargeting(now)
       const radarActive = reactorPlasmaRef.current >= 25 && antennaAlignedRef.current
-      if (radarActive) drawRadar(dt)
+      if (radarActive) drawRadar(dt, now)
       drawRailgun(dt)
       drawTarget(dt)
 
@@ -764,7 +816,41 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
           </header>
           <div className="panel-body radar-body">
             <div id="radar-canvas-wrap" className={radarView !== 'radar' ? 'hidden' : ''}>
-              <canvas id="radar-canvas" ref={radarCanvasRef} />
+              <canvas
+                id="radar-canvas"
+                ref={radarCanvasRef}
+                onMouseMove={(e) => {
+                  if (!underAttack || !threatPosRef.current) { setThreatHovered(false); return }
+                  const cv = radarCanvasRef.current
+                  if (!cv) return
+                  const rect = cv.getBoundingClientRect()
+                  const mx = (e.clientX - rect.left) * (cv.clientWidth  / rect.width)
+                  const my = (e.clientY - rect.top)  * (cv.clientHeight / rect.height)
+                  const { x, y, labelY } = threatPosRef.current
+                  // hit: triangle body (circle) OR label text area (rect above triangle)
+                  const overTriangle = Math.hypot(mx - x, my - y) < 24
+                  const overLabel    = Math.abs(mx - x) < 90 && my >= labelY - 20 && my <= labelY + 4
+                  setThreatHovered(overTriangle || overLabel)
+                }}
+                onMouseLeave={() => setThreatHovered(false)}
+              />
+              {threatHovered && underAttack && (
+                <div className="radar-threat-infobox">
+                  <img
+                    className="radar-threat-img"
+                    src={`${import.meta.env.BASE_URL}darkness.webp`}
+                    alt="Threat origin"
+                  />
+                  <div className="radar-threat-divider" />
+                  <div className="radar-threat-row"><span className="radar-threat-key">ORIGIN</span><span className="radar-threat-val">PLANET AETHON, KARATH SYSTEM</span></div>
+                  <div className="radar-threat-divider" />
+                  <div className="radar-threat-reading">CHRONOLOGY ALTERATION EVENT DETECTED</div>
+                  <div className="radar-threat-reading">LIGHT CONE TILT ORIGIN POINT</div>
+                  <div className="radar-threat-reading">TACHYONIC EMISSION ORIGIN POINT</div>
+                  <div className="radar-threat-divider" />
+                  <div className="radar-threat-codered">CODE RED</div>
+                </div>
+              )}
               <div className="radar-readout">
                 <div><span className="k">CONTACTS:</span><span className="v" ref={contactCountRef} /></div>
                 <div><span className="k">FUTURE LIGHT CONE:</span><span className="v ok">NOMINAL</span></div>
@@ -796,7 +882,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
           {lowPower && <div className="low-power-overlay" />}
         </section>
 
-        <XBandRadioPanel litClass={lit('panel-xband')} lowPower={lowPower} aligned={antennaAligned} onAlign={onAdjustAntenna} />
+        <XBandRadioPanel litClass={lit('panel-xband')} lowPower={lowPower} aligned={antennaAligned} onAlign={onAdjustAntenna} onFreqChange={onRadioFreq} />
 
         {/* SPACETIME DIAGNOSTICS */}
         <section className={`panel${lit('panel-spacetime')}${lowPower ? ' panel--low-power' : ''}`} id="panel-spacetime">
@@ -849,7 +935,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
               <div className="chrono-cell">
                 <div className="chrono-label">TACHYONIC FLUX</div>
                 <div className="chrono-state warn" ref={tachyonRef} />
-                <div className="chrono-sub">m² &lt; 0 SIGNATURE</div>
+                <div className={`chrono-sub${underAttack ? ' chrono-sub--alert' : ''}`} ref={tachSubRef}>{underAttack ? 'EXCEEDING TOLERANCE' : 'm² &lt; 0 SIGNATURE'}</div>
               </div>
               <div className="chrono-cell">
                 <div className="chrono-label">QUANTUM DECOHERENCE</div>

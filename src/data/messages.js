@@ -30,7 +30,7 @@ const ALWAYS_ON_MESSAGES = [
     subject: 'Reactor Power-Up Notice',
     timestamp: '2026-05-04 // 14:32:01',
     portrait: null,
-    body: 'The installation has been kept in low power mode for recent maintenance - make sure you power up the reactor first to get things started.',
+    body: 'The installation has been kept in low power mode for recent maintenance - make sure you !!power up the reactor!! first to get things started.',
   },
   {
     id: 2,
@@ -58,7 +58,18 @@ const TRIGGERED_MESSAGES = [
     subject: 'Antenna Misalignment',
     timestamp: '2026-05-04 // 14:44:17',
     portrait: null,
-    body: "We can see the power readings increasing - looks like all systems are coming back online. However, we're not getting all the diagnostic readings we expect. It looks like the X-Band radio antenna isn't aligned correctly. Can you check the alignment? The panel should be in the top right of the main control system.",
+    body: "We can see the power readings increasing - looks like all systems are coming back online.\n\nHowever, we're not getting all the diagnostic readings we expect. It looks like the X-Band radio antenna isn't aligned correctly. Can you !!check the alignment?!!\n\nThe panel should be in the top right of the main control system.",
+  },
+  {
+    id: 101,
+    enabled: true,
+    requires: 'antennaAligned',
+    verified: true,
+    sender: 'Admiralty Command',
+    subject: 'Receiving signals',
+    timestamp: '2026-05-04 // 15:02:49',
+    portrait: null,
+    body: "The deep space X-band relay has been reconnected.\n\nAll systems green. Targeting system is now active.\n\nWe're picking up some strange interference around 9.2ghz - can you try !!tuning the radio to 9.2ghz!! using the X-Band Radio frequency dial on your panel and see what you pick up?",
   },
 ]
 
