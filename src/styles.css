@@ -1865,6 +1865,17 @@ body {
   box-shadow: 0 0 18px rgba(255,69,0,0.65), inset 0 0 10px rgba(255,69,0,0.15);
   animation: btn-active-glow 1.2s ease-in-out infinite;
 }
+.arm-btn--locked {
+  font-size: 11px;
+  letter-spacing: 0.20em;
+  cursor: default;
+}
+.arm-btn--locked:hover {
+  border-color: #dc143c;
+  background: rgba(139,0,0,0.18);
+  color: #ff6b6b;
+  box-shadow: 0 0 12px rgba(220,20,60,0.4), inset 0 0 8px rgba(220,20,60,0.08);
+}
 
 .launch-btn-row {
   display: flex;
@@ -2161,6 +2172,203 @@ body {
 
 .cvl-cd-num--flash {
   animation: cd-flash 0.5s ease-out forwards;
+}
+
+/* ── Urgent Message Overlay ────────────────────────────────────────── */
+.urg-dim {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 4, 12, 0.78);
+  backdrop-filter: blur(2px);
+  z-index: 9000;
+  animation: urg-fade-in 0.25s ease-out;
+}
+.urg-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 680px;
+  max-width: 92vw;
+  background: linear-gradient(180deg, rgba(40, 4, 8, 0.96) 0%, rgba(8, 2, 6, 0.98) 100%);
+  border: 1px solid rgba(220, 30, 30, 0.65);
+  box-shadow:
+    0 0 0 1px #000,
+    0 0 36px rgba(220, 30, 30, 0.35),
+    inset 0 0 24px rgba(140, 0, 0, 0.15);
+  font-family: var(--font-mono);
+  z-index: 9001;
+  animation: urg-panel-in 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes urg-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes urg-panel-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.urg-dim--closing {
+  animation: urg-fade-out 0.24s ease-in forwards;
+}
+.urg-panel--closing {
+  animation: urg-panel-out 0.24s ease-in forwards;
+}
+@keyframes urg-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes urg-panel-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to   { opacity: 0; transform: translate(-50%, -50%) scale(0.97); }
+}
+
+.urg-cursor {
+  display: inline-block;
+  margin-left: 3px;
+  color: rgba(255, 100, 100, 0.85);
+  animation: urg-blink 0.55s step-end infinite;
+}
+@keyframes urg-blink {
+  0%, 50%       { opacity: 1; }
+  50.01%, 100%  { opacity: 0; }
+}
+
+.urg-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(120, 10, 10, 0.45);
+  border-bottom: 1px solid rgba(220, 30, 30, 0.45);
+}
+.urg-header-pulse {
+  display: inline-block;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 40, 40, 1);
+  box-shadow: 0 0 10px rgba(255, 40, 40, 0.9);
+  animation: urg-pulse 1s ease-in-out infinite;
+}
+@keyframes urg-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.75); }
+}
+.urg-header-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(255, 200, 200, 0.95);
+  text-shadow: 0 0 8px rgba(255, 40, 40, 0.45);
+}
+
+.urg-body {
+  display: flex;
+  gap: 18px;
+  padding: 18px;
+}
+.urg-portrait-wrap {
+  flex: 0 0 auto;
+  width: 200px;
+  height: 200px;
+  border: 1px solid rgba(220, 30, 30, 0.45);
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.urg-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.urg-no-portrait {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: rgba(180, 100, 100, 0.55);
+}
+
+.urg-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.urg-sender {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: rgba(255, 220, 220, 0.95);
+  text-shadow: 0 0 6px rgba(255, 40, 40, 0.25);
+}
+.urg-subject {
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  color: rgba(220, 170, 170, 0.80);
+  margin-top: 3px;
+}
+.urg-divider {
+  height: 1px;
+  background: rgba(220, 30, 30, 0.30);
+  margin: 9px 0 11px;
+}
+.urg-text {
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+  color: rgba(230, 220, 220, 0.92);
+}
+.urg-para {
+  margin: 0 0 9px 0;
+}
+.urg-para:last-child {
+  margin-bottom: 0;
+}
+.urg-text-highlight {
+  color: rgba(140, 220, 140, 0.95);
+  font-weight: 700;
+}
+.urg-text-red {
+  color: rgba(255, 60, 60, 1);
+  font-weight: 700;
+  text-shadow:
+    0 0 6px  rgba(255, 30, 30, 0.85),
+    0 0 14px rgba(255, 30, 30, 0.55),
+    0 0 28px rgba(255, 30, 30, 0.30);
+}
+.urg-dismiss-btn {
+  margin-top: 14px;
+  align-self: flex-end;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(255, 200, 200, 0.95);
+  background: rgba(120, 10, 10, 0.45);
+  border: 1px solid rgba(220, 30, 30, 0.65);
+  padding: 8px 22px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.urg-dismiss-btn:hover {
+  background: rgba(180, 30, 30, 0.55);
+  border-color: rgba(255, 80, 80, 0.85);
+  color: #fff;
+}
+.urg-dismiss-btn--disabled,
+.urg-dismiss-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  background: rgba(60, 10, 10, 0.30);
+}
+.urg-dismiss-btn--disabled:hover,
+.urg-dismiss-btn:disabled:hover {
+  background: rgba(60, 10, 10, 0.30);
+  border-color: rgba(220, 30, 30, 0.65);
+  color: rgba(255, 200, 200, 0.95);
 }
 
 /* ── Discharge diagram ─────────────────────────────────────────────── */

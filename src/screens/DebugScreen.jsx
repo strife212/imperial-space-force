@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { getFlags, setFlag } from '../lib/store'
 import { useScreenScale } from '../hooks/useScreenScale'
+import UrgentMessageOverlay from '../components/UrgentMessageOverlay'
+
+const SAMPLE_URGENT = {
+  sender:  'Admiralty Command',
+  subject: 'DEEP SPACE ARRAY ALERT',
+  body:    "Astraia! What in the throne are you doing? The deep space array is showing that the Annunciator has launched towards the Throne System.\n\nYou'd destroy the !!Universal Order!!?",
+}
 
 const SCREENS_COL1 = [
   { key: 'login',        label: 'Login Screen'           },
@@ -30,6 +37,7 @@ const FLAG_LABELS = {
 
 export default function DebugScreen({ onNavigate, onDebugMain, onDebugAttack, onDebugFail }) {
   const [flags, setFlags] = useState(getFlags)
+  const [urgentShown, setUrgentShown] = useState(false)
   const innerRef = useScreenScale()
 
   const toggle = (name) => {
@@ -79,6 +87,12 @@ export default function DebugScreen({ onNavigate, onDebugMain, onDebugAttack, on
                 <span className="debug-item-label">Game Over Screen — fail / court martial</span>
               </button>
             </li>
+            <li>
+              <button className="debug-item debug-item--shortcut" onClick={() => setUrgentShown(true)}>
+                <span className="debug-item-key">[!]</span>
+                <span className="debug-item-label">Urgent Message Overlay</span>
+              </button>
+            </li>
           </ul>
 
           {/* Column 3 — flags */}
@@ -96,6 +110,12 @@ export default function DebugScreen({ onNavigate, onDebugMain, onDebugAttack, on
 
         </div>
       </div>
+      {urgentShown && (
+        <UrgentMessageOverlay
+          {...SAMPLE_URGENT}
+          onClose={() => setUrgentShown(false)}
+        />
+      )}
     </div>
   )
 }

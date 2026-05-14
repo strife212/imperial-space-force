@@ -1,5 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import UrgentMessageOverlay from '../components/UrgentMessageOverlay'
+
+// ── Urgent-message sequence triggered by under-attack ────────────────────────
+const URGENT_ATTACK_SEQ = [
+  {
+    sender:  'Admiralty Command',
+    subject: 'CHRONOLOGY PROTECTION ALERT',
+    body:    'The chronology protection readings have gone off the charts... what is happening over there?',
+  },
+  {
+    sender:   'UNKNOWN SENDER',
+    portrait: `${import.meta.env.BASE_URL}darkness.webp`,
+    body:     '▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓ ▓▓ ░░ ▓░ ░▓...',
+  },
+  {
+    sender:  'Admiralty Command',
+    subject: 'THREAT ASSESSMENT',
+    body:    '**TIER 1 THREAT DETECTED**\n\n**STRATCON ONE**\n\n##WEAPONS FREE##',
+  },
+]
 import { LOG_MESSAGES, PKG_NAMES, SECTION_INFO } from '../lib/constants'
 import { PLANETS, SUN, SUN_IDX, getTargetName } from '../lib/planetData'
 import LaunchCodeVerifier from './LaunchCodeVerifier'
@@ -384,13 +404,20 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const underAttackRef = useRef(underAttack)
   useEffect(() => { underAttackRef.current = underAttack }, [underAttack])
 
-  // ── Darkness flash on attack start ───────────────────────────────────────
-  const [darknessKey, setDarknessKey] = useState(0)
+  // ── Darkness flash + urgent-message sequence on attack start ─────────────
+  const [darknessKey,  setDarknessKey]  = useState(0)
+  const [urgentIdx,    setUrgentIdx]    = useState(null)
   const prevUnderAttack = useRef(false)
+  const urgentTimerRef  = useRef(null)
   useEffect(() => {
-    if (underAttack && !prevUnderAttack.current) setDarknessKey(k => k + 1)
+    if (underAttack && !prevUnderAttack.current) {
+      setDarknessKey(k => k + 1)
+      // darkness-flash animation is 4.2s; first message arrives 1s after fade-out
+      urgentTimerRef.current = setTimeout(() => setUrgentIdx(0), 5200)
+    }
     prevUnderAttack.current = underAttack
   }, [underAttack])
+  useEffect(() => () => clearTimeout(urgentTimerRef.current), [])
 
   // Sync the two subtitle blink animations so they start at exactly the same time
   useEffect(() => {
@@ -1285,7 +1312,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
           {/* LAUNCH CONTROL */}
           <section className={`panel${showCodeVerify ? ' elevated' : ''}${lit('panel-launch')}${lowPower ? ' panel--low-power' : ''}`} id="panel-launch">
             <header className="panel-header">
-              <span className="bullet pulse" /><h2>PHYSICS PACKAGE LAUNCH CONTROL</h2>
+              <span className={`bullet${underAttack ? ' bullet--alert' : ' pulse'}`} /><h2>PHYSICS PACKAGE LAUNCH CONTROL</h2>
               <span className="panel-id">PNL-009 / AUTHORIZATION REQUIRED</span>
             </header>
             <div className="panel-body launch-body">
@@ -1321,7 +1348,13 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
                 <div className="launch-pkg-name">{PKG_NAMES[selectedPkg]}</div>
                 <div className={launchStatus.cls}>{launchStatus.text}</div>
                 {showArm && (
-                  <button className="arm-btn arm-btn--full" onClick={handleArm}>ARM</button>
+                  <button
+                    className={`arm-btn arm-btn--full${underAttack ? '' : ' arm-btn--locked'}`}
+                    onClick={underAttack ? handleArm : undefined}
+                    disabled={!underAttack}
+                  >
+                    {underAttack ? 'ARM' : 'LOCKED UNTIL STRATCON 1'}
+                  </button>
                 )}
                 {showDisarm && (
                   <button className="disarm-btn disarm-btn--full" onClick={handleArm}>DISARM</button>
@@ -1374,6 +1407,19 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
       )}
       </div>
     </div>
+
+    {/* ── Urgent-message overlay ───────────────────────────────────────── */}
+    {urgentIdx !== null && urgentIdx < URGENT_ATTACK_SEQ.length && (
+      <UrgentMessageOverlay
+        key={urgentIdx}
+        {...URGENT_ATTACK_SEQ[urgentIdx]}
+        onClose={() => {
+          const next = urgentIdx + 1 < URGENT_ATTACK_SEQ.length ? urgentIdx + 1 : null
+          setUrgentIdx(null)
+          if (next !== null) setTimeout(() => setUrgentIdx(next), 200)
+        }}
+      />
+    )}
 
     {/* ── Light cone tooltip portal ────────────────────────────────────── */}
     {coneTipVisible && coneTipPos && createPortal(
