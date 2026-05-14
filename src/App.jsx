@@ -37,6 +37,7 @@ export default function App() {
   const [countdownSeconds,   setCountdownSeconds]   = useState(10)
   const [gameOverFail,       setGameOverFail]       = useState(false)
   const [underAttack,        setUnderAttack]        = useState(false)
+  const [radioFreq,          setRadioFreq]          = useState(8.0)
 
   const triggerFlag = (name) => setSessionFlags(prev => new Set([...prev, name]))
 
@@ -80,7 +81,7 @@ export default function App() {
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onDebug={() => setScreen('debug')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}
-      {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setCountdownSeconds(10); setScreen('monitor') }} onReactor={() => setScreen('reactor')} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} onAdjustAntenna={() => setScreen('antenna')} antennaAligned={antennaAligned} reactorPlasma={plasmaLevel} targetIdx={targetIdx} countdownSeconds={countdownSeconds} underAttack={underAttack} onRadioFreq={(f) => { if (f === 9.2) setUnderAttack(true) }} {...mailProps} />}
+      {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setCountdownSeconds(10); setScreen('monitor') }} onReactor={() => setScreen('reactor')} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} onAdjustAntenna={() => setScreen('antenna')} antennaAligned={antennaAligned} reactorPlasma={plasmaLevel} targetIdx={targetIdx} countdownSeconds={countdownSeconds} underAttack={underAttack} onRadioFreq={(f) => { setRadioFreq(f); if (f === 9.2) setUnderAttack(true) }} radioFreq={radioFreq} {...mailProps} />}
       {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => { const imperial = !!TARGETS[targetIdx]?.system?.imperial; setGameOverFail(imperial); setScreen('gameover') }} onLogout={() => { const imperial = !!TARGETS[targetIdx]?.system?.imperial; setGameOverFail(imperial); setScreen('gameover') }} packageName={launchPackage} targetName={targetName} {...mailProps} />}
       {screen === 'debug'     && <DebugScreen onNavigate={(s) => { if (s === 'targeting') setTargetingSource('debug'); setGameOverFail(false); setUnderAttack(false); setScreen(s) }} onDebugMain={() => { setPlasmaLevel(75); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(false); setScreen('main') }} onDebugAttack={() => { setPlasmaLevel(75); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(true); setScreen('main') }} onDebugFail={() => { setGameOverFail(true); setScreen('gameover') }} />}
       {screen === 'reactor'   && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); if (density >= 25) triggerFlag('reactorPoweredUp'); setScreen('main') }} onLogout={() => setScreen('main')} initialPlasma={plasmaLevel} {...mailProps} />}

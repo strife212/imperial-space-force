@@ -7,6 +7,71 @@ import HudFooter from '../components/HudFooter'
 import { setFlag } from '../lib/store'
 import XBandRadioPanel from './XBandRadioPanel'
 
+// ── Glitch overlay (under attack) ────────────────────────────────────────────
+function GlitchOverlay() {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    let rafId
+    let blocks = []
+    let lastSpawn = 0
+
+    const resize = () => {
+      canvas.width  = canvas.offsetWidth
+      canvas.height = canvas.offsetHeight
+    }
+    resize()
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+
+    const loop = (ts) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      const w = canvas.width, h = canvas.height
+
+      // spawn blocks at irregular intervals
+      if (ts - lastSpawn > 60 + Math.random() * 220) {
+        lastSpawn = ts
+        const count = Math.floor(1 + Math.random() * 4)
+        for (let n = 0; n < count; n++) {
+          const isSlice = Math.random() < 0.25
+          blocks.push({
+            x:       isSlice ? 0 : Math.random() * w,
+            y:       Math.random() * h,
+            w:       isSlice ? w : 8 + Math.random() * 60,
+            h:       isSlice ? 1 + Math.random() * 5 : 3 + Math.random() * 18,
+            dx:      isSlice ? (Math.random() - 0.5) * 24 : 0,
+            life:    50 + Math.random() * 130,
+            born:    ts,
+            // mostly cyan/blue with occasional white or red tint
+            r: Math.random() < 0.15 ? 255 : Math.random() < 0.5 ? 80  : 160,
+            g: Math.random() < 0.15 ? 255 : 200,
+            b: 255,
+          })
+        }
+      }
+
+      // draw and expire blocks
+      blocks = blocks.filter(b => ts - b.born < b.life)
+      blocks.forEach(b => {
+        const age   = (ts - b.born) / b.life
+        const alpha = Math.sin(age * Math.PI) * 0.18   // fade in then out
+        ctx.fillStyle = `rgba(${b.r},${b.g},${b.b},${alpha})`
+        ctx.fillRect(b.x + b.dx * age, b.y, b.w, b.h)
+      })
+
+      rafId = requestAnimationFrame(loop)
+    }
+
+    rafId = requestAnimationFrame(loop)
+    return () => { cancelAnimationFrame(rafId); ro.disconnect() }
+  }, [])
+
+  return <canvas ref={canvasRef} className="glitch-overlay-canvas" />
+}
+
 // ── Utilities ────────────────────────────────────────────────────────────────
 const t0      = Date.now() - 86400_000 * 17 - 3600_000 * 4 - 60_000 * 22
 const rand    = (a, b) => a + Math.random() * (b - a)
@@ -42,7 +107,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, onAdjustAntenna, antennaAligned = false, reactorPlasma = 75, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen, underAttack = false, onRadioFreq }) {
+export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, onAdjustAntenna, antennaAligned = false, reactorPlasma = 75, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen, underAttack = false, onRadioFreq, radioFreq = 8.0 }) {
 
   // ── Panel init animation ──────────────────────────────────────────────────
   const [litPanels, setLitPanels] = useState(new Set())
@@ -763,7 +828,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const showCodeVerify= launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown' || launchPhase === 'fired' || launchPhase === 'notarget'
 
   return (
-    <div id="main-screen">
+    <div id="main-screen" className={underAttack ? 'main-screen--glitch' : ''}>
+      {underAttack && <GlitchOverlay />}
       <div className="main-scaler" ref={scalerRef}>
       <HudHeader
         onLogout={onLogout}
@@ -882,7 +948,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
           {lowPower && <div className="low-power-overlay" />}
         </section>
 
-        <XBandRadioPanel litClass={lit('panel-xband')} lowPower={lowPower} aligned={antennaAligned} onAlign={onAdjustAntenna} onFreqChange={onRadioFreq} />
+        <XBandRadioPanel litClass={lit('panel-xband')} lowPower={lowPower} aligned={antennaAligned} onAlign={onAdjustAntenna} onFreqChange={onRadioFreq} initialFreq={radioFreq} />
 
         {/* SPACETIME DIAGNOSTICS */}
         <section className={`panel${lit('panel-spacetime')}${lowPower ? ' panel--low-power' : ''}`} id="panel-spacetime">

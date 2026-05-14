@@ -21,11 +21,14 @@ const DIAL_TICKS = Array.from({ length: 41 }, (_, i) => {
   }
 })
 
-export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign, onFreqChange }) {
-  const [freq,      setFreq]      = useState(8.0)
-  const [dialAngle, setDialAngle] = useState(-90)
-  const freqRef      = useRef(8.0)
-  const dialAngleRef = useRef(-90)
+export default function XBandRadioPanel({ litClass, lowPower, aligned, onAlign, onFreqChange, initialFreq = 8.0 }) {
+  // Compute starting dial angle from persisted frequency
+  // Each 0.1 GHz step = PX_PER_STEP px drag = PX_PER_STEP * 2 dial degrees
+  const initAngle = -90 + ((initialFreq - MIN_FREQ) / STEP) * (PX_PER_STEP * 2)
+  const [freq,      setFreq]      = useState(initialFreq)
+  const [dialAngle, setDialAngle] = useState(initAngle)
+  const freqRef      = useRef(initialFreq)
+  const dialAngleRef = useRef(initAngle)
   const isDragging   = useRef(false)
   const lastX        = useRef(0)
   const dragAccum    = useRef(0)
