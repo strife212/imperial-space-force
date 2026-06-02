@@ -152,7 +152,6 @@ export default function CryptographyModule({ onComplete }) {
   const [resultLine1,   setResultLine1]   = useState('')
   const [resultLine2,   setResultLine2]   = useState('')
   const [blinkFinal,    setBlinkFinal]    = useState(false)
-  const [contentFading, setContentFading] = useState(false)
   const [contentGone,   setContentGone]   = useState(false)
 
   const [stage2Text,    setStage2Text]    = useState('')
@@ -376,16 +375,16 @@ export default function CryptographyModule({ onComplete }) {
     )
 
     const BLINK_DUR    = 750
-    const CONTENT_FADE = 800
     const T_BLINK      = T_LINE2 + RESULT_LINE2.length * CHAR_DELAY + 400
     at(T_BLINK,                              () => { setBlinkFinal(true); beep() })
     at(T_BLINK + BLINK_DUR,                  beep)
     at(T_BLINK + BLINK_DUR * 2,              beep)
-    at(T_BLINK + BLINK_DUR * 3 + 200,        () => setContentFading(true))
-    at(T_BLINK + BLINK_DUR * 3 + 200 + CONTENT_FADE, () => setContentGone(true))
+    // Remove all stage-1 content instantly once the final blink has settled
+    const T_CONTENT_GONE = T_BLINK + BLINK_DUR * 3 + 500
+    at(T_CONTENT_GONE, () => setContentGone(true))
 
     const KEY_FADE_DUR = 600
-    const T_STAGE2 = T_BLINK + BLINK_DUR * 3 + 200 + CONTENT_FADE + 300
+    const T_STAGE2 = T_CONTENT_GONE + 300
     STAGE2_TEXT.split('').forEach((_, i) =>
       at(T_STAGE2 + i * CHAR_DELAY, () => setStage2Text(STAGE2_TEXT.slice(0, i + 1)))
     )
@@ -445,11 +444,11 @@ export default function CryptographyModule({ onComplete }) {
       {!contentGone && (
         <>
           {linkText && (
-            <div className={`crypto-link-text${contentFading ? ' crypto-fade-out' : ''}`} style={{ order: 1 }}>
+            <div className="crypto-link-text" style={{ order: 1 }}>
               {linkText}
             </div>
           )}
-          <div className={`crypto-result-slot${contentFading ? ' crypto-fade-out' : ''}`} style={{ order: 3 }}>
+          <div className="crypto-result-slot" style={{ order: 3 }}>
             {resultLine0 && <div className="crypto-result-line">{resultLine0}</div>}
             {resultLine1 && <div className="crypto-result-line">{resultLine1}</div>}
             {resultLine2 && (
