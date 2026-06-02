@@ -409,7 +409,7 @@
 .crypto-canvas-wrap {
   position: relative;
   width: 280px;
-  height: 170px;
+  height: 200px;
 }
 .crypto-canvas {
   display: block;
@@ -457,6 +457,7 @@
   width: 100%;
   opacity: 1;
   transition: opacity 0.8s ease;
+  padding-top: 22px;
 }
 .crypto-content--fading {
   opacity: 0;

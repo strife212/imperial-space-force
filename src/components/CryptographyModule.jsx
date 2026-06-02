@@ -183,7 +183,7 @@ export default function CryptographyModule({ onComplete }) {
       ctx.textAlign = 'center'
       ctx.fillStyle = `rgba(200,225,255,${a.toFixed(3)})`
       if ('letterSpacing' in ctx) ctx.letterSpacing = `${(0.1 + t * 0.12).toFixed(2)}em`
-      ctx.fillText(text, x, cy + vr + fs + 16)
+      ctx.fillText(text, x, cy + vr + fs + 22)
       ctx.restore()
     }
 
@@ -416,7 +416,7 @@ export default function CryptographyModule({ onComplete }) {
               ref={canvasRef}
               className={`crypto-canvas${showCanvas ? ' crypto-canvas--visible' : ''}`}
               width={280}
-              height={170}
+              height={200}
             />
           </div>
           <div className="crypto-result-slot">
