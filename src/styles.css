@@ -544,7 +544,7 @@
 .boot-emblem {
   display: block;
   width: 180px;
-  height: auto;
+  height: 180px;
   margin: 0 auto 18px;
 }
 .boot-title {
