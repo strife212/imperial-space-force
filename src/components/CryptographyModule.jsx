@@ -29,9 +29,12 @@ Tp8fNwS5gH6DaM0rU9vELDgFJV0nKpVmRxT2cFqAbLgY4BdHiO6IXtQsKyAnWd
 const FINAL_LINE0  = 'KEY EXCHANGE COMPLETE'
 const FINAL_LINE1  = 'VERIFYING IDENTITY'
 const FINAL_LINE2  = 'IDENTITY VERIFIED.'
-const CHAR_DELAY   = 40   // ms per character
-const BASE_RY      = 0.5  // shared qubit orientation
-const QUBIT_R      = 45   // sphere radius (px)
+const CHAR_DELAY   = 40    // ms per character
+const BASE_RY      = 0.5   // shared qubit orientation
+const QUBIT_R      = 45    // settled sphere radius (px)
+const QUBIT_FULL_R = 68    // full-size radius during intro
+const FULL_FADE_DUR  = 550  // ms to fade in full-size qubit
+const SETTLE_DUR     = 850  // ms to animate from center/large to final position
 
 // ── Bloch sphere wireframe ────────────────────────────────────────────────────
 function drawBlochSphere(ctx, cx, cy, r, ry, alpha) {
@@ -39,32 +42,27 @@ function drawBlochSphere(ctx, cx, cy, r, ry, alpha) {
   const c1 = `rgba(60,140,255,${alpha.toFixed(3)})`
   const c2 = `rgba(30,80,200,${(alpha * 0.45).toFixed(3)})`
   const cv = `rgba(200,230,255,${alpha.toFixed(3)})`
-  const vr = r * 0.72  // vertical radius — shorter to look more circular on screen
+  const vr = r * 0.72
 
-  // Equatorial ellipse
   ctx.strokeStyle = c1; ctx.lineWidth = 1
   ctx.beginPath()
   ctx.ellipse(cx, cy, r, vr * 0.28, 0, 0, Math.PI * 2)
   ctx.stroke()
 
-  // Meridian 1 (ry-dependent width)
   ctx.strokeStyle = c1
   ctx.beginPath()
   ctx.ellipse(cx, cy, Math.max(0.5, Math.abs(Math.cos(ry)) * r), vr, 0, 0, Math.PI * 2)
   ctx.stroke()
 
-  // Meridian 2 (90° offset)
   ctx.strokeStyle = c2
   ctx.beginPath()
   ctx.ellipse(cx, cy, Math.max(0.5, Math.abs(Math.sin(ry)) * r), vr, 0, 0, Math.PI * 2)
   ctx.stroke()
 
-  // Z-axis (dashed)
   ctx.strokeStyle = c2; ctx.lineWidth = 0.7; ctx.setLineDash([2, 3])
   ctx.beginPath(); ctx.moveTo(cx, cy - vr - 6); ctx.lineTo(cx, cy + vr + 6); ctx.stroke()
   ctx.setLineDash([])
 
-  // State vector
   const svTheta = Math.PI * 0.32
   const svX = cx + r * Math.sin(svTheta) * Math.cos(ry + 0.3)
   const svY = cy - vr * Math.cos(svTheta)
@@ -82,7 +80,6 @@ function drawBlochSphere(ctx, cx, cy, r, ry, alpha) {
   ctx.lineTo(svX - ux * 5 + uy * 3, svY - uy * 5 - ux * 3)
   ctx.closePath(); ctx.fill()
 
-  // Poles
   ctx.fillStyle = c1
   ctx.beginPath(); ctx.arc(cx, cy - vr, 2.5, 0, Math.PI * 2); ctx.fill()
   ctx.beginPath(); ctx.arc(cx, cy + vr, 2.5, 0, Math.PI * 2); ctx.fill()
@@ -90,14 +87,14 @@ function drawBlochSphere(ctx, cx, cy, r, ry, alpha) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function CryptographyModule({ onComplete }) {
-  const moduleRef    = useRef(null)
-  const canvasRef    = useRef(null)
-  const humRef       = useRef(null)
-  const humGainRef   = useRef(null)
-  const humCtxRef    = useRef(null)
-  const beepRef      = useRef(null)
+  const moduleRef  = useRef(null)
+  const canvasRef  = useRef(null)
+  const humRef     = useRef(null)
+  const humGainRef = useRef(null)
+  const humCtxRef  = useRef(null)
+  const beepRef    = useRef(null)
 
-  // ── Computer hum audio (seamless Web Audio loop) ────────────────────────
+  // ── Computer hum audio ──────────────────────────────────────────────────
   useEffect(() => {
     const ctx  = new (window.AudioContext || window.webkitAudioContext)()
     const gain = ctx.createGain()
@@ -129,15 +126,25 @@ export default function CryptographyModule({ onComplete }) {
     }
   }, [])
 
-  // ── Beep audio (preload) ─────────────────────────────────────────────────
+  // ── Beep audio ───────────────────────────────────────────────────────────
   useEffect(() => {
     const beep = new Audio(`${import.meta.env.BASE_URL}beep.mp3`)
     beep.preload = 'auto'
     beepRef.current = beep
   }, [])
 
-  // Mutable animation state shared between RAF loop and timeline
-  const anim = useRef({ qubitsAlpha: 0, rightRy: BASE_RY + Math.PI, mergeT: 0 })
+  // Mutable animation state — all canvas-driven
+  const anim = useRef({
+    localX:      140,           // starts at centre
+    localR:      QUBIT_FULL_R,
+    localAlpha:  0,
+    remoteX:     140,           // starts at centre
+    remoteR:     QUBIT_FULL_R,
+    remoteAlpha: 0,
+    remoteRy:    BASE_RY + Math.PI,
+    labelsAlpha: 1,             // faded to 0 at merge
+    mergeT:      0,
+  })
 
   const [linkText,      setLinkText]      = useState('')
   const [showCanvas,    setShowCanvas]    = useState(false)
@@ -147,7 +154,6 @@ export default function CryptographyModule({ onComplete }) {
   const [blinkFinal,    setBlinkFinal]    = useState(false)
   const [contentFading, setContentFading] = useState(false)
   const [contentGone,   setContentGone]   = useState(false)
-  const [labelsFading,  setLabelsFading]  = useState(false)
   const [stage2Text,    setStage2Text]    = useState('')
   const [showKey,       setShowKey]       = useState(false)
   const [keyFading,     setKeyFading]     = useState(false)
@@ -158,20 +164,41 @@ export default function CryptographyModule({ onComplete }) {
   const [finalLine2,    setFinalLine2]    = useState('')
   const [blinkIdentity, setBlinkIdentity] = useState(false)
 
-  // ── Persistent canvas RAF loop ────────────────────────────────────────────
+  // ── Canvas RAF loop ───────────────────────────────────────────────────────
   useEffect(() => {
     const cv = canvasRef.current; if (!cv) return
     const ctx = cv.getContext('2d')
     const w = cv.width, h = cv.height, cy = h / 2, cx = w / 2
     let id
 
+    // Draw a label directly below its qubit — font size scales with qubit radius
+    const drawLabel = (text, x, r, alpha) => {
+      const a = alpha * anim.current.labelsAlpha
+      if (a <= 0) return
+      const t  = Math.max(0, Math.min(1, (r - QUBIT_R) / (QUBIT_FULL_R - QUBIT_R)))
+      const fs = Math.round(11 + t * 7)    // 11px settled → 18px full
+      const vr = r * 0.72
+      ctx.save()
+      ctx.font      = `600 ${fs}px 'Cascadia Mono', Consolas, monospace`
+      ctx.textAlign = 'center'
+      ctx.fillStyle = `rgba(200,225,255,${a.toFixed(3)})`
+      if ('letterSpacing' in ctx) ctx.letterSpacing = `${(0.1 + t * 0.12).toFixed(2)}em`
+      ctx.fillText(text, x, cy + vr + fs + 16)
+      ctx.restore()
+    }
+
     const draw = () => {
       ctx.clearRect(0, 0, w, h)
       const a  = anim.current
-      const lx = w * 0.25 + (cx - w * 0.25) * a.mergeT
-      const rx = w * 0.75 + (cx - w * 0.75) * a.mergeT
-      drawBlochSphere(ctx, lx, cy, QUBIT_R, BASE_RY,   a.qubitsAlpha)
-      drawBlochSphere(ctx, rx, cy, QUBIT_R, a.rightRy, a.qubitsAlpha)
+      const lx = a.localX  + (cx - a.localX)  * a.mergeT
+      const rx = a.remoteX + (cx - a.remoteX) * a.mergeT
+
+      drawBlochSphere(ctx, lx, cy, a.localR,  BASE_RY,    a.localAlpha)
+      drawBlochSphere(ctx, rx, cy, a.remoteR, a.remoteRy, a.remoteAlpha)
+
+      drawLabel('LOCAL QBIT',  lx, a.localR,  a.localAlpha)
+      drawLabel('REMOTE QBIT', rx, a.remoteR, a.remoteAlpha)
+
       id = requestAnimationFrame(draw)
     }
     draw()
@@ -192,59 +219,126 @@ export default function CryptographyModule({ onComplete }) {
       const naturalH = el.getBoundingClientRect().height
       el.style.transition = 'none'
       el.style.height = naturalH + 'px'
-      el.getBoundingClientRect() // force reflow
+      el.getBoundingClientRect()
       el.style.transition = 'height 0.7s cubic-bezier(0.4, 0, 0.2, 1)'
       el.style.height = '400px'
     })
 
-    // Type "ESTABLISHING SECURE QUANTUM LINK"
+    // Type link text
     const T_LINK = 1200
     LINK_TEXT.split('').forEach((_, i) =>
       at(T_LINK + i * CHAR_DELAY, () => setLinkText(LINK_TEXT.slice(0, i + 1)))
     )
     const T_AFTER_LINK = T_LINK + LINK_TEXT.length * CHAR_DELAY
 
-    // Fade in qubits
-    const T_QUBITS = T_AFTER_LINK + 400
-    at(T_QUBITS, () => {
+    // ── Phase 1: Local qubit + label fade in at centre, full size ─────────
+    const T_LOCAL_APPEAR = T_AFTER_LINK + 400
+    at(T_LOCAL_APPEAR, () => {
       setShowCanvas(true)
       const start = performance.now()
       const fade = () => {
-        a.qubitsAlpha = Math.min(1, (performance.now() - start) / 400)
-        if (a.qubitsAlpha < 1) requestAnimationFrame(fade)
+        a.localAlpha = Math.min(1, (performance.now() - start) / FULL_FADE_DUR)
+        if (a.localAlpha < 1) requestAnimationFrame(fade)
       }
       requestAnimationFrame(fade)
     })
 
-    // Rotate right qubit to match left
-    const T_ROTATE = T_QUBITS + 700
+    // ── Phase 2: Local qubit + label settle to left ───────────────────────
+    const T_LOCAL_SETTLE = T_LOCAL_APPEAR + FULL_FADE_DUR + 300
+    at(T_LOCAL_SETTLE, () => {
+      const start = performance.now()
+      const startX = a.localX, startR = a.localR
+      const settle = () => {
+        const p  = Math.min(1, (performance.now() - start) / SETTLE_DUR)
+        const ep = ease(p)
+        a.localX = startX + (70  - startX) * ep   // 280 * 0.25
+        a.localR = startR + (QUBIT_R - startR) * ep
+        if (p < 1) requestAnimationFrame(settle)
+      }
+      requestAnimationFrame(settle)
+    })
+
+    // ── Phase 3: Remote qubit + label fade in; local dims ────────────────
+    const T_REMOTE_APPEAR = T_LOCAL_SETTLE + SETTLE_DUR + 250
+    at(T_REMOTE_APPEAR, () => {
+      // Dim local qubit (label follows automatically)
+      const dimStart = performance.now(), dimFrom = a.localAlpha
+      const dim = () => {
+        const p = Math.min(1, (performance.now() - dimStart) / 400)
+        a.localAlpha = dimFrom + (0.25 - dimFrom) * ease(p)
+        if (p < 1) requestAnimationFrame(dim)
+      }
+      requestAnimationFrame(dim)
+      // Fade in remote qubit + label
+      const fadeStart = performance.now()
+      const fade = () => {
+        a.remoteAlpha = Math.min(1, (performance.now() - fadeStart) / FULL_FADE_DUR)
+        if (a.remoteAlpha < 1) requestAnimationFrame(fade)
+      }
+      requestAnimationFrame(fade)
+    })
+
+    // ── Phase 4: Remote qubit + label settle to right; local restores ─────
+    const T_REMOTE_SETTLE = T_REMOTE_APPEAR + FULL_FADE_DUR + 300
+    at(T_REMOTE_SETTLE, () => {
+      const start = performance.now()
+      const startX = a.remoteX, startR = a.remoteR
+      const settle = () => {
+        const p  = Math.min(1, (performance.now() - start) / SETTLE_DUR)
+        const ep = ease(p)
+        a.remoteX = startX + (210 - startX) * ep  // 280 * 0.75
+        a.remoteR = startR + (QUBIT_R - startR) * ep
+        if (p < 1) requestAnimationFrame(settle)
+      }
+      requestAnimationFrame(settle)
+    })
+    at(T_REMOTE_SETTLE + SETTLE_DUR, () => {
+      // Restore local qubit + label
+      const start = performance.now(), startAlpha = a.localAlpha
+      const restore = () => {
+        const p = Math.min(1, (performance.now() - start) / 400)
+        a.localAlpha = startAlpha + (1 - startAlpha) * ease(p)
+        if (p < 1) requestAnimationFrame(restore)
+      }
+      requestAnimationFrame(restore)
+    })
+
+    // ── Existing flow: rotate → merge → result lines ───────────────────────
+
+    const T_ROTATE   = T_REMOTE_SETTLE + SETTLE_DUR + 800
     const ROTATE_DUR = 800
     at(T_ROTATE, () => {
       const start   = performance.now()
-      const startRy = BASE_RY + Math.PI
+      const startRy = a.remoteRy
       const rotate  = () => {
         const p  = Math.min(1, (performance.now() - start) / ROTATE_DUR)
-        a.rightRy = startRy + (BASE_RY - startRy) * ease(p)
+        a.remoteRy = startRy + (BASE_RY - startRy) * ease(p)
         if (p < 1) requestAnimationFrame(rotate)
       }
       requestAnimationFrame(rotate)
     })
 
-    // Merge qubits to centre
-    const T_MERGE = T_ROTATE + ROTATE_DUR + 550
+    const T_MERGE   = T_ROTATE + ROTATE_DUR + 550
     const MERGE_DUR = 600
-    at(T_MERGE, () => setLabelsFading(true))
     at(T_MERGE, () => {
+      // Fade canvas labels out
       const start = performance.now()
+      const fadeL = () => {
+        const p = Math.min(1, (performance.now() - start) / 400)
+        a.labelsAlpha = 1 - ease(p)
+        if (p < 1) requestAnimationFrame(fadeL)
+      }
+      requestAnimationFrame(fadeL)
+      // Merge qubits
+      const mergeStart = performance.now()
       const merge = () => {
-        const p = Math.min(1, (performance.now() - start) / MERGE_DUR)
+        const p = Math.min(1, (performance.now() - mergeStart) / MERGE_DUR)
         a.mergeT = ease(p)
         if (p < 1) requestAnimationFrame(merge)
       }
       requestAnimationFrame(merge)
     })
 
-    // Type result lines
     const T_RESULT = T_MERGE + MERGE_DUR + 400
     RESULT_LINE0.split('').forEach((_, i) =>
       at(T_RESULT + i * CHAR_DELAY, () => setResultLine0(RESULT_LINE0.slice(0, i + 1)))
@@ -258,9 +352,8 @@ export default function CryptographyModule({ onComplete }) {
       at(T_LINE2 + i * CHAR_DELAY, () => setResultLine2(RESULT_LINE2.slice(0, i + 1)))
     )
 
-    // Blink final line 3 times, then fade out all content
-    const BLINK_DUR    = 750   // ms per blink cycle
-    const CONTENT_FADE = 800   // ms for content fade-out transition
+    const BLINK_DUR    = 750
+    const CONTENT_FADE = 800
     const T_BLINK      = T_LINE2 + RESULT_LINE2.length * CHAR_DELAY + 400
     at(T_BLINK,                              () => { setBlinkFinal(true); beep() })
     at(T_BLINK + BLINK_DUR,                  beep)
@@ -268,24 +361,20 @@ export default function CryptographyModule({ onComplete }) {
     at(T_BLINK + BLINK_DUR * 3 + 200,        () => setContentFading(true))
     at(T_BLINK + BLINK_DUR * 3 + 200 + CONTENT_FADE, () => setContentGone(true))
 
-    // Stage 2 — key exchange
-    const KEY_FADE_DUR = 600   // matches .crypto-key-block transition
+    const KEY_FADE_DUR = 600
     const T_STAGE2 = T_BLINK + BLINK_DUR * 3 + 200 + CONTENT_FADE + 300
     STAGE2_TEXT.split('').forEach((_, i) =>
       at(T_STAGE2 + i * CHAR_DELAY, () => setStage2Text(STAGE2_TEXT.slice(0, i + 1)))
     )
 
-    // Key block 1 (private)
     const T_SHOW_KEY  = T_STAGE2 + STAGE2_TEXT.length * CHAR_DELAY + 300
     at(T_SHOW_KEY,                          () => setShowKey(true))
     at(T_SHOW_KEY + 1500,                   () => setKeyFading(true))
     at(T_SHOW_KEY + 1500 + KEY_FADE_DUR,    () => setKey1Gone(true))
 
-    // Key block 2 (remote) — stays visible
     const T_SHOW_KEY2 = T_SHOW_KEY + 1500 + KEY_FADE_DUR + 150
     at(T_SHOW_KEY2, () => setShowKey2(true))
 
-    // Final lines start while key 2 is still showing
     const T_FINAL = T_SHOW_KEY2 + 1500
     FINAL_LINE0.split('').forEach((_, i) =>
       at(T_FINAL + i * CHAR_DELAY, () => setFinalLine0(FINAL_LINE0.slice(0, i + 1)))
@@ -299,9 +388,8 @@ export default function CryptographyModule({ onComplete }) {
       at(T_FINAL2 + i * CHAR_DELAY, () => setFinalLine2(FINAL_LINE2.slice(0, i + 1)))
     )
 
-    // Blink "IDENTITY VERIFIED." then call onComplete
     const T_BLINK2 = T_FINAL2 + FINAL_LINE2.length * CHAR_DELAY + 400
-    at(T_BLINK2,                          () => {
+    at(T_BLINK2, () => {
       setBlinkIdentity(true)
       beep()
       if (humGainRef.current && humCtxRef.current) {
@@ -310,9 +398,9 @@ export default function CryptographyModule({ onComplete }) {
         g.linearRampToValueAtTime(0, humCtxRef.current.currentTime + 2)
       }
     })
-    at(T_BLINK2 + BLINK_DUR,             beep)
-    at(T_BLINK2 + BLINK_DUR * 2,         beep)
-    at(T_BLINK2 + BLINK_DUR * 3 + 1000,  () => { if (onComplete) onComplete() })
+    at(T_BLINK2 + BLINK_DUR,            beep)
+    at(T_BLINK2 + BLINK_DUR * 2,        beep)
+    at(T_BLINK2 + BLINK_DUR * 3 + 1000, () => { if (onComplete) onComplete() })
 
     return () => ts.forEach(clearTimeout)
   }, [])
@@ -328,14 +416,8 @@ export default function CryptographyModule({ onComplete }) {
               ref={canvasRef}
               className={`crypto-canvas${showCanvas ? ' crypto-canvas--visible' : ''}`}
               width={280}
-              height={120}
+              height={170}
             />
-            {showCanvas && (
-              <div className={`crypto-qubit-labels${labelsFading ? ' crypto-qubit-labels--fading' : ''}`}>
-                <span className="crypto-qubit-label" style={{ left: '25%' }}>LOCAL QBIT</span>
-                <span className="crypto-qubit-label" style={{ left: '75%' }}>REMOTE QBIT</span>
-              </div>
-            )}
           </div>
           <div className="crypto-result-slot">
             {resultLine0 && <div className="crypto-result-line">{resultLine0}</div>}
