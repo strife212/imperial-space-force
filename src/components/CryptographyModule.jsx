@@ -452,9 +452,10 @@ export default function CryptographyModule({ onComplete }) {
             {resultLine0 && <div className="crypto-result-line">{resultLine0}</div>}
             {resultLine1 && <div className="crypto-result-line">{resultLine1}</div>}
             {resultLine2 && (
-              <div className={`crypto-result-line crypto-result-line--final${blinkFinal ? ' crypto-result-line--blinking' : ''}`}>
+              <div className={`crypto-final-line crypto-final-line--identity${blinkFinal ? ' crypto-final-line--blinking' : ''}`}>
                 {resultLine2}
               </div>
+
             )}
           </div>
         </>

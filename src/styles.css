@@ -430,18 +430,10 @@
   color: rgba(140, 200, 255, 0.85);
   text-transform: uppercase;
 }
-.crypto-result-line--final {
-  font-weight: 700;
-  color: rgba(80, 200, 140, 0.95);
-  letter-spacing: 0.22em;
-}
-.crypto-result-line--blinking {
-  animation: crypto-blink 0.75s ease-in-out 3 forwards;
-}
 @keyframes crypto-blink {
-  0%   { opacity: 1; }
-  50%  { opacity: 0; }
-  100% { opacity: 1; }
+  0%   { opacity: 1; text-shadow: 0 0 8px rgba(80, 200, 140, 0.9), 0 0 20px rgba(80, 200, 140, 0.5); }
+  50%  { opacity: 0; text-shadow: none; }
+  100% { opacity: 1; text-shadow: 0 0 8px rgba(80, 200, 140, 0.9), 0 0 20px rgba(80, 200, 140, 0.5); }
 }
 
 .crypto-content {
@@ -494,8 +486,8 @@
   text-transform: uppercase;
 }
 .crypto-final-line--identity {
-  color: rgba(80, 220, 120, 1);
-  text-shadow: 0 0 10px rgba(80, 220, 120, 0.8), 0 0 28px rgba(80, 220, 120, 0.4);
+  color: rgba(80, 200, 140, 0.95);
+  letter-spacing: 0.22em;
 }
 .crypto-final-line--blinking {
   animation: crypto-blink 0.75s ease-in-out 3 forwards;
