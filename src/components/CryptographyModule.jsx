@@ -142,18 +142,19 @@ export default function CryptographyModule({ onComplete }) {
     remoteR:     QUBIT_FULL_R,
     remoteAlpha: 0,
     remoteRy:    BASE_RY + Math.PI,
-    labelsAlpha: 1,             // faded to 0 at merge
-    mergeT:      0,
+    labelsAlpha:    1,          // faded to 0 at merge
+    entangledAlpha: 0,          // faded in after merge
+    mergeT:         0,
   })
 
   const [linkText,      setLinkText]      = useState('')
-  const [showCanvas,    setShowCanvas]    = useState(false)
   const [resultLine0,   setResultLine0]   = useState('')
   const [resultLine1,   setResultLine1]   = useState('')
   const [resultLine2,   setResultLine2]   = useState('')
   const [blinkFinal,    setBlinkFinal]    = useState(false)
   const [contentFading, setContentFading] = useState(false)
   const [contentGone,   setContentGone]   = useState(false)
+
   const [stage2Text,    setStage2Text]    = useState('')
   const [showKey,       setShowKey]       = useState(false)
   const [keyFading,     setKeyFading]     = useState(false)
@@ -199,6 +200,19 @@ export default function CryptographyModule({ onComplete }) {
       drawLabel('LOCAL QBIT',  lx, a.localR,  a.localAlpha)
       drawLabel('REMOTE QBIT', rx, a.remoteR, a.remoteAlpha)
 
+      // Entangled label — fades in after merge, always at settled size
+      if (a.entangledAlpha > 0) {
+        const vr = QUBIT_R * 0.72
+        const fs = 11
+        ctx.save()
+        ctx.font      = `600 ${fs}px 'Cascadia Mono', Consolas, monospace`
+        ctx.textAlign = 'center'
+        ctx.fillStyle = `rgba(200,225,255,${a.entangledAlpha.toFixed(3)})`
+        if ('letterSpacing' in ctx) ctx.letterSpacing = '0.10em'
+        ctx.fillText('ENTANGLED QBIT', cx, cy + vr + fs + 22)
+        ctx.restore()
+      }
+
       id = requestAnimationFrame(draw)
     }
     draw()
@@ -234,7 +248,6 @@ export default function CryptographyModule({ onComplete }) {
     // ── Phase 1: Local qubit + label fade in at centre, full size ─────────
     const T_LOCAL_APPEAR = T_AFTER_LINK + 400
     at(T_LOCAL_APPEAR, () => {
-      setShowCanvas(true)
       const start = performance.now()
       const fade = () => {
         a.localAlpha = Math.min(1, (performance.now() - start) / FULL_FADE_DUR)
@@ -339,6 +352,16 @@ export default function CryptographyModule({ onComplete }) {
       requestAnimationFrame(merge)
     })
 
+    // Fade in entangled label once merge is complete
+    at(T_MERGE + MERGE_DUR + 200, () => {
+      const start = performance.now()
+      const fadeIn = () => {
+        a.entangledAlpha = Math.min(1, (performance.now() - start) / 500)
+        if (a.entangledAlpha < 1) requestAnimationFrame(fadeIn)
+      }
+      requestAnimationFrame(fadeIn)
+    })
+
     const T_RESULT = T_MERGE + MERGE_DUR + 400
     RESULT_LINE0.split('').forEach((_, i) =>
       at(T_RESULT + i * CHAR_DELAY, () => setResultLine0(RESULT_LINE0.slice(0, i + 1)))
@@ -408,18 +431,25 @@ export default function CryptographyModule({ onComplete }) {
   return (
     <div className="crypto-module" ref={moduleRef}>
       <div className="crypto-module-title">CRYPTOGRAPHY MODULE</div>
+      {/* Canvas lives outside the fading divs — faded independently via RAF useEffect */}
       {!contentGone && (
-        <div className={`crypto-content${contentFading ? ' crypto-content--fading' : ''}`}>
-          {linkText    && <div className="crypto-link-text">{linkText}</div>}
-          <div className="crypto-canvas-wrap">
-            <canvas
-              ref={canvasRef}
-              className={`crypto-canvas${showCanvas ? ' crypto-canvas--visible' : ''}`}
-              width={280}
-              height={200}
-            />
-          </div>
-          <div className="crypto-result-slot">
+        <div className="crypto-canvas-wrap" style={{ order: 2 }}>
+          <canvas
+            ref={canvasRef}
+            className="crypto-canvas"
+            width={280}
+            height={200}
+          />
+        </div>
+      )}
+      {!contentGone && (
+        <>
+          {linkText && (
+            <div className={`crypto-link-text${contentFading ? ' crypto-fade-out' : ''}`} style={{ order: 1 }}>
+              {linkText}
+            </div>
+          )}
+          <div className={`crypto-result-slot${contentFading ? ' crypto-fade-out' : ''}`} style={{ order: 3 }}>
             {resultLine0 && <div className="crypto-result-line">{resultLine0}</div>}
             {resultLine1 && <div className="crypto-result-line">{resultLine1}</div>}
             {resultLine2 && (
@@ -428,7 +458,7 @@ export default function CryptographyModule({ onComplete }) {
               </div>
             )}
           </div>
-        </div>
+        </>
       )}
       {contentGone && (
         <div className="crypto-content">
