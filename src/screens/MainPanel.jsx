@@ -109,9 +109,10 @@ function LightConeCanvas({ underAttack }) {
     if (!cv) return
     const dpr = window.devicePixelRatio || 1
     const fit = () => {
-      const r = cv.getBoundingClientRect()
-      cv.width  = r.width  * dpr
-      cv.height = r.height * dpr
+      // clientWidth/Height (unscaled) to match the draw loop's coordinate space —
+      // getBoundingClientRect would return transform-scaled size and offset the render.
+      cv.width  = cv.clientWidth  * dpr
+      cv.height = cv.clientHeight * dpr
       cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0)
     }
     fit()
@@ -231,10 +232,13 @@ const fmtUTC = (d) => {
   return `UTC ${iso.slice(0, 10)} ${iso.slice(11, 23)}`
 }
 const fitCanvas = (cv) => {
-  const r   = cv.getBoundingClientRect()
+  // Use clientWidth/Height (unscaled layout size), NOT getBoundingClientRect
+  // (which returns transform-scaled dimensions). The draw loops work in
+  // clientWidth/Height units, so the backing store must match or the drawing
+  // ends up off-centre/clipped when the panel is scaled down on small displays.
   const dpr = window.devicePixelRatio || 1
-  cv.width  = r.width  * dpr
-  cv.height = r.height * dpr
+  cv.width  = cv.clientWidth  * dpr
+  cv.height = cv.clientHeight * dpr
   cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0)
 }
 const makeContacts = (n) => Array.from({ length: n }, () => ({
@@ -340,8 +344,10 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const lastTimeRef   = useRef(null)
 
   // ── Scale to fit small viewports ──────────────────────────────────────────
-  // NATURAL_H = grid row mins (190+190+220+150) + 3 gaps + padding + HudHeader
-  const NATURAL_H = 848
+  // NATURAL_H = grid row mins (190+252+220+212=874) + 3 gaps (30) + padding (20)
+  //            + HudHeader (58) + HudFooter (~46). Row mins are sized so every
+  //            rigid panel shows in full at the minimum (scaled) layout.
+  const NATURAL_H = 1030
   const scalerRef = useRef(null)
   useEffect(() => {
     const update = () => {
