@@ -406,6 +406,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const logTimerRef   = useRef(0)
   const grbTimerRef   = useRef(0)
   const logBufRef     = useRef([])
+  const logSeqRef     = useRef(0)
   const rafRef               = useRef(null)
   const cdTimerRef           = useRef(null)
   const showTimerRef         = useRef(null)
@@ -440,9 +441,17 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const addLog = useCallback((level, msg) => {
     const ts = new Date()
     const t  = `${pad(ts.getUTCHours())}:${pad(ts.getUTCMinutes())}:${pad(ts.getUTCSeconds())}.${pad(ts.getUTCMilliseconds(), 3)}`
-    logBufRef.current = [...logBufRef.current, { t, level, msg }].slice(-6)
+    const id = ++logSeqRef.current
+    logBufRef.current = [...logBufRef.current, { id, t, level, msg }].slice(-6)
     setLogEntries([...logBufRef.current])
   }, [])
+
+  // ── Under attack: flood the event log with the Discord's message ───────────
+  useEffect(() => {
+    if (!underAttack) return
+    const id = setInterval(() => addLog('????', 'YE SHALL BE AS GODS'), 500)
+    return () => clearInterval(id)
+  }, [underAttack, addLog])
 
   // ── Radar view toggle ─────────────────────────────────────────────────────
   const setRadarView = useCallback((view) => {
@@ -1008,15 +1017,18 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
       grbTimerRef.current += dt
       if (grbTimerRef.current > 250) {
         grbPctRef.current += rand(0.4, 1.1)
-        if (grbPctRef.current >= 100) { grbPctRef.current = 0; addLog('CRIT', 'GRB EMITTER // FIRING SOLUTION DISCHARGED') }
+        // suppress routine log spam under attack — the Discord floods the log instead
+        if (grbPctRef.current >= 100) { grbPctRef.current = 0; if (!underAttackRef.current) addLog('CRIT', 'GRB EMITTER // FIRING SOLUTION DISCHARGED') }
         if (grbBarRef.current) grbBarRef.current.style.width = `${grbPctRef.current.toFixed(1)}%`
         grbTimerRef.current = 0
       }
 
       logTimerRef.current += dt
       if (logTimerRef.current > 6000 + Math.random() * 4000) {
-        const [lvl, msg] = LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)]
-        addLog(lvl, msg)
+        if (!underAttackRef.current) {
+          const [lvl, msg] = LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)]
+          addLog(lvl, msg)
+        }
         logTimerRef.current = 0
       }
 
@@ -1328,10 +1340,10 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
             </header>
             <div className="panel-body log-body">
               <ul id="log-list">
-                {logEntries.map((e, i) => (
-                  <li key={i} className="fresh">
+                {logEntries.map((e) => (
+                  <li key={e.id} className={`fresh${e.level === '????' ? ' log-discord' : ''}`}>
                     <span className="ts">{e.t}</span>
-                    <span className={`lvl ${e.level.toLowerCase()}`}>{e.level}</span>
+                    <span className={`lvl ${e.level === '????' ? 'discord' : e.level.toLowerCase()}`}>{e.level}</span>
                     <span className="msg">{e.msg}</span>
                   </li>
                 ))}

@@ -1665,7 +1665,11 @@ body {
   border-bottom: 1px solid var(--c-line);
   display: grid;
   grid-template-columns: 110px 80px 1fr;
+  align-content: center;
   gap: 12px;
+  /* grow to share the panel height so the entries always fill it (no empty
+     gap above the stack when there are only a handful of lines) */
+  flex: 1 1 auto;
   color: var(--c-ash);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1678,6 +1682,19 @@ body {
 #log-list li .lvl.crit { color: var(--c-scarlet); text-shadow: var(--glow-hard); }
 #log-list li .msg { color: var(--c-pink); }
 #log-list li.fresh { animation: flash 0.6s ease-out; }
+/* Discord flood — entire entry in true red */
+#log-list li.log-discord .lvl,
+#log-list li.log-discord .msg { color: var(--c-bad); text-shadow: 0 0 8px rgba(255, 36, 0, 0.55); }
+#log-list li.log-discord .ts  { color: rgba(255, 80, 60, 0.55); }
+/* each new line sweeps a strong red flash + a quick text flicker so the
+   identical messages are visibly streaming in */
+#log-list li.log-discord.fresh { animation: flash-discord 0.5s ease-out; }
+@keyframes flash-discord {
+  0%   { background: rgba(255, 36, 0, 0.55); }
+  10%  { background: rgba(255, 36, 0, 0.10); }
+  20%  { background: rgba(255, 36, 0, 0.45); }
+  100% { background: transparent; }
+}
 
 /* ---------- launch control ---------- */
 .launch-body {
