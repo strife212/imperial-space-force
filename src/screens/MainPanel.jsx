@@ -28,8 +28,8 @@ function GlitchOverlay() {
     const ro = new ResizeObserver(resize)
     ro.observe(canvas)
 
+    let hadBlocks = false
     const loop = (ts) => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
       const w = canvas.width, h = canvas.height
 
       // spawn blocks at irregular intervals
@@ -56,12 +56,18 @@ function GlitchOverlay() {
 
       // draw and expire blocks
       blocks = blocks.filter(b => ts - b.born < b.life)
-      blocks.forEach(b => {
-        const age   = (ts - b.born) / b.life
-        const alpha = Math.sin(age * Math.PI) * 0.18   // fade in then out
-        ctx.fillStyle = `rgba(${b.r},${b.g},${b.b},${alpha})`
-        ctx.fillRect(b.x + b.dx * age, b.y, b.w, b.h)
-      })
+      // Only touch the full-screen canvas when there's something to draw, or
+      // there was last frame (one final clear to erase the expired blocks).
+      if (blocks.length || hadBlocks) {
+        ctx.clearRect(0, 0, w, h)
+        blocks.forEach(b => {
+          const age   = (ts - b.born) / b.life
+          const alpha = Math.sin(age * Math.PI) * 0.18   // fade in then out
+          ctx.fillStyle = `rgba(${b.r},${b.g},${b.b},${alpha})`
+          ctx.fillRect(b.x + b.dx * age, b.y, b.w, b.h)
+        })
+      }
+      hadBlocks = blocks.length > 0
 
       rafId = requestAnimationFrame(loop)
     }
@@ -377,6 +383,26 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
+
+  // ── Glitch warp burst (under attack) ───────────────────────────────────────
+  // Add the warp class for a brief burst every 5s instead of running an infinite
+  // CSS transform animation — the latter keeps the whole screen (all live
+  // canvases) promoted to one continuously re-rasterised layer. Same visual
+  // cadence, but between bursts the canvases composite cheaply again.
+  const mainScreenRef = useRef(null)
+  useEffect(() => {
+    if (!underAttack) return
+    const el = mainScreenRef.current
+    if (!el) return
+    let burstTimeout
+    const burst = () => {
+      el.classList.add('main-screen--warp')
+      burstTimeout = setTimeout(() => el.classList.remove('main-screen--warp'), 420)
+    }
+    const id = setInterval(burst, 5000)
+    return () => { clearInterval(id); clearTimeout(burstTimeout); el.classList.remove('main-screen--warp') }
+  }, [underAttack])
+
   const logTimerRef   = useRef(0)
   const grbTimerRef   = useRef(0)
   const logBufRef     = useRef([])
@@ -1019,7 +1045,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
 
   return (
     <>
-    <div id="main-screen" className={underAttack ? 'main-screen--glitch' : ''}>
+    <div id="main-screen" ref={mainScreenRef}>
       {underAttack && <GlitchOverlay />}
       <div className="main-scaler" ref={scalerRef}>
       <HudHeader

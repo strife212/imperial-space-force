@@ -830,19 +830,22 @@ body {
   z-index: 50;
 }
 
-.main-screen--glitch {
-  animation: main-glitch-warp 5s infinite;
+/* One-shot warp burst, added via JS every 5s while under attack. Same shape as
+   the old infinite 88%–96% warp window, but the element is only a composited
+   layer during the ~0.42s burst rather than continuously. */
+.main-screen--warp {
+  animation: main-glitch-burst 0.42s;
 }
 
-@keyframes main-glitch-warp {
-  0%,  88%, 100% { transform: none; }
-  89%  { transform: translateX(-3px) skewX(-0.4deg); }
-  90%  { transform: translateX(4px)  skewX(0.2deg); }
-  91%  { transform: translateX(-2px); }
-  92%  { transform: none; }
-  94%  { transform: translateX(3px)  skewX(0.5deg); }
-  95%  { transform: translateX(-1px); }
-  96%  { transform: none; }
+@keyframes main-glitch-burst {
+  0%    { transform: none; }
+  12.5% { transform: translateX(-3px) skewX(-0.4deg); }
+  25%   { transform: translateX(4px)  skewX(0.2deg); }
+  37.5% { transform: translateX(-2px); }
+  50%   { transform: none; }
+  75%   { transform: translateX(3px)  skewX(0.5deg); }
+  87.5% { transform: translateX(-1px); }
+  100%  { transform: none; }
 }
 
 .main-scaler {
