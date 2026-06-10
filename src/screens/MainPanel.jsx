@@ -108,14 +108,21 @@ function LightConeCanvas({ underAttack }) {
     const cv = cvRef.current
     if (!cv) return
     const dpr = window.devicePixelRatio || 1
+    const ctx = cv.getContext('2d')
+    let w = 0, h = 0
     const fit = () => {
       // clientWidth/Height (unscaled) to match the draw loop's coordinate space —
       // getBoundingClientRect would return transform-scaled size and offset the render.
-      cv.width  = cv.clientWidth  * dpr
-      cv.height = cv.clientHeight * dpr
-      cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0)
+      w = cv.clientWidth; h = cv.clientHeight
+      cv.width  = w * dpr
+      cv.height = h * dpr
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
     fit()
+    // ResizeObserver re-fits when the canvas box changes (resize, scaler scale,
+    // or the radio online/offline transition that collapses/expands the panel).
+    const ro = new ResizeObserver(fit)
+    ro.observe(cv)
     let rafId, ry = 0
 
     const polyline = (ctx, pts) => {
@@ -127,8 +134,6 @@ function LightConeCanvas({ underAttack }) {
 
     const loop = () => {
       ry += 0.006
-      const ctx = cv.getContext('2d')
-      const w = cv.clientWidth, h = cv.clientHeight
       const cx = w * 0.5, cy = h * 0.5
       const scale = Math.min(w, h) * 1.55
       ctx.clearRect(0, 0, w, h)
@@ -207,7 +212,7 @@ function LightConeCanvas({ underAttack }) {
       rafId = requestAnimationFrame(loop)
     }
     rafId = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(rafId)
+    return () => { cancelAnimationFrame(rafId); ro.disconnect() }
   }, [])
 
   return <canvas ref={cvRef} style={{ width: '100%', height: '100%', display: 'block' }} />
@@ -299,6 +304,10 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const railgunCanvasRef= useRef(null)
   const targetCanvasRef = useRef(null)
   const threatPosRef    = useRef(null)   // {x, y} canvas coords of threat marker
+  // Cached per-canvas { ctx, w, h, ... } — refreshed on resize / view-toggle so
+  // the RAF loop never reads clientWidth (which would force a layout reflow each
+  // frame) nor rebuilds the static radar sweep gradient.
+  const cvMetaRef       = useRef({ radar: null, target: null, railgun: null })
 
   // ── Telemetry DOM refs (direct mutation in RAF loop) ──────────────────────
   const clockRef        = useRef(null)
@@ -417,8 +426,10 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
 
   // Fit the railgun canvas after the DOM has rendered it visible
   useEffect(() => {
-    if (radarView === 'install' && railgunCanvasRef.current) {
-      fitCanvas(railgunCanvasRef.current)
+    const cv = railgunCanvasRef.current
+    if (radarView === 'install' && cv) {
+      fitCanvas(cv)
+      cvMetaRef.current.railgun = { ctx: cv.getContext('2d'), w: cv.clientWidth, h: cv.clientHeight }
     }
   }, [radarView])
 
@@ -541,13 +552,31 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
     addLog('INFO', 'Operator HIH V. ASTRAIA authenticated // CLR-Ω')
     addLog('WARN', 'Weapons platform armed — DEFCON-2 in effect')
 
+    const meta = cvMetaRef.current
+    const buildRadarMeta = (cv) => {
+      const ctx = cv.getContext('2d')
+      const w = cv.clientWidth, h = cv.clientHeight
+      const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.46
+      // Sweep gradient is identical every frame (depends only on centre/radius)
+      const sweepGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R)
+      sweepGrad.addColorStop(0, 'rgba(0,100,255,0.0)')
+      sweepGrad.addColorStop(0.7, 'rgba(0,100,255,0.18)')
+      sweepGrad.addColorStop(1, 'rgba(0,100,255,0.0)')
+      return { ctx, w, h, sweepGrad }
+    }
     const fitAll = () => {
-      if (radarCanvasRef.current)   fitCanvas(radarCanvasRef.current)
-      if (targetCanvasRef.current)  fitCanvas(targetCanvasRef.current)
-      if (railgunCanvasRef.current) fitCanvas(railgunCanvasRef.current)
+      if (radarCanvasRef.current)   { fitCanvas(radarCanvasRef.current);   meta.radar  = buildRadarMeta(radarCanvasRef.current) }
+      if (targetCanvasRef.current)  { fitCanvas(targetCanvasRef.current);  const cv = targetCanvasRef.current;  meta.target  = { ctx: cv.getContext('2d'), w: cv.clientWidth, h: cv.clientHeight } }
+      if (railgunCanvasRef.current) { fitCanvas(railgunCanvasRef.current); const cv = railgunCanvasRef.current; meta.railgun = { ctx: cv.getContext('2d'), w: cv.clientWidth, h: cv.clientHeight } }
     }
     fitAll()
-    window.addEventListener('resize', fitAll)
+    // Re-fit (and rebuild cached metadata) only when a canvas's box actually
+    // changes — covers window/scaler resize, view toggles, and the radio
+    // online/offline transition (canvases collapse to 0 while offline).
+    const ro = new ResizeObserver(fitAll)
+    if (radarCanvasRef.current)   ro.observe(radarCanvasRef.current)
+    if (targetCanvasRef.current)  ro.observe(targetCanvasRef.current)
+    if (railgunCanvasRef.current) ro.observe(railgunCanvasRef.current)
 
     // ── Simulation update functions ──────────────────────────────────────
     const updateGeodetic = (dt) => {
@@ -642,10 +671,9 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
 
     // ── Canvas draw functions ────────────────────────────────────────────
     const drawRadar = (dt, now = 0) => {
-      const cv = radarCanvasRef.current
-      if (!cv) return
-      const ctx = cv.getContext('2d')
-      const w = cv.clientWidth, h = cv.clientHeight
+      const m = meta.radar
+      if (!m || !m.w) return
+      const { ctx, w, h } = m
       const cx = w / 2, cy = h / 2
       const R  = Math.min(w, h) * 0.46
       ctx.fillStyle = 'rgba(1, 2, 8, 0.22)'
@@ -664,9 +692,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
       }
       sweepAngleRef.current += dt * 0.0011
       const a0 = sweepAngleRef.current, arc = Math.PI / 3
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R)
-      grad.addColorStop(0, 'rgba(0,100,255,0.0)'); grad.addColorStop(0.7, 'rgba(0,100,255,0.18)'); grad.addColorStop(1, 'rgba(0,100,255,0.0)')
-      ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0 - arc, a0); ctx.closePath(); ctx.fill()
+      ctx.fillStyle = m.sweepGrad; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0 - arc, a0); ctx.closePath(); ctx.fill()
       ctx.strokeStyle = 'rgba(26,128,255,0.85)'; ctx.lineWidth = 1.3
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a0) * R, cy + Math.sin(a0) * R); ctx.stroke()
       for (const c of contactsRef.current) {
@@ -737,12 +763,12 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
     }
 
     const drawRailgun = (dt) => {
-      const cv = railgunCanvasRef.current
-      if (!cv || radarViewRef.current !== 'install') return
-      const ctx = cv.getContext('2d')
+      if (radarViewRef.current !== 'install') return
+      const m = meta.railgun
+      if (!m || !m.w) return
+      const { ctx, w, h } = m
       rgPulseRef.current += dt * 0.002
       const p = rgPulseRef.current
-      const w = cv.clientWidth, h = cv.clientHeight
       ctx.clearRect(0, 0, w, h); ctx.fillStyle = '#050102'; ctx.fillRect(0, 0, w, h)
       ctx.fillStyle = 'rgba(179,210,255,0.25)'
       for (let i = 0; i < 80; i++) {
@@ -837,10 +863,9 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
     }
 
     const drawTarget = (dt) => {
-      const cv = targetCanvasRef.current
-      if (!cv) return
-      const ctx = cv.getContext('2d')
-      const w = cv.clientWidth, h = cv.clientHeight
+      const m = meta.target
+      if (!m || !m.w) return
+      const { ctx, w, h } = m
       tphaseRef.current += dt * 0.0006
       const ph   = tphaseRef.current
       const hasT = targetIdxRef.current >= 0
@@ -976,7 +1001,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
 
     return () => {
       cancelAnimationFrame(rafRef.current)
-      window.removeEventListener('resize', fitAll)
+      ro.disconnect()
       if (cdTimerRef.current)   clearTimeout(cdTimerRef.current)
       if (showTimerRef.current) clearTimeout(showTimerRef.current)
     }
