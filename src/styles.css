@@ -1667,9 +1667,10 @@ body {
   grid-template-columns: 110px 80px 1fr;
   align-content: center;
   gap: 12px;
-  /* grow to share the panel height so the entries always fill it (no empty
-     gap above the stack when there are only a handful of lines) */
+  /* grow to share the panel height so a full buffer fills it, but cap each
+     entry so a handful of lines don't balloon to fill the whole panel */
   flex: 1 1 auto;
+  max-height: 31px;
   color: var(--c-ash);
   white-space: nowrap;
   text-overflow: ellipsis;
