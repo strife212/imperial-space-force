@@ -1,151 +1,55 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import * as THREE from 'three'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
 
-// ── 3D projection ─────────────────────────────────────────────────────────────
-function proj3D(x, y, z, cx, cy, scale, rx, ry) {
-  const cosY = Math.cos(ry), sinY = Math.sin(ry)
-  const x1 =  x * cosY + z * sinY
-  const z1 = -x * sinY + z * cosY
-  const cosX = Math.cos(rx), sinX = Math.sin(rx)
-  const y2 =  y * cosX - z1 * sinX
-  const z2 =  y * sinX + z1 * cosX
-  const d  = 3.2, pz = d + z2
-  return { x: (x1 / pz) * scale + cx, y: (y2 / pz) * scale + cy, z: z2 }
-}
+// ── Tokamak geometry (world units) ─────────────────────────────────────────────
+const R_MAJ    = 1.0    // major radius (centre of tube)
+const R_TUBE   = 0.34   // plasma tube radius
+const COIL_MAJ = 0.46   // TF-coil ring radius (encircles the tube)
+const NUM_COILS = 16
 
-function stroke(ctx, pts) {
-  if (!pts.length) return
-  ctx.beginPath()
-  pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)))
-  ctx.stroke()
-}
-
-// ── Torus geometry constants ──────────────────────────────────────────────────
-const R_MAJ = 0.54   // major radius
-const R_MIN = 0.20   // tube radius
-
-function drawReactor(ctx, w, h, rx, ry, plasma) {
-  const cx = w * 0.5, cy = h * 0.5
-  const scale = Math.min(w, h) * 1.05
-  const p = (x, y, z) => proj3D(x, y, z, cx, cy, scale, rx, ry)
-  const depth = pt => Math.max(0, (pt.z + 1.5) / 3.0)
-
-  ctx.clearRect(0, 0, w, h)
-
-  // Ambient background glow
-  const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, scale * 0.7)
-  bg.addColorStop(0, `rgba(0,22,88,${0.04 + plasma * 0.10})`)
-  bg.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h)
-
-  // ── Plasma channel glow (drawn first, behind structure) ──────────────────
-  if (plasma > 0.01) {
-    const hot = plasma > 0.78
-    const c0  = hot ? '255,120,220'  : '255,100,200'
-    const c1  = hot ? '220, 40,160'  : '200, 60,180'
-    for (let i = 0; i < 80; i++) {
-      const u  = (i / 80) * Math.PI * 2
-      const pt = p(R_MAJ * Math.cos(u), R_MAJ * Math.sin(u), 0)
-      const dv = depth(pt)
-      const gs = Math.max(1, R_MIN * scale * plasma * (0.28 + dv * 0.55))
-      const grd = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, gs)
-      grd.addColorStop(0,   `rgba(${c0},${(plasma * dv * 0.60).toFixed(3)})`)
-      grd.addColorStop(0.5, `rgba(${c1},${(plasma * dv * 0.22).toFixed(3)})`)
-      grd.addColorStop(1,   'rgba(120,0,80,0)')
-      ctx.fillStyle = grd
-      ctx.beginPath(); ctx.arc(pt.x, pt.y, gs, 0, Math.PI * 2); ctx.fill()
-    }
+// ── Plasma shader — swirling toroidal filaments, brightness driven by density ──
+const PLASMA_VERT = /* glsl */`
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
-
-  // ── Outer containment shell (large, faint) ───────────────────────────────
-  const RO = R_MAJ, Ro = R_MIN * 1.58
-  for (let vi = 0; vi < 14; vi++) {
-    const v = (vi / 14) * Math.PI * 2
-    const pts = []
-    for (let i = 0; i <= 48; i++) {
-      const u = (i / 48) * Math.PI * 2
-      pts.push(p((RO + Ro * Math.cos(v)) * Math.cos(u),
-                  (RO + Ro * Math.cos(v)) * Math.sin(u),
-                   Ro * Math.sin(v)))
-    }
-    const dv = depth(pts[24])
-    ctx.strokeStyle = `rgba(8,35,115,${0.06 + dv * 0.20})`
-    ctx.lineWidth = 0.5; stroke(ctx, pts)
+`
+const PLASMA_FRAG = /* glsl */`
+  precision highp float;
+  uniform float uTime;
+  uniform float uPlasma;
+  varying vec2 vUv;
+  float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p){
+    vec2 i = floor(p), f = fract(p);
+    float a = hash(i), b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
   }
-
-  // ── TF coil rings: build all, draw back half first ───────────────────────
-  const numCoils = 14
-  const coilRad  = R_MIN * 1.52
-  const coils = Array.from({ length: numCoils }, (_, ci) => {
-    const u   = (ci / numCoils) * Math.PI * 2
-    const cpt = p(R_MAJ * Math.cos(u), R_MAJ * Math.sin(u), 0)
-    const pts = []
-    for (let i = 0; i <= 36; i++) {
-      const v = (i / 36) * Math.PI * 2
-      pts.push(p((R_MAJ + coilRad * Math.cos(v)) * Math.cos(u),
-                  (R_MAJ + coilRad * Math.cos(v)) * Math.sin(u),
-                   coilRad * Math.sin(v)))
-    }
-    return { pts, z: cpt.z, d: depth(cpt) }
-  })
-
-  const drawCoil = (cd) => {
-    ctx.strokeStyle = `rgba(18,55,175,${(0.32 + cd.d * 0.52).toFixed(3)})`
-    ctx.lineWidth = 2.5; stroke(ctx, cd.pts)
-    ctx.strokeStyle = `rgba(55,115,255,${(0.10 + cd.d * 0.20).toFixed(3)})`
-    ctx.lineWidth = 0.9; stroke(ctx, cd.pts)
+  void main() {
+    float tor = vUv.x;   // around the big ring
+    float pol = vUv.y;   // around the tube
+    // filaments streaming around the torus
+    float swirl = tor + uTime * 0.04;
+    float n = noise(vec2(swirl * 70.0, pol * 11.0)) * 0.6
+            + noise(vec2(swirl * 150.0, pol * 24.0)) * 0.4;
+    float fil = smoothstep(0.38, 0.98, n);
+    // cool pink at low density -> hot white-pink as it heats up
+    vec3 cool = vec3(1.0, 0.28, 0.70);
+    vec3 hot  = vec3(1.0, 0.62, 0.88);
+    vec3 col  = mix(cool, hot, clamp(uPlasma, 0.0, 1.0));
+    float intensity = (0.16 + 0.42 * fil) * uPlasma;
+    gl_FragColor = vec4(col * intensity, clamp(intensity, 0.0, 1.0));
   }
-
-  coils.filter(c => c.z < 0).forEach(drawCoil)
-
-  // ── Main torus wireframe ─────────────────────────────────────────────────
-  const pScale = 0.45 + plasma * 0.55
-
-  // Toroidal lines (latitude — run around the big ring)
-  for (let vi = 0; vi < 22; vi++) {
-    const v = (vi / 22) * Math.PI * 2
-    const pts = []
-    for (let i = 0; i <= 48; i++) {
-      const u = (i / 48) * Math.PI * 2
-      pts.push(p((R_MAJ + R_MIN * Math.cos(v)) * Math.cos(u),
-                  (R_MAJ + R_MIN * Math.cos(v)) * Math.sin(u),
-                   R_MIN * Math.sin(v)))
-    }
-    const dv = depth(pts[24])
-    ctx.strokeStyle = `rgba(20,80,220,${((0.22 + dv * 0.65) * pScale).toFixed(3)})`
-    ctx.lineWidth = 0.9; stroke(ctx, pts)
-  }
-
-  // Poloidal lines (longitude — cross-sections of the tube)
-  for (let ui = 0; ui < 20; ui++) {
-    const u   = (ui / 20) * Math.PI * 2
-    const cpt = p(R_MAJ * Math.cos(u), R_MAJ * Math.sin(u), 0)
-    const pts = []
-    for (let i = 0; i <= 32; i++) {
-      const v = (i / 32) * Math.PI * 2
-      pts.push(p((R_MAJ + R_MIN * Math.cos(v)) * Math.cos(u),
-                  (R_MAJ + R_MIN * Math.cos(v)) * Math.sin(u),
-                   R_MIN * Math.sin(v)))
-    }
-    const dv = depth(cpt)
-    ctx.strokeStyle = `rgba(30,100,255,${((0.26 + dv * 0.72) * pScale).toFixed(3)})`
-    ctx.lineWidth = 1.1; stroke(ctx, pts)
-  }
-
-  // Front TF coils
-  coils.filter(c => c.z >= 0).forEach(drawCoil)
-
-  // ── Central solenoid helix ───────────────────────────────────────────────
-  const solR = 0.052, solH = 0.30, solTurns = 10
-  const solPts = Array.from({ length: solTurns * 22 + 1 }, (_, i) => {
-    const t   = i / (solTurns * 22)
-    const phi = t * Math.PI * 2 * solTurns
-    return p(solR * Math.cos(phi), solR * Math.sin(phi), -solH + t * solH * 2)
-  })
-  ctx.strokeStyle = 'rgba(100,170,255,0.82)'; ctx.lineWidth = 1.6; stroke(ctx, solPts)
-  ctx.strokeStyle = 'rgba(190,225,255,0.25)'; ctx.lineWidth = 3.5; stroke(ctx, solPts)
-}
+`
 
 // ── Circuit breaker data ──────────────────────────────────────────────────────
 const BREAKERS = [
@@ -159,8 +63,6 @@ const BREAKERS = [
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, unreadCount = 0, onMailOpen }) {
   const canvasRef         = useRef(null)
-  const rafRef            = useRef(null)
-  const rotRef            = useRef({ x: 0.38, y: 0.3 })
   const plasmaRef         = useRef(initialPlasma)
   const redlineTimerRef   = useRef(null)
   const resetIntervalRef  = useRef(null)
@@ -243,48 +145,154 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, u
     setRedlineActive(false)
   }, [clearTimers])
 
-  // ── RAF / canvas ──────────────────────────────────────────────────────────
+  // ── three.js scene + telemetry RAF ─────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+    let renderer, composer, raf
+    const disposables = []
 
-    const fit = () => {
-      const rect = canvas.getBoundingClientRect()
-      const dpr  = window.devicePixelRatio || 1
-      canvas.width  = rect.width  * dpr
-      canvas.height = rect.height * dpr
-      canvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
-    fit()
-    window.addEventListener('resize', fit)
+    try {
+      const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1
 
-    const frame = () => {
-      const ctx = canvas.getContext('2d')
-      const w = canvas.clientWidth, h = canvas.clientHeight
-      rotRef.current.y += 0.004
-      drawReactor(ctx, w, h, rotRef.current.x, rotRef.current.y, plasmaRef.current / 100)
+      const scene = new THREE.Scene()
+      const camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 100)
+      camera.position.set(2.47, 1.39, 2.61)   // 3/4 view (dist 3.85, az ~43.5°, elev ~21°)
 
-      // Update telemetry DOM
-      const d  = plasmaRef.current / 100
-      const nr = (v, noise) => v + (Math.random() - 0.5) * noise
-      const flux = Math.max(0, nr(0.35 + d * 3.85, 0.04))
-      const cap  = Math.min(100, Math.max(0, nr(14 + d * 80, 1.0)))
-      const rad  = Math.max(0, nr(580 + d * 2950, 25))
-      if (fluxValRef.current) fluxValRef.current.textContent = `${flux.toFixed(3)} GW`
-      if (fluxBarRef.current) fluxBarRef.current.style.width = `${Math.min(100, flux / 4.2 * 100).toFixed(1)}%`
-      if (capValRef.current)  capValRef.current.textContent  = `${cap.toFixed(1)}%`
-      if (capBarRef.current)  capBarRef.current.style.width  = `${cap.toFixed(1)}%`
-      if (radValRef.current)  radValRef.current.textContent  = `+${rad.toFixed(0)} K`
-      const radPct = Math.min(100, (rad - 580) / 2950 * 100)
-      if (radBarRef.current)  radBarRef.current.style.width  = `${Math.max(0, radPct).toFixed(1)}%`
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.setSize(w, h, false)
+      renderer.setClearColor(0x000000, 0)
 
-      rafRef.current = requestAnimationFrame(frame)
-    }
-    rafRef.current = requestAnimationFrame(frame)
+      // Drag to rotate the view. Zoom/pan disabled so the torus stays centred and
+      // the slider / circuit-breaker overlays stay aligned to it.
+      const controls = new OrbitControls(camera, renderer.domElement)
+      controls.enableDamping = true
+      controls.dampingFactor = 0.08
+      controls.enablePan = false
+      controls.enableZoom = false
+      controls.rotateSpeed = 0.7
+      controls.target.set(0, 0, 0)
 
-    return () => {
-      cancelAnimationFrame(rafRef.current)
-      window.removeEventListener('resize', fit)
+      // Tilt the whole assembly; spinGroup rotates the torus about its own axis.
+      const tilt = new THREE.Group()
+      tilt.rotation.x = -1.0
+      scene.add(tilt)
+      const spin = new THREE.Group()
+      tilt.add(spin)
+
+      // ── Lighting ─────────────────────────────────────────────────────────────
+      scene.add(new THREE.AmbientLight(0x33507f, 0.7))
+      const keyLight = new THREE.DirectionalLight(0xbcd4ff, 0.9)
+      keyLight.position.set(2, 3, 4)
+      scene.add(keyLight)
+      const coreLight = new THREE.PointLight(0xff5bb0, 0.0, 8, 2)  // plasma lights the coils
+      scene.add(coreLight)
+
+      // ── TF coils (metallic rings encircling the tube) ───────────────────────
+      const coilGeo = new THREE.TorusGeometry(COIL_MAJ, 0.045, 10, 40)
+      const coilMat = new THREE.MeshStandardMaterial({ color: 0x1b3f8c, metalness: 0.85, roughness: 0.35, emissive: 0x07142e })
+      disposables.push(coilGeo, coilMat)
+      const zAxis = new THREE.Vector3(0, 0, 1)
+      for (let i = 0; i < NUM_COILS; i++) {
+        const u = (i / NUM_COILS) * Math.PI * 2
+        const coil = new THREE.Mesh(coilGeo, coilMat)
+        coil.position.set(R_MAJ * Math.cos(u), R_MAJ * Math.sin(u), 0)
+        coil.quaternion.setFromUnitVectors(zAxis, new THREE.Vector3(-Math.sin(u), Math.cos(u), 0))
+        spin.add(coil)
+      }
+
+      // ── Faint outer containment shell ────────────────────────────────────────
+      const shellGeo = new THREE.TorusGeometry(R_MAJ, R_TUBE * 1.7, 12, 80)
+      const shellMat = new THREE.MeshBasicMaterial({ color: 0x12356f, wireframe: true, transparent: true, opacity: 0.12 })
+      spin.add(new THREE.Mesh(shellGeo, shellMat))
+      disposables.push(shellGeo, shellMat)
+
+      // ── Plasma (glowing shell + hot inner core) ──────────────────────────────
+      const plasmaGeo = new THREE.TorusGeometry(R_MAJ, R_TUBE, 28, 200)
+      const plasmaMat = new THREE.ShaderMaterial({
+        vertexShader: PLASMA_VERT, fragmentShader: PLASMA_FRAG,
+        uniforms: { uTime: { value: 0 }, uPlasma: { value: plasmaRef.current / 100 } },
+        transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      })
+      spin.add(new THREE.Mesh(plasmaGeo, plasmaMat))
+      disposables.push(plasmaGeo, plasmaMat)
+
+      const coreGeo = new THREE.TorusGeometry(R_MAJ, R_TUBE * 0.42, 16, 160)
+      const coreMat = new THREE.MeshBasicMaterial({ color: 0xffc8e8, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+      const coreMesh = new THREE.Mesh(coreGeo, coreMat)
+      spin.add(coreMesh)
+      disposables.push(coreGeo, coreMat)
+
+      // ── Central solenoid (vertical coil stack through the donut hole) ─────────
+      const solGroup = new THREE.Group()
+      const solMat = new THREE.MeshStandardMaterial({ color: 0x6aa6ff, metalness: 0.7, roughness: 0.4, emissive: 0x0a2150 })
+      disposables.push(solMat)
+      const solRingGeo = new THREE.TorusGeometry(0.12, 0.022, 8, 28)
+      disposables.push(solRingGeo)
+      for (let i = 0; i < 9; i++) {
+        const ring = new THREE.Mesh(solRingGeo, solMat)
+        ring.position.z = -0.32 + (i / 8) * 0.64
+        solGroup.add(ring)
+      }
+      spin.add(solGroup)
+
+      // ── Bloom ────────────────────────────────────────────────────────────────
+      composer = new EffectComposer(renderer)
+      composer.addPass(new RenderPass(scene, camera))
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(w, h), 0.7, 0.5, 0.2))
+
+      const clock = new THREE.Clock()
+      const frame = () => {
+        const p = plasmaRef.current / 100
+        spin.rotation.z += 0.006
+        controls.update()
+        plasmaMat.uniforms.uTime.value = clock.getElapsedTime()
+        plasmaMat.uniforms.uPlasma.value = p
+        coreMat.opacity = p * 0.22
+        coreLight.intensity = p * 2.4
+        composer.render()
+
+        // ── Telemetry DOM (unchanged) ──────────────────────────────────────────
+        const d  = plasmaRef.current / 100
+        const nr = (v, noise) => v + (Math.random() - 0.5) * noise
+        const flux = Math.max(0, nr(0.35 + d * 3.85, 0.04))
+        const cap  = Math.min(100, Math.max(0, nr(14 + d * 80, 1.0)))
+        const rad  = Math.max(0, nr(580 + d * 2950, 25))
+        if (fluxValRef.current) fluxValRef.current.textContent = `${flux.toFixed(3)} GW`
+        if (fluxBarRef.current) fluxBarRef.current.style.width = `${Math.min(100, flux / 4.2 * 100).toFixed(1)}%`
+        if (capValRef.current)  capValRef.current.textContent  = `${cap.toFixed(1)}%`
+        if (capBarRef.current)  capBarRef.current.style.width  = `${cap.toFixed(1)}%`
+        if (radValRef.current)  radValRef.current.textContent  = `+${rad.toFixed(0)} K`
+        const radPct = Math.min(100, (rad - 580) / 2950 * 100)
+        if (radBarRef.current)  radBarRef.current.style.width  = `${Math.max(0, radPct).toFixed(1)}%`
+
+        raf = requestAnimationFrame(frame)
+      }
+      frame()
+
+      const onResize = () => {
+        const nw = canvas.clientWidth, nh = canvas.clientHeight
+        if (!nw || !nh) return
+        camera.aspect = nw / nh
+        camera.updateProjectionMatrix()
+        renderer.setSize(nw, nh, false)
+        composer.setSize(nw, nh)
+      }
+      const ro = new ResizeObserver(onResize)
+      ro.observe(canvas)
+
+      return () => {
+        cancelAnimationFrame(raf)
+        ro.disconnect()
+        controls.dispose()
+        disposables.forEach(o => o.dispose && o.dispose())
+        composer.dispose && composer.dispose()
+        renderer.dispose()
+      }
+    } catch (err) {
+      console.error('Reactor visualiser failed to initialise:', err)
+      if (renderer) { try { renderer.dispose() } catch (_) {} }
     }
   }, [])
 
@@ -420,10 +428,10 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, u
                 <div className="plasma-zone-label plasma-zone-label--danger" style={{ top: '10%' }}>
                   DANGER ZONE
                 </div>
-                <div className="plasma-zone-label plasma-zone-label--ideal" style={{ top: '50%' }}>
+                <div className="plasma-zone-label plasma-zone-label--ideal" style={{ top: '30%' }}>
                   IDEAL POWER
                 </div>
-                <div className="plasma-zone-label plasma-zone-label--low" style={{ top: '87.5%' }}>
+                <div className="plasma-zone-label plasma-zone-label--low" style={{ top: '70%' }}>
                   LOW POWER
                 </div>
 
@@ -448,16 +456,16 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, u
                   <span>0</span>
                 </div>
               </div>
-              <div className={`plasma-adjust-label${plasmaDensity >= 25 && plasmaDensity < 80 ? ' plasma-adjust-label--ideal' : ''}`}>
+              <div className={`plasma-adjust-label${plasmaDensity >= 60 && plasmaDensity < 80 ? ' plasma-adjust-label--ideal' : ''}`}>
                 ADJUST
               </div>
             </div>
           </div>
-          <div className={`reactor-status-label${redlineActive ? ' rsl--overload' : plasmaDensity < 25 ? ' rsl--low' : ' rsl--nominal'}`}>
-            {redlineActive ? 'OVERLOAD' : plasmaDensity < 25 ? 'LOW POWER — INCREASE PLASMA' : 'STATUS NOMINAL'}
+          <div className={`reactor-status-label${redlineActive ? ' rsl--overload' : plasmaDensity < 60 ? ' rsl--low' : ' rsl--nominal'}`}>
+            {redlineActive ? 'OVERLOAD' : plasmaDensity < 60 ? 'LOW POWER — INCREASE PLASMA' : 'STATUS NOMINAL'}
           </div>
           <button
-            className={`monitor-return-btn${plasmaDensity >= 25 && plasmaDensity < 80 ? ' monitor-return-btn--ready' : ''}`}
+            className={`monitor-return-btn${plasmaDensity >= 60 && plasmaDensity < 80 ? ' monitor-return-btn--ready' : ''}`}
             onClick={() => { playClick(); onReturn(plasmaRef.current) }}
             disabled={redlineActive}
           >
