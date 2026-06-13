@@ -10,7 +10,7 @@ A narrative browser game built as a fictional military command terminal. The pla
 - **React 19** — all UI as functional components with hooks; no class components
 - **Vite 8** — dev server and build tooling
 - **Vanilla CSS** — single `styles.css` file; no CSS framework or preprocessor
-- **No external runtime dependencies** — React + ReactDOM are the only production dependencies
+- **three.js** — used only for the black hole visualiser (debug screen); the rest of the game's visuals are hand-rolled on `<canvas>` 2D
 - **Deployed to GitHub Pages** via GitHub Actions, served at [imperialspaceforce.com](https://imperialspaceforce.com)
 
 ---
@@ -34,6 +34,7 @@ src/
 │   ├── EncyclopediaScreen.jsx      # Three-column lore browser with locked entries
 │   ├── GameOverScreen.jsx   # End state with encyclopedia unlock summary
 │   ├── LaunchCodeVerifier.jsx      # Launch authorisation dialog
+│   ├── BlackHoleScreen.jsx  # three.js black hole visualiser (accretion disk, labelled features)
 │   └── DebugScreen.jsx      # Dev tool for jumping between screens and toggling flags
 ├── components/
 │   ├── HudHeader.jsx        # Persistent top bar (used across HUD screens)

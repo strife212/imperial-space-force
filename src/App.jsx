@@ -11,6 +11,7 @@ import TargetingScreen from './screens/TargetingScreen'
 import GameOverScreen from './screens/GameOverScreen'
 import EncyclopediaScreen from './screens/EncyclopediaScreen'
 import LaunchSequenceScreen from './screens/LaunchSequenceScreen'
+import BlackHoleScreen from './screens/BlackHoleScreen'
 import AntennaAlignmentScreen from './screens/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import UrgentMessageOverlay from './components/UrgentMessageOverlay'
@@ -134,6 +135,7 @@ export default function App() {
       {screen === 'encyclopedia'  && <EncyclopediaScreen onReturn={() => setScreen(encyclopediaSource)} />}
       {screen === 'antenna'         && <AntennaAlignmentScreen onBack={() => setScreen('main')} onAlignComplete={() => { setAntennaAligned(true); triggerFlag('antennaAligned') }} {...mailProps} />}
       {screen === 'launch-sequence' && <LaunchSequenceScreen onReturn={() => setScreen('debug')} />}
+      {screen === 'blackhole'       && <BlackHoleScreen onReturn={() => setScreen('debug')} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
 
       {/* ── Under-attack sequence overlays ────────────────────────────── */}

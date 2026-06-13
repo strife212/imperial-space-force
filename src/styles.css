@@ -5557,3 +5557,118 @@ body {
   71.43%  { opacity: 1; }
   100%    { opacity: 0; }
 }
+
+/* ── Black Hole Visualiser ─────────────────────────────────────── */
+#blackhole-screen {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, #02060f 0%, #010205 60%, #000 100%);
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.bh-header {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--c-line-2);
+  background: linear-gradient(90deg, rgba(0, 50, 139, 0.25), rgba(6, 10, 30, 0.02));
+}
+.bh-title {
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  color: var(--c-pink);
+  text-shadow: var(--glow-soft);
+  text-transform: uppercase;
+}
+.bh-subtitle {
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  color: var(--c-ash-dim);
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+.bh-back {
+  position: absolute;
+  top: 50%; right: 20px;
+  transform: translateY(-50%);
+  background: rgba(120, 180, 255, 0.06);
+  border: 1px solid rgba(120, 180, 255, 0.5);
+  color: rgba(160, 210, 255, 0.85);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  padding: 9px 20px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.bh-back:hover {
+  background: rgba(120, 180, 255, 0.14);
+  border-color: rgba(140, 200, 255, 0.85);
+  color: rgba(200, 230, 255, 1);
+  box-shadow: 0 0 16px rgba(80, 140, 220, 0.4);
+}
+.bh-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.bh-canvas {
+  position: absolute;
+  inset: 0;
+}
+.bh-canvas canvas { display: block; }
+.bh-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.bh-line {
+  stroke: rgba(120, 190, 255, 0.55);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.bh-label {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+  padding: 4px 10px;
+  background: rgba(2, 6, 20, 0.82);
+  border: 1px solid rgba(80, 140, 220, 0.4);
+  border-left: 2px solid var(--c-rose);
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgba(0, 60, 160, 0.25);
+  transition: opacity 0.2s ease;
+}
+.bh-label-title {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--c-pink);
+  text-transform: uppercase;
+  text-shadow: var(--glow-soft);
+}
+.bh-label-sub {
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: var(--c-ash-dim);
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+.bh-hint {
+  position: absolute;
+  bottom: 12px; left: 0; right: 0;
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 0.32em;
+  color: rgba(120, 150, 200, 0.4);
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 3;
+}
