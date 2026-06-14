@@ -26,6 +26,7 @@ const SCREENS_COL2 = [
   { key: 'antenna',         label: 'Antenna Alignment Screen'  },
   { key: 'launch-sequence', label: 'Launch Sequence Dialogue'  },
   { key: 'blackhole',       label: 'Black Hole Visualisation'  },
+  { key: 'battle',          label: 'Space Battle Simulation'   },
 ]
 
 const FLAG_LABELS = {

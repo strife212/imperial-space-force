@@ -13,6 +13,7 @@ import EncyclopediaScreen from './screens/EncyclopediaScreen'
 import LaunchSequenceScreen from './screens/LaunchSequenceScreen'
 import BlackHoleScreen from './screens/BlackHoleScreen'
 import PowerManagementScreen from './screens/PowerManagementScreen'
+import SpaceBattleScreen from './screens/SpaceBattleScreen'
 import AntennaAlignmentScreen from './screens/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import UrgentMessageOverlay from './components/UrgentMessageOverlay'
@@ -142,6 +143,7 @@ export default function App() {
       {screen === 'antenna'         && <AntennaAlignmentScreen onBack={() => setScreen('main')} onAlignComplete={() => { setAntennaAligned(true); triggerFlag('antennaAligned') }} {...mailProps} />}
       {screen === 'launch-sequence' && <LaunchSequenceScreen onReturn={() => setScreen('debug')} />}
       {screen === 'blackhole'       && <BlackHoleScreen onReturn={() => setScreen(blackholeSource)} initialYield={bhYield} onPower={(out, yld) => { setBhOutput(out); setBhYield(yld) }} {...mailProps} />}
+      {screen === 'battle'          && <SpaceBattleScreen onReturn={() => setScreen('debug')} {...mailProps} />}
       {screen === 'power'           && <PowerManagementScreen onReactor={() => { setReactorSource('power'); setScreen('reactor') }} onBlackHole={() => { setBlackholeSource('power'); setScreen('blackhole') }} onReturn={() => setScreen(powerSource)} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} {...mailProps} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
 

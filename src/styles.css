@@ -5787,6 +5787,120 @@ body {
   z-index: 3;
 }
 
+/* ===================================================================== */
+/*  SPACE BATTLE SIMULATION SCREEN                                        */
+/* ===================================================================== */
+#battle-screen {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, #03060f 0%, #010205 60%, #000 100%);
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sb-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.sb-canvas { position: absolute; inset: 0; }
+.sb-canvas canvas { display: block; }
+
+.sb-scoreboard {
+  position: absolute;
+  top: 16px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 8px 22px;
+  background: rgba(2, 6, 18, 0.7);
+  border: 1px solid var(--c-line-2);
+  border-radius: 2px;
+  box-shadow: 0 0 18px rgba(0, 40, 120, 0.3);
+  pointer-events: none;
+}
+.sb-score {
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+.sb-count { font-size: 22px; font-weight: 700; }
+.sb-score--blue { color: var(--c-scarlet); text-shadow: 0 0 10px rgba(26, 128, 255, 0.6); }
+.sb-score--red  { color: var(--c-bad);     text-shadow: 0 0 10px rgba(255, 36, 0, 0.55); }
+.sb-vs {
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  color: var(--c-ash-dim);
+  text-transform: uppercase;
+}
+
+.sb-victory {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: radial-gradient(ellipse at center, rgba(2, 6, 18, 0.5), rgba(1, 2, 6, 0.82));
+  animation: sb-victory-in 0.4s ease both;
+}
+@keyframes sb-victory-in { from { opacity: 0; } to { opacity: 1; } }
+.sb-victory-sub {
+  font-size: 11px;
+  letter-spacing: 0.4em;
+  color: var(--c-ash-dim);
+  text-transform: uppercase;
+}
+.sb-victory-title {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.sb-victory-title--blue { color: var(--c-scarlet); text-shadow: 0 0 24px rgba(26, 128, 255, 0.8); }
+.sb-victory-title--red  { color: var(--c-bad);     text-shadow: 0 0 24px rgba(255, 36, 0, 0.7); }
+.sb-victory-title--draw { color: var(--c-ash);     text-shadow: 0 0 24px rgba(180, 200, 230, 0.5); }
+.sb-restart {
+  margin-top: 6px;
+  background: rgba(120, 180, 255, 0.07);
+  border: 1px solid rgba(120, 180, 255, 0.55);
+  color: rgba(190, 222, 255, 0.95);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 11px 24px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+.sb-restart:hover {
+  background: rgba(120, 180, 255, 0.16);
+  border-color: rgba(150, 205, 255, 0.9);
+  color: #eaf4ff;
+  box-shadow: 0 0 18px rgba(80, 140, 220, 0.45);
+}
+.sb-hint {
+  position: absolute;
+  bottom: 14px; left: 0; right: 0;
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 0.32em;
+  color: rgba(120, 150, 200, 0.4);
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 3;
+}
+
 /* ── Ergosphere energy-extraction panel ───────────────────────────────────── */
 .ee-panel {
   flex: 0 0 340px;
