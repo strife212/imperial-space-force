@@ -30,7 +30,7 @@ const ALWAYS_ON_MESSAGES = [
     subject: 'Reactor Power-Up Notice',
     timestamp: '2026-05-04 // 14:32:01',
     portrait: null,
-    body: 'The installation has been kept in low power mode for recent maintenance - make sure you !!power up the reactor!! first to get things started.',
+    body: 'The installation has been kept in low power mode for recent maintenance - make sure you !!power up the reactor!! first to get things started.\n\nThe power system is two phase, with a Fusion Reactor to give the initial kickstart and a Black Hole Ergosphere power extraction system for the main load.\n\nStart with the reactor for now.',
   },
   {
     id: 2,
