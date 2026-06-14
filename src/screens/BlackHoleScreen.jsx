@@ -1,9 +1,11 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
+import HudHeader from '../components/HudHeader'
+import HudFooter from '../components/HudFooter'
 
 // ── Geometry radii (in event-horizon units) ───────────────────────────────────
 const R_HORIZON = 1.35   // black "shadow" sphere — the dominant central feature
@@ -23,13 +25,20 @@ const A = (deg, rad, y = 0) => {
 // Labelled features. `dir` is the preferred screen-space push direction so the
 // labels splay out around the edges with leader lines pointing back inward.
 const LABELS = [
-  { id: 'sing',   title: 'SINGULARITY',      sub: 'r = 0 // curvature ∞',     anchor: new THREE.Vector3(0, 0, 0), dir: [0.15, 1] },
-  { id: 'eh',     title: 'EVENT HORIZON',    sub: 'Schwarzschild radius rₛ',  anchor: A(205, R_HORIZON),          dir: [-1, 0.45] },
-  { id: 'ergo',   title: 'ERGOSPHERE',       sub: 'frame-dragging region',    anchor: A(250, R_ERGO, 0.05),       dir: [-1, -0.25] },
-  { id: 'photon', title: 'PHOTON SPHERE',    sub: 'r = 1.5 rₛ // light orbit', anchor: A(150, R_PHOTON),          dir: [-0.8, -1] },
-  { id: 'isco',   title: 'ISCO',             sub: 'innermost stable orbit',   anchor: A(325, R_ISCO),             dir: [1, 0.6] },
-  { id: 'disk',   title: 'ACCRETION DISK',   sub: 'superheated plasma',       anchor: A(38, R_DISK_OUT * 0.72),   dir: [1, -0.25] },
-  { id: 'jet',    title: 'RELATIVISTIC JET', sub: 'collimated polar outflow', anchor: new THREE.Vector3(0, JET_LEN, 0), dir: [0.1, -1] },
+  { id: 'sing',   title: 'SINGULARITY',      sub: 'r = 0 // curvature ∞',     anchor: new THREE.Vector3(0, 0, 0), dir: [0.15, 1],
+    desc: 'The point at the core where the collapsed mass is compressed to infinite density and spacetime curvature diverges. The known laws of physics cease to predict here.' },
+  { id: 'eh',     title: 'EVENT HORIZON',    sub: 'Schwarzschild radius rₛ',  anchor: A(205, R_HORIZON),          dir: [-1, 0.45],
+    desc: 'The boundary of no return. Once matter or light crosses it, escape is impossible. Its radius (rₛ) is set entirely by the black hole’s mass.' },
+  { id: 'ergo',   title: 'ERGOSPHERE',       sub: 'frame-dragging region',    anchor: A(250, R_ERGO, 0.05),       dir: [-1, -0.25],
+    desc: 'A region just outside the horizon where the black hole’s spin drags spacetime itself, forcing everything to co-rotate. Rotational energy can be tapped here via the Penrose process.' },
+  { id: 'photon', title: 'PHOTON SPHERE',    sub: 'r = 1.5 rₛ // light orbit', anchor: A(150, R_PHOTON),          dir: [-0.8, -1],
+    desc: 'The radius (1.5 rₛ) where gravity bends light into unstable circular orbits. Photons here can loop the black hole before escaping or falling in.' },
+  { id: 'isco',   title: 'ISCO',             sub: 'innermost stable orbit',   anchor: A(325, R_ISCO),             dir: [1, 0.6],
+    desc: 'Innermost Stable Circular Orbit — the closest distance at which matter can orbit steadily. Inside it, no stable orbit exists and material plunges inward.' },
+  { id: 'disk',   title: 'ACCRETION DISK',   sub: 'superheated plasma',       anchor: A(38, R_DISK_OUT * 0.72),   dir: [1, -0.25],
+    desc: 'A flattened disk of infalling gas spiralling toward the horizon. Friction heats it to millions of kelvin, radiating intensely in X-rays.' },
+  { id: 'jet',    title: 'RELATIVISTIC JET', sub: 'collimated polar outflow', anchor: new THREE.Vector3(0, JET_LEN, 0), dir: [0.1, -1],
+    desc: 'Narrow beams of plasma fired along the spin axis at near light-speed, collimated and powered by the black hole’s twisted magnetic field and rotation.' },
 ]
 
 // ── Accretion-disk shader ──────────────────────────────────────────────────────
@@ -110,10 +119,46 @@ const RIM_FRAG = /* glsl */`
   }
 `
 
-export default function BlackHoleScreen({ onReturn }) {
+export default function BlackHoleScreen({ onReturn, unreadCount = 0, onMailOpen, initialYield = 0, onPower }) {
   const mountRef  = useRef(null)
   const labelRefs = useRef([])
   const lineRefs  = useRef([])
+
+  // ── Penrose-process energy extraction (right-hand panel) ──────────────────
+  const [extracting, setExtracting] = useState(false)
+  const [prog,     setProg]     = useState(0)   // 0 = payload raised, 1 = lowered into ergosphere
+  const [pulse,    setPulse]    = useState(0)   // rising energy quantum, 0..1
+  const [output,   setOutput]   = useState(0)             // current output, PW
+  const [yieldVal, setYieldVal] = useState(initialYield)  // cumulative yield, PJ
+  const progRef  = useRef(0)
+  const pulseRef = useRef(0)
+  const outRef   = useRef(0)
+  const yieldRef = useRef(initialYield)
+  const onPowerRef = useRef(onPower)
+  useEffect(() => { onPowerRef.current = onPower }, [onPower])
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      // lower the payload while engaged, raise it back when disengaged
+      progRef.current = Math.max(0, Math.min(1, progRef.current + (extracting ? 0.035 : -0.05)))
+      const lowered = progRef.current
+      // power is only drawn once the payload reaches the ergosphere
+      const target = extracting ? lowered * (4.4 + (Math.random() - 0.5) * 0.5) : 0
+      outRef.current += (target - outRef.current) * 0.18
+      if (extracting && lowered > 0.5) {
+        yieldRef.current += outRef.current * 0.08          // PW · 0.08s ≈ PJ
+        pulseRef.current = (pulseRef.current + 0.05) % 1   // energy quantum climbs the tether
+      } else {
+        pulseRef.current = 0
+      }
+      setProg(progRef.current)
+      setOutput(outRef.current)
+      setYieldVal(yieldRef.current)
+      setPulse(pulseRef.current)
+      onPowerRef.current?.(outRef.current, yieldRef.current)
+    }, 80)
+    return () => clearInterval(id)
+  }, [extracting])
 
   useEffect(() => {
     const mount = mountRef.current
@@ -232,6 +277,10 @@ export default function BlackHoleScreen({ onReturn }) {
           const lx = ax + (L.dir[0] / dl) * off
           const ly = ay + (L.dir[1] / dl) * off
           el.style.opacity = behind ? '0' : '1'
+          el.style.pointerEvents = behind ? 'none' : 'auto'
+          // anchor side drives which way the tooltip opens (avoids running off-screen)
+          el.classList.toggle('bh-label--right', ax > cw * 0.5)
+          el.classList.toggle('bh-label--bottom', ay > ch * 0.62)
           el.style.transform = `translate(-50%, -50%) translate(${lx}px, ${ly}px)`
           ln.setAttribute('x1', lx); ln.setAttribute('y1', ly)
           ln.setAttribute('x2', ax); ln.setAttribute('y2', ay)
@@ -275,30 +324,133 @@ export default function BlackHoleScreen({ onReturn }) {
     }
   }, [])
 
+  // Penrose diagram geometry (SVG user units, viewBox 0 0 200 210)
+  const payloadY     = 30 + prog * 86      // descends from anchor toward the ergosphere
+  const pulseY       = 150 - pulse * 124   // extracted quantum climbs the tether
+  const pulseVisible = extracting && prog > 0.5
+
   return (
     <div id="blackhole-screen">
+      <HudHeader
+        onLogout={onReturn}
+        center={
+          <span className={`status-pill mail-pill${unreadCount > 0 ? ' mail-pill--unread' : ''}`} onClick={onMailOpen}>
+            {unreadCount > 0 && <span className="mail-unread-dot" />}
+            ✉ IMPERIAL MESSAGING SERVICE // UNREAD: {unreadCount}
+          </span>
+        }
+        right={<span className="label">OBS-014 / GRAVITATIONAL SURVEY</span>}
+      />
+
       <header className="bh-header">
         <div className="bh-title">⬢ GRAVITATIONAL SINGULARITY // SCHEMATIC</div>
         <div className="bh-subtitle">KERR–NEWMAN BODY // GR-CORRECTED RENDER</div>
         <button className="bh-back" onClick={onReturn}>← RETURN</button>
       </header>
 
-      <div className="bh-stage">
-        <div className="bh-canvas" ref={mountRef} />
-        <svg className="bh-lines" preserveAspectRatio="none">
+      <div className="bh-body">
+        <div className="bh-stage">
+          <div className="bh-canvas" ref={mountRef} />
+          <svg className="bh-lines" preserveAspectRatio="none">
+            {LABELS.map((L, i) => (
+              <line key={L.id} ref={el => (lineRefs.current[i] = el)} className="bh-line" />
+            ))}
+          </svg>
           {LABELS.map((L, i) => (
-            <line key={L.id} ref={el => (lineRefs.current[i] = el)} className="bh-line" />
+            <div key={L.id} className="bh-label" ref={el => (labelRefs.current[i] = el)}>
+              <div className="bh-label-title">{L.title}</div>
+              <div className="bh-label-sub">{L.sub}</div>
+              <div className="bh-tooltip">
+                <div className="bh-tooltip-title">{L.title}</div>
+                <div className="bh-tooltip-body">{L.desc}</div>
+              </div>
+            </div>
           ))}
-        </svg>
-        {LABELS.map((L, i) => (
-          <div key={L.id} className="bh-label" ref={el => (labelRefs.current[i] = el)}>
-            <div className="bh-label-title">{L.title}</div>
-            <div className="bh-label-sub">{L.sub}</div>
+          <div className="bh-hint">DRAG TO ORBIT // SCROLL TO ZOOM</div>
+        </div>
+
+        {/* ── Ergosphere energy-extraction panel ───────────────────────────── */}
+        <aside className="ee-panel">
+          <div className="ee-title">⬢ ERGOSPHERE ENERGY EXTRACTION</div>
+          <div className="ee-sub">PENROSE PROCESS // ROTATIONAL ENERGY TAP</div>
+
+          <p className="ee-text">
+            A payload is lowered into the <em>ergosphere</em> — the region where
+            frame-dragging forces all matter to co-rotate with the hole. There it is
+            split: one fragment is dropped onto a <em>negative-energy</em> trajectory
+            through the horizon, while the other is flung outward carrying
+            <em> more energy than was input</em>. The surplus is drawn directly from
+            the black hole's rotational energy.
+          </p>
+
+          <div className={`ee-diagram${extracting ? ' ee-active' : ''}`}>
+            <svg viewBox="0 0 200 210" preserveAspectRatio="xMidYMid meet">
+              {/* ergosphere (oblate) */}
+              <ellipse cx="100" cy="150" rx="44" ry="30" className="ee-ergo" />
+              {/* event horizon */}
+              <circle cx="100" cy="150" r="24" className="ee-horizon" />
+              <circle cx="100" cy="150" r="24" className="ee-horizon-rim" />
+              {/* spin indicator */}
+              <path d="M 70 150 A 30 30 0 0 1 130 150" className="ee-spin" />
+              <polygon points="130,150 125,145 135,145" className="ee-spin-tip" />
+
+              {/* tether anchor / station */}
+              <rect x="84" y="14" width="32" height="9" rx="1.5" className="ee-anchor" />
+              <line x1="100" y1="23" x2="100" y2={payloadY} className="ee-tether" />
+
+              {/* extracted energy quantum rising up the tether */}
+              {pulseVisible && (
+                <circle cx="100" cy={pulseY} r="3.4" className="ee-quantum"
+                        style={{ opacity: 0.25 + 0.75 * (1 - pulse) }} />
+              )}
+
+              {/* payload being lowered */}
+              <g style={{ transform: `translateY(${payloadY - 30}px)` }} className="ee-payload-g">
+                <rect x="93" y="24" width="14" height="12" rx="1.5" className="ee-payload" />
+              </g>
+
+              {/* captions */}
+              <text x="100" y="200" className="ee-cap">ERGOSPHERE</text>
+              <text x="100" y="11" className="ee-cap">TETHER ANCHOR</text>
+            </svg>
           </div>
-        ))}
+
+          <button
+            className={`ee-btn${extracting ? ' ee-btn--active' : ''}`}
+            onClick={() => setExtracting(v => !v)}
+          >
+            {extracting ? '■ DISENGAGE PROCESS' : '▶ ENGAGE PENROSE PROCESS'}
+          </button>
+
+          <div className="ee-readout">
+            <div className="ee-readout-row">
+              <span className="ee-ro-label">OUTPUT</span>
+              <span className="ee-ro-val">{output.toFixed(2)}<span className="ee-ro-unit"> PW</span></span>
+            </div>
+            <div className="ee-bar"><div className="ee-bar-fill" style={{ width: `${Math.min(100, output / 5 * 100)}%` }} /></div>
+            <div className="ee-readout-row">
+              <span className="ee-ro-label">CUMULATIVE YIELD</span>
+              <span className="ee-ro-val">{yieldVal.toFixed(1)}<span className="ee-ro-unit"> PJ</span></span>
+            </div>
+            <div className="ee-readout-row">
+              <span className="ee-ro-label">STATUS</span>
+              <span className={`ee-ro-status${extracting ? ' ee-ro-status--on' : ''}`}>
+                {extracting ? (prog > 0.5 ? 'EXTRACTING' : 'LOWERING…') : 'STANDBY'}
+              </span>
+            </div>
+          </div>
+        </aside>
       </div>
 
-      <div className="bh-hint">DRAG TO ORBIT // SCROLL TO ZOOM</div>
+      <HudFooter>
+        <span>HMSS / OBS / DEEP FIELD SURVEY ARRAY</span>
+        <span className="sep">│</span>
+        <span>HORIZON: <em className="ok">STABLE</em></span>
+        <span className="sep">│</span>
+        <span>TIDAL SHEAR: <em className="ok">NOMINAL</em></span>
+        <span className="sep">│</span>
+        <span>SIGNAL LOCK: <em className="ok">ACQUIRED</em></span>
+      </HudFooter>
     </div>
   )
 }

@@ -262,7 +262,7 @@ const makeContacts = (n) => Array.from({ length: n }, () => ({
 }))
 
 // ── Component ────────────────────────────────────────────────────────────────
-export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTargeting, onAdjustAntenna, antennaAligned = false, reactorPlasma = 75, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen, underAttack = false, onRadioFreq, radioFreq = 8.0 }) {
+export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTargeting, onAdjustAntenna, antennaAligned = false, reactorPlasma = 75, bhOutput = 0, bhYield = 0, targetIdx = -1, countdownSeconds = 10, unreadCount = 0, onMailOpen, underAttack = false, onRadioFreq, radioFreq = 8.0 }) {
 
   // ── Panel init animation ──────────────────────────────────────────────────
   const [litPanels, setLitPanels] = useState(new Set())
@@ -343,6 +343,11 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const zpeRef          = useRef(null)
   const zpeBarRef       = useRef(null)
   const radiatorRef     = useRef(null)
+  const frameDragRef    = useRef(null)
+  const frameDragBarRef = useRef(null)
+  const hawkingRef      = useRef(null)
+  const bhOutputRef     = useRef(bhOutput)
+  const bhYieldRef      = useRef(bhYield)
   const ecefRef         = useRef(null)
   const shapiroRef      = useRef(null)
   const ltlagRef        = useRef(null)
@@ -419,6 +424,8 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   const antennaAlignedRef = useRef(false)
   useEffect(() => { reactorPlasmaRef.current = reactorPlasma }, [reactorPlasma])
   useEffect(() => { antennaAlignedRef.current = antennaAligned }, [antennaAligned])
+  useEffect(() => { bhOutputRef.current = bhOutput }, [bhOutput])
+  useEffect(() => { bhYieldRef.current = bhYield }, [bhYield])
   const targetIdxRef = useRef(targetIdx)
   useEffect(() => { targetIdxRef.current = targetIdx }, [targetIdx])
   const countdownSecondsRef = useRef(countdownSeconds)
@@ -690,6 +697,14 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
       if (zpeBarRef.current)   zpeBarRef.current.style.width   = `${(zpe / 6e-9 * 100).toFixed(1)}%`
       const radT = (580 + d * 2950) + Math.sin(now * 0.00033) * 40
       if (radiatorRef.current) radiatorRef.current.textContent = `+${radT.toFixed(0)} K`
+
+      // ── Stage 2 — black-hole ergosphere flavour telemetry ──────────────────
+      const s2 = bhOutputRef.current > 0.05 || bhYieldRef.current > 0
+      const fd = s2 ? 0.612 + Math.sin(now * 0.0009) * 0.018 : 0
+      if (frameDragRef.current)    frameDragRef.current.textContent    = s2 ? `${fd.toFixed(3)} rad·s⁻¹` : '— rad·s⁻¹'
+      if (frameDragBarRef.current) frameDragBarRef.current.style.width = `${(fd / 0.7 * 100).toFixed(1)}%`
+      const hawk = 1.21e-8 + Math.sin(now * 0.00061) * 6e-10
+      if (hawkingRef.current)      hawkingRef.current.textContent      = s2 ? `${hawk.toExponential(2)} K` : '— K'
     }
 
     const updateTargeting = (now) => {
@@ -1009,7 +1024,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
       updateCausality(now)
       updatePower(now)
       updateTargeting(now)
-      const radarActive = reactorPlasmaRef.current >= 25 && antennaAlignedRef.current
+      const radarActive = (bhOutputRef.current > 0.05 || bhYieldRef.current > 0) && antennaAlignedRef.current
       if (radarActive) drawRadar(dt, now)
       drawRailgun(dt)
       drawTarget(dt)
@@ -1048,7 +1063,11 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
   // ── JSX ───────────────────────────────────────────────────────────────────
   const hasTarget     = targetIdx >= 0
   const targetName    = targetIdx >= 0 ? getTargetName(targetIdx) : 'None'
-  const lowPower      = reactorPlasma < 25
+  const stage1On      = reactorPlasma >= 25
+  const stage2On      = bhOutput > 0.05 || bhYield > 0
+  // Main functionality is powered by the black-hole ergosphere tap (Stage 2),
+  // not the fusion reactor alone.
+  const lowPower      = !stage2On
   const showArm       = launchPhase === 'idle'
   const showDisarm    = launchPhase === 'verifying' || launchPhase === 'armed' || launchPhase === 'countdown'
   const showLaunch    = launchPhase === 'armed' || launchPhase === 'fired'
@@ -1295,36 +1314,85 @@ export default function MainPanel({ onLogout, onLaunchComplete, onReactor, onTar
         </section>
 
         {/* POWER / REACTOR */}
-        <section className={`panel panel--clickable${lit('panel-power')}`} id="panel-power" onClick={onReactor} title="Open Reactor Control">
+        <section className={`panel panel--clickable${lit('panel-power')}`} id="panel-power" onClick={onPower} title="Open Power Management">
           <header className="panel-header">
-            <span className={`bullet${lowPower ? ' bullet--alert' : ''}`} /><h2>REACTOR // PHASE-SPACE</h2>
-            <span className="panel-id">PNL-007 / D-³He FUSOR + ZPE TAP</span>
+            <span className={`bullet${lowPower ? ' bullet--alert' : ''}`} /><h2>POWER BUS // TWO-STAGE</h2>
+            <span className="panel-id">PNL-007 / FUSION + ERGOSPHERE</span>
           </header>
           <div className="panel-body">
-            <div className="power-grid">
-              <div className="power-cell">
-                <div className="pc-label">CORE FLUX</div>
-                <div className="pc-value mono" ref={coreFluxRef} />
-                <div className="bar"><div className="bar-fill" ref={coreBarRef} /></div>
+            <div className="power-split">
+
+              {/* ── Stage 1 — fusion reactor ─────────────────────────────── */}
+              <div className="power-stage">
+                <div className="power-stage-head">
+                  <span className={`stage-light${stage1On ? ' stage-light--on' : ''}`} />
+                  <div className="power-stage-titles">
+                    <span className="power-stage-num">POWER STAGE 1</span>
+                    <span className="power-stage-name">D-³He FUSION REACTOR</span>
+                  </div>
+                </div>
+                <div className="power-grid">
+                  <div className="power-cell">
+                    <div className="pc-label">CORE FLUX</div>
+                    <div className="pc-value mono" ref={coreFluxRef} />
+                    <div className="bar"><div className="bar-fill" ref={coreBarRef} /></div>
+                  </div>
+                  <div className="power-cell">
+                    <div className="pc-label">CAPACITOR BANK</div>
+                    <div className="pc-value mono" ref={capBankRef} />
+                    <div className="bar"><div className="bar-fill" ref={capBarRef} /></div>
+                  </div>
+                  <div className="power-cell">
+                    <div className="pc-label">ZERO-POINT TAP</div>
+                    <div className="pc-value mono" ref={zpeRef} />
+                    <div className="bar"><div className="bar-fill" ref={zpeBarRef} /></div>
+                  </div>
+                  <div className="power-cell">
+                    <div className="pc-label">RADIATOR ΔT</div>
+                    <div className="pc-value mono" ref={radiatorRef} />
+                    <div className="bar"><div className="bar-fill warn" style={{ width: '71%' }} /></div>
+                  </div>
+                </div>
               </div>
-              <div className="power-cell">
-                <div className="pc-label">CAPACITOR BANK</div>
-                <div className="pc-value mono" ref={capBankRef} />
-                <div className="bar"><div className="bar-fill" ref={capBarRef} /></div>
+
+              <div className="power-split-div" />
+
+              {/* ── Stage 2 — black-hole ergosphere extraction ───────────── */}
+              <div className="power-stage">
+                <div className="power-stage-head">
+                  <span className={`stage-light${stage2On ? ' stage-light--on' : ''}`} />
+                  <div className="power-stage-titles">
+                    <span className="power-stage-num">POWER STAGE 2</span>
+                    <span className="power-stage-name">BLACK HOLE ERGOSPHERE POWER EXTRACTION</span>
+                  </div>
+                </div>
+                <div className="power-grid">
+                  <div className="power-cell">
+                    <div className="pc-label">OUTPUT</div>
+                    <div className="pc-value mono">{(stage2On ? bhOutput : 0).toFixed(2)} PW</div>
+                    <div className="bar"><div className="bar-fill" style={{ width: `${Math.min(100, bhOutput / 5 * 100)}%` }} /></div>
+                  </div>
+                  <div className="power-cell">
+                    <div className="pc-label">CUMULATIVE YIELD</div>
+                    <div className="pc-value mono">{bhYield.toFixed(1)} PJ</div>
+                    <div className="bar"><div className="bar-fill" style={{ width: `${Math.min(100, bhYield / 500 * 100)}%` }} /></div>
+                  </div>
+                  <div className="power-cell">
+                    <div className="pc-label">FRAME-DRAG Ω</div>
+                    <div className="pc-value mono" ref={frameDragRef} />
+                    <div className="bar"><div className="bar-fill" ref={frameDragBarRef} /></div>
+                  </div>
+                  <div className="power-cell">
+                    <div className="pc-label">HAWKING T</div>
+                    <div className="pc-value mono" ref={hawkingRef} />
+                    <div className="bar"><div className="bar-fill warn" style={{ width: '6%' }} /></div>
+                  </div>
+                </div>
               </div>
-              <div className="power-cell">
-                <div className="pc-label">ZERO-POINT TAP</div>
-                <div className="pc-value mono" ref={zpeRef} />
-                <div className="bar"><div className="bar-fill" ref={zpeBarRef} /></div>
-              </div>
-              <div className="power-cell">
-                <div className="pc-label">RADIATOR ΔT</div>
-                <div className="pc-value mono" ref={radiatorRef} />
-                <div className="bar"><div className="bar-fill warn" style={{ width: '71%' }} /></div>
-              </div>
+
             </div>
             <div className="panel-enter-link-wrap">
-              <div className="panel-enter-link">ENTER D-³He FUSOR MANAGEMENT</div>
+              <div className="panel-enter-link">ENTER POWER MANAGEMENT</div>
             </div>
           </div>
         </section>

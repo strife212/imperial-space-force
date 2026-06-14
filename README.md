@@ -10,7 +10,7 @@ A narrative browser game built as a fictional military command terminal. The pla
 - **React 19** — all UI as functional components with hooks; no class components
 - **Vite 8** — dev server and build tooling
 - **Vanilla CSS** — single `styles.css` file; no CSS framework or preprocessor
-- **three.js** — used only for the black hole visualiser (debug screen); the rest of the game's visuals are hand-rolled on `<canvas>` 2D
+- **three.js** — powers the 3D visualisers (reactor torus, black hole, power-management previews); the rest of the game's visuals are hand-rolled on `<canvas>` 2D
 - **Deployed to GitHub Pages** via GitHub Actions, served at [imperialspaceforce.com](https://imperialspaceforce.com)
 
 ---
@@ -27,6 +27,7 @@ src/
 │   ├── MenuScreen.jsx       # Main menu with ship dossier
 │   ├── MainPanel.jsx        # Primary HUD — multi-panel command grid (largest file)
 │   ├── XBandRadioPanel.jsx  # Tunable frequency dial sub-panel
+│   ├── PowerManagementScreen.jsx   # Two-stage power hub — live three.js reactor & black-hole previews
 │   ├── ReactorScreen.jsx    # Plasma density management minigame
 │   ├── AntennaAlignmentScreen.jsx  # Beam alignment minigame with spectrograph
 │   ├── TargetingScreen.jsx  # Interactive solar system orbital map

@@ -14,6 +14,7 @@ const SCREENS_COL1 = [
   { key: 'boot',         label: 'Boot / Loading Screen'  },
   { key: 'menu',         label: 'Menu Screen'             },
   { key: 'main',         label: 'Main Panel'              },
+  { key: 'power',        label: 'Power Management Screen' },
   { key: 'monitor',      label: 'Launch Monitor Screen'  },
 ]
 
