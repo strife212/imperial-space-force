@@ -6,50 +6,13 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
+import { PLASMA_VERT, PLASMA_FRAG } from '../lib/shaders'
 
 // ── Tokamak geometry (world units) ─────────────────────────────────────────────
 const R_MAJ    = 1.0    // major radius (centre of tube)
 const R_TUBE   = 0.34   // plasma tube radius
 const COIL_MAJ = 0.46   // TF-coil ring radius (encircles the tube)
 const NUM_COILS = 16
-
-// ── Plasma shader — swirling toroidal filaments, brightness driven by density ──
-const PLASMA_VERT = /* glsl */`
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`
-const PLASMA_FRAG = /* glsl */`
-  precision highp float;
-  uniform float uTime;
-  uniform float uPlasma;
-  varying vec2 vUv;
-  float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-  float noise(vec2 p){
-    vec2 i = floor(p), f = fract(p);
-    float a = hash(i), b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-  }
-  void main() {
-    float tor = vUv.x;   // around the big ring
-    float pol = vUv.y;   // around the tube
-    // filaments streaming around the torus
-    float swirl = tor + uTime * 0.04;
-    float n = noise(vec2(swirl * 70.0, pol * 11.0)) * 0.6
-            + noise(vec2(swirl * 150.0, pol * 24.0)) * 0.4;
-    float fil = smoothstep(0.38, 0.98, n);
-    // cool pink at low density -> hot white-pink as it heats up
-    vec3 cool = vec3(1.0, 0.28, 0.70);
-    vec3 hot  = vec3(1.0, 0.62, 0.88);
-    vec3 col  = mix(cool, hot, clamp(uPlasma, 0.0, 1.0));
-    float intensity = (0.16 + 0.42 * fil) * uPlasma;
-    gl_FragColor = vec4(col * intensity, clamp(intensity, 0.0, 1.0));
-  }
-`
 
 // ── Circuit breaker data ──────────────────────────────────────────────────────
 const BREAKERS = [

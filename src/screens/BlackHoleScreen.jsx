@@ -6,6 +6,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
+import { DISK_VERT, DISK_FRAG, RIM_VERT, RIM_FRAG } from '../lib/shaders'
 
 // ── Geometry radii (in event-horizon units) ───────────────────────────────────
 const R_HORIZON = 1.35   // black "shadow" sphere — the dominant central feature
@@ -40,84 +41,6 @@ const LABELS = [
   { id: 'jet',    title: 'RELATIVISTIC JET', sub: 'collimated polar outflow', anchor: new THREE.Vector3(0, JET_LEN, 0), dir: [0.1, -1],
     desc: 'Narrow beams of plasma fired along the spin axis at near light-speed, collimated and powered by the black hole’s twisted magnetic field and rotation.' },
 ]
-
-// ── Accretion-disk shader ──────────────────────────────────────────────────────
-const DISK_VERT = /* glsl */`
-  varying vec2 vPos;
-  void main() {
-    vPos = position.xy;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`
-const DISK_FRAG = /* glsl */`
-  precision highp float;
-  uniform float uTime;
-  uniform float uInner;
-  uniform float uOuter;
-  varying vec2 vPos;
-
-  float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-  float noise(vec2 p){
-    vec2 i = floor(p), f = fract(p);
-    float a = hash(i), b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-  }
-
-  void main() {
-    float r   = length(vPos);
-    float t   = clamp((r - uInner) / (uOuter - uInner), 0.0, 1.0);
-    float ang = atan(vPos.y, vPos.x);
-
-    // differential rotation — inner material orbits faster
-    float speed = 1.6 / (0.35 + t);
-    float swirl = ang + uTime * speed * 0.18;
-
-    // turbulent spiral banding
-    float n = noise(vec2(swirl * 2.0, r * 1.4)) * 0.6
-            + noise(vec2(swirl * 5.0, r * 4.0)) * 0.4;
-    float bright = smoothstep(0.15, 0.95, n);
-
-    // temperature gradient: hot inner -> cool outer
-    vec3 hot  = vec3(1.00, 0.96, 0.90);
-    vec3 mid  = vec3(1.00, 0.55, 0.16);
-    vec3 cool = vec3(0.60, 0.12, 0.04);
-    vec3 col  = mix(hot, mid, smoothstep(0.0, 0.4, t));
-    col       = mix(col, cool, smoothstep(0.4, 1.0, t));
-
-    float falloff = mix(1.7, 0.28, t);              // inner brighter
-    float doppler = 0.65 + 0.6 * cos(ang - 1.1);    // relativistic beaming (fixed side)
-    float intensity = bright * falloff * doppler;
-
-    float edge = smoothstep(0.0, 0.07, t) * (1.0 - smoothstep(0.86, 1.0, t));
-    float alpha = edge * clamp(intensity, 0.0, 1.0);
-    gl_FragColor = vec4(col * intensity, alpha);
-  }
-`
-
-// ── Fresnel rim (photon-ring glow around the silhouette) ───────────────────────
-const RIM_VERT = /* glsl */`
-  varying vec3 vN;
-  varying vec3 vView;
-  void main() {
-    vN = normalize(normalMatrix * normal);
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    vView = normalize(-mv.xyz);
-    gl_Position = projectionMatrix * mv;
-  }
-`
-const RIM_FRAG = /* glsl */`
-  precision highp float;
-  uniform vec3 uColor;
-  uniform float uPower;
-  varying vec3 vN;
-  varying vec3 vView;
-  void main() {
-    float f = pow(1.0 - max(dot(vN, vView), 0.0), uPower);
-    gl_FragColor = vec4(uColor * f, f);
-  }
-`
 
 export default function BlackHoleScreen({ onReturn, unreadCount = 0, onMailOpen, initialYield = 0, onPower }) {
   const mountRef  = useRef(null)
