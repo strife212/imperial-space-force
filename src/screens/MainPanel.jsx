@@ -340,12 +340,6 @@ export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTarge
   const coreBarRef      = useRef(null)
   const capBankRef      = useRef(null)
   const capBarRef       = useRef(null)
-  const zpeRef          = useRef(null)
-  const zpeBarRef       = useRef(null)
-  const radiatorRef     = useRef(null)
-  const frameDragRef    = useRef(null)
-  const frameDragBarRef = useRef(null)
-  const hawkingRef      = useRef(null)
   const bhOutputRef     = useRef(bhOutput)
   const bhYieldRef      = useRef(bhYield)
   const ecefRef         = useRef(null)
@@ -692,19 +686,6 @@ export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTarge
       const cap = (14 + d * 80) + Math.sin(now * 0.00058) * 1.5
       if (capBankRef.current)  capBankRef.current.textContent  = `${Math.min(100, cap).toFixed(1)}%`
       if (capBarRef.current)   capBarRef.current.style.width   = `${Math.min(100, cap).toFixed(1)}%`
-      const zpe = 3.7e-9 + Math.sin(now * 0.00077) * 4.0e-10
-      if (zpeRef.current)      zpeRef.current.textContent      = `${zpe.toExponential(2)} J·m⁻³`
-      if (zpeBarRef.current)   zpeBarRef.current.style.width   = `${(zpe / 6e-9 * 100).toFixed(1)}%`
-      const radT = (580 + d * 2950) + Math.sin(now * 0.00033) * 40
-      if (radiatorRef.current) radiatorRef.current.textContent = `+${radT.toFixed(0)} K`
-
-      // ── Stage 2 — black-hole ergosphere flavour telemetry ──────────────────
-      const s2 = bhOutputRef.current > 0.05 || bhYieldRef.current > 0
-      const fd = s2 ? 0.612 + Math.sin(now * 0.0009) * 0.018 : 0
-      if (frameDragRef.current)    frameDragRef.current.textContent    = s2 ? `${fd.toFixed(3)} rad·s⁻¹` : '— rad·s⁻¹'
-      if (frameDragBarRef.current) frameDragBarRef.current.style.width = `${(fd / 0.7 * 100).toFixed(1)}%`
-      const hawk = 1.21e-8 + Math.sin(now * 0.00061) * 6e-10
-      if (hawkingRef.current)      hawkingRef.current.textContent      = s2 ? `${hawk.toExponential(2)} K` : '— K'
     }
 
     const updateTargeting = (now) => {
@@ -1342,16 +1323,6 @@ export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTarge
                     <div className="pc-value mono" ref={capBankRef} />
                     <div className="bar"><div className="bar-fill" ref={capBarRef} /></div>
                   </div>
-                  <div className="power-cell">
-                    <div className="pc-label">ZERO-POINT TAP</div>
-                    <div className="pc-value mono" ref={zpeRef} />
-                    <div className="bar"><div className="bar-fill" ref={zpeBarRef} /></div>
-                  </div>
-                  <div className="power-cell">
-                    <div className="pc-label">RADIATOR ΔT</div>
-                    <div className="pc-value mono" ref={radiatorRef} />
-                    <div className="bar"><div className="bar-fill warn" style={{ width: '71%' }} /></div>
-                  </div>
                 </div>
               </div>
 
@@ -1363,7 +1334,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTarge
                   <span className={`stage-light${stage2On ? ' stage-light--on' : ''}`} />
                   <div className="power-stage-titles">
                     <span className="power-stage-num">POWER STAGE 2</span>
-                    <span className="power-stage-name">BLACK HOLE ERGOSPHERE POWER EXTRACTION</span>
+                    <span className="power-stage-name">BLACK HOLE POWER EXTRACTION</span>
                   </div>
                 </div>
                 <div className="power-grid">
@@ -1373,19 +1344,9 @@ export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTarge
                     <div className="bar"><div className="bar-fill" style={{ width: `${Math.min(100, bhOutput / 5 * 100)}%` }} /></div>
                   </div>
                   <div className="power-cell">
-                    <div className="pc-label">CUMULATIVE YIELD</div>
+                    <div className="pc-label">CUM. YIELD</div>
                     <div className="pc-value mono">{bhYield.toFixed(1)} PJ</div>
                     <div className="bar"><div className="bar-fill" style={{ width: `${Math.min(100, bhYield / 500 * 100)}%` }} /></div>
-                  </div>
-                  <div className="power-cell">
-                    <div className="pc-label">FRAME-DRAG Ω</div>
-                    <div className="pc-value mono" ref={frameDragRef} />
-                    <div className="bar"><div className="bar-fill" ref={frameDragBarRef} /></div>
-                  </div>
-                  <div className="power-cell">
-                    <div className="pc-label">HAWKING T</div>
-                    <div className="pc-value mono" ref={hawkingRef} />
-                    <div className="bar"><div className="bar-fill warn" style={{ width: '6%' }} /></div>
                   </div>
                 </div>
               </div>
