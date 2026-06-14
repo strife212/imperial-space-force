@@ -65,8 +65,14 @@ function useViewport(buildScene) {
 }
 
 // ── Stage 1 — fusion reactor torus ─────────────────────────────────────────────
-function ReactorMini({ plasma = 0.72 }) {
+// `plasma` (0..1) mirrors the live reactor power level so the visible plasma
+// glow tracks the actual density set on the reactor screen.
+function ReactorMini({ plasma = 0 }) {
+  const plasmaRef = useRef(plasma)
+  useEffect(() => { plasmaRef.current = plasma }, [plasma])
+
   const ref = useViewport(({ scene, camera, composer, disposables, w, h }) => {
+    const p0 = plasmaRef.current
     camera.position.set(2.47, 1.39, 2.61)
     camera.lookAt(0, 0, 0)
 
@@ -80,7 +86,7 @@ function ReactorMini({ plasma = 0.72 }) {
     const key = new THREE.DirectionalLight(0xbcd4ff, 0.9)
     key.position.set(2, 3, 4)
     scene.add(key)
-    const coreLight = new THREE.PointLight(0xff5bb0, plasma * 2.4, 8, 2)
+    const coreLight = new THREE.PointLight(0xff5bb0, p0 * 2.4, 8, 2)
     scene.add(coreLight)
 
     const R_MAJ = 1.0, R_TUBE = 0.34, COIL_MAJ = 0.46, NUM_COILS = 16
@@ -104,22 +110,26 @@ function ReactorMini({ plasma = 0.72 }) {
     const plasmaGeo = new THREE.TorusGeometry(R_MAJ, R_TUBE, 28, 200)
     const plasmaMat = new THREE.ShaderMaterial({
       vertexShader: PLASMA_VERT, fragmentShader: PLASMA_FRAG,
-      uniforms: { uTime: { value: 0 }, uPlasma: { value: plasma } },
+      uniforms: { uTime: { value: 0 }, uPlasma: { value: p0 } },
       transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     })
     spin.add(new THREE.Mesh(plasmaGeo, plasmaMat))
     disposables.push(plasmaGeo, plasmaMat)
 
     const coreGeo = new THREE.TorusGeometry(R_MAJ, R_TUBE * 0.42, 16, 160)
-    const coreMat = new THREE.MeshBasicMaterial({ color: 0xffc8e8, transparent: true, opacity: plasma * 0.22, blending: THREE.AdditiveBlending, depthWrite: false })
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xffc8e8, transparent: true, opacity: p0 * 0.22, blending: THREE.AdditiveBlending, depthWrite: false })
     spin.add(new THREE.Mesh(coreGeo, coreMat))
     disposables.push(coreGeo, coreMat)
 
     composer.addPass(new UnrealBloomPass(new THREE.Vector2(w, h), 0.7, 0.5, 0.2))
 
     return (t) => {
+      const p = plasmaRef.current
       spin.rotation.z += 0.006
       plasmaMat.uniforms.uTime.value = t
+      plasmaMat.uniforms.uPlasma.value = p
+      coreMat.opacity = p * 0.22
+      coreLight.intensity = p * 2.4
     }
   })
   return <canvas className="pm-canvas" ref={ref} />
@@ -173,7 +183,7 @@ function BlackHoleMini() {
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function PowerManagementScreen({ onReactor, onBlackHole, onReturn, reactorPlasma = 0, bhOutput = 0, bhYield = 0, unreadCount = 0, onMailOpen }) {
   const reactorOnline = reactorPlasma >= 25
-  const plasmaGlow = Math.max(reactorPlasma, 62) / 100   // always renders a healthy glow
+  const plasmaGlow = reactorPlasma / 100   // visible plasma tracks the real reactor level
   // Mirror the reactor screen's CORE FLUX telemetry: flux = 0.35 + density·3.85 GW
   const coreFlux = Math.max(0, 0.35 + (reactorPlasma / 100) * 3.85)
   const bhActive = bhOutput > 0.05
