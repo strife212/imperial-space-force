@@ -6016,6 +6016,26 @@ body {
 }
 .sb-cap-shield span { color: var(--c-ash); }
 
+/* sound toggle — top-left of the stage */
+.sb-sound {
+  position: absolute;
+  top: 12px; left: 14px;
+  z-index: 3;
+  background: rgba(2, 6, 18, 0.6);
+  border: 1px solid var(--c-line-2);
+  color: var(--c-rose);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.sb-sound:hover { border-color: rgba(120, 180, 255, 0.7); color: var(--c-pink); }
+.sb-sound--off { color: var(--c-ash-dim); }
+
 /* tactics panel — bottom-left (controls the blue fleet only) */
 .sb-tactics {
   position: absolute;

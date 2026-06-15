@@ -258,6 +258,19 @@ function makeBackdrop(scene, disposables, lightDir, camera) {
   return makeBlackHole(scene, disposables, pos)
 }
 
+// Optional sound assets. Drop matching files into public/sfx/ to override the
+// synthesised sounds; any missing file simply falls back to the procedural synth.
+// (Team/size-specific keys are preferred, with a generic fallback in brackets.)
+const SOUND_FILES = {
+  laser:        'sfx/laser.wav',          // generic laser (both teams)
+  laserBlue:    'sfx/laser-blue.wav',     // optional per-team override → falls back to `laser`
+  laserRed:     'sfx/laser-red.wav',
+  explosion:    'sfx/explosion.wav',      // fighter / secondary blast
+  explosionBig: 'sfx/explosion-big.wav',  // capital blast → falls back to `explosion`
+  jump:         'sfx/jump.wav',           // hyperspace jump-in
+  victory:      'sfx/victory.wav',        // engagement resolved
+}
+
 export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpen }) {
   const mountRef     = useRef(null)
   const blueCountRef = useRef(null)
@@ -266,7 +279,9 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [runId,  setRunId]  = useState(0)
   const [kills,  setKills]  = useState([])      // recent kill-feed entries
   const [stats,  setStats]  = useState(null)    // post-battle breakdown
+  const [muted,  setMuted]  = useState(false)
   const killSeq = useRef(0)
+  const audioRef = useRef(null)
   const blueCapRef = useRef(null), blueShieldRef = useRef(null)
   const redCapRef  = useRef(null), redShieldRef  = useRef(null)
 
@@ -277,6 +292,179 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const fighterTacticRef = useRef(fighterTactic)
   useEffect(() => { capTacticRef.current = capTactic }, [capTactic])
   useEffect(() => { fighterTacticRef.current = fighterTactic }, [fighterTactic])
+
+  // ── Procedural audio engine (synthesised — no asset files) ─────────────────
+  useEffect(() => {
+    let ctx
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return }
+    const TARGET_VOL = 0.42
+
+    // master bus: soft-clip saturation + compressor for glue and punch
+    const master = ctx.createGain(); master.gain.value = 0   // ramp up on resume
+    const shaper = ctx.createWaveShaper()
+    { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; c[i] = Math.tanh(x * 1.5) } shaper.curve = c; shaper.oversample = '2x' }
+    const comp = ctx.createDynamicsCompressor()
+    comp.threshold.value = -16; comp.knee.value = 22; comp.ratio.value = 3.2; comp.attack.value = 0.003; comp.release.value = 0.25
+    comp.connect(shaper); shaper.connect(master); master.connect(ctx.destination)
+
+    // reverb send (synthetic impulse) for a sense of space
+    const conv = ctx.createConvolver()
+    { const len = Math.floor(ctx.sampleRate * 1.3), b = ctx.createBuffer(2, len, ctx.sampleRate)
+      for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6) }
+      conv.buffer = b }
+    const wet = ctx.createGain(); wet.gain.value = 0.5; conv.connect(wet); wet.connect(comp)
+    const dry = ctx.createGain(); dry.connect(comp)
+    const sendTo = (node, amt) => { const s = ctx.createGain(); s.gain.value = amt; node.connect(s); s.connect(conv) }
+
+    // saturation curve reused for explosion grit
+    const satCurve = (() => { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; c[i] = Math.tanh(x * 3) } return c })()
+
+    // shared white-noise buffer
+    const noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate)
+    const nd = noiseBuf.getChannelData(0)
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1
+
+    let mutedLocal = false, lastLaser = 0, lastBoom = 0
+
+    // sample buffers — loaded from public/sfx/ when present; missing files are
+    // ignored so each sound keeps its synthesised fallback below.
+    const buffers = {}
+    Object.entries(SOUND_FILES).forEach(([key, file]) => {
+      fetch(`${import.meta.env.BASE_URL}${file}`)
+        .then(r => { const ct = r.headers.get('content-type') || ''; if (!r.ok || ct.includes('text/html')) throw 0; return r.arrayBuffer() })
+        .then(ab => ctx.decodeAudioData(ab))
+        .then(buf => { buffers[key] = buf })
+        .catch(() => {})   // no file (or not audio) → keep the synth version
+    })
+    // play a loaded sample through the same bus (so reverb / compression / mute apply)
+    const playSample = (buf, gain, rate, reverb) => {
+      const src = ctx.createBufferSource(); src.buffer = buf
+      src.playbackRate.value = rate || 1
+      const g = ctx.createGain(); g.gain.value = gain == null ? 1 : gain
+      src.connect(g); g.connect(dry)
+      if (reverb) sendTo(g, reverb)
+      src.start()
+    }
+
+    const playLaser = (team) => {
+      if (mutedLocal) return
+      const now = ctx.currentTime
+      if (now - lastLaser < 0.05) return         // rate-limit the crackle
+      lastLaser = now
+      const lbuf = (team === 'blue' ? buffers.laserBlue : buffers.laserRed) || buffers.laser
+      if (lbuf) { playSample(lbuf, 0.9, 0.95 + Math.random() * 0.1, 0.1); return }
+      const out = ctx.createGain()
+      out.gain.setValueAtTime(0.0001, now)
+      out.gain.linearRampToValueAtTime(0.18, now + 0.005)
+      out.gain.exponentialRampToValueAtTime(0.0001, now + 0.18)
+      // warm tone body — resonant lowpass tames the harsh top end
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'
+      lp.frequency.value = team === 'blue' ? 2400 : 1900; lp.Q.value = 7
+      const f0 = (team === 'blue' ? 700 : 500) * (0.95 + Math.random() * 0.1)
+      const o1 = ctx.createOscillator(); o1.type = 'triangle'
+      o1.frequency.setValueAtTime(f0 * 2.0, now); o1.frequency.exponentialRampToValueAtTime(f0 * 0.55, now + 0.14)
+      const o2 = ctx.createOscillator(); o2.type = 'sine'
+      o2.frequency.setValueAtTime(f0, now); o2.frequency.exponentialRampToValueAtTime(f0 * 0.4, now + 0.16)
+      o1.connect(lp); o2.connect(lp); lp.connect(out)
+      o1.start(now); o2.start(now); o1.stop(now + 0.19); o2.stop(now + 0.19)
+      // attack "crack" — short high-passed noise transient for punch
+      const nb = ctx.createBufferSource(); nb.buffer = noiseBuf
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1500
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.22, now); ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.045)
+      nb.connect(hp); hp.connect(ng); ng.connect(out); nb.start(now); nb.stop(now + 0.05)
+      out.connect(dry); sendTo(out, 0.1)
+    }
+
+    const playExplosion = (big) => {
+      if (mutedLocal) return
+      const now = ctx.currentTime
+      if (now - lastBoom < 0.05) return
+      lastBoom = now
+      const ebuf = (big && buffers.explosionBig) || buffers.explosion
+      if (ebuf) { playSample(ebuf, big ? 1 : 0.8, big ? 1 : 1.05 + Math.random() * 0.1, big ? 0.6 : 0.4); return }
+      const dur = big ? 1.1 : 0.6
+      const out = ctx.createGain()
+      // 1) sharp initial crack — high-passed noise transient
+      const cb = ctx.createBufferSource(); cb.buffer = noiseBuf
+      const chp = ctx.createBiquadFilter(); chp.type = 'highpass'; chp.frequency.value = 800
+      const cg = ctx.createGain(); cg.gain.setValueAtTime(big ? 0.55 : 0.4, now); cg.gain.exponentialRampToValueAtTime(0.0001, now + 0.09)
+      cb.connect(chp); chp.connect(cg); cg.connect(out); cb.start(now); cb.stop(now + 0.1)
+      // 2) saturated body roar — noise → soft clip → downward lowpass sweep
+      const bb = ctx.createBufferSource(); bb.buffer = noiseBuf; bb.loop = true
+      const ws = ctx.createWaveShaper(); ws.curve = satCurve
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'
+      lp.frequency.setValueAtTime(big ? 1700 : 1200, now); lp.frequency.exponentialRampToValueAtTime(big ? 110 : 190, now + dur)
+      const bg = ctx.createGain(); bg.gain.setValueAtTime(big ? 0.55 : 0.38, now); bg.gain.exponentialRampToValueAtTime(0.0001, now + dur)
+      bb.connect(ws); ws.connect(lp); lp.connect(bg); bg.connect(out); bb.start(now); bb.stop(now + dur + 0.05)
+      // 3) sub-bass thump for chest punch
+      const o = ctx.createOscillator(); o.type = 'sine'
+      o.frequency.setValueAtTime(big ? 110 : 145, now); o.frequency.exponentialRampToValueAtTime(big ? 32 : 50, now + dur * 0.5)
+      const og = ctx.createGain(); og.gain.setValueAtTime(big ? 0.95 : 0.6, now); og.gain.exponentialRampToValueAtTime(0.0001, now + dur * 0.7)
+      o.connect(og); og.connect(out); o.start(now); o.stop(now + dur)
+      out.connect(dry); sendTo(out, big ? 0.6 : 0.4)
+    }
+
+    const playJump = () => {
+      if (mutedLocal) return
+      const now = ctx.currentTime
+      if (buffers.jump) { playSample(buffers.jump, 0.9, 1, 0.5); return }
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.4
+      bp.frequency.setValueAtTime(180, now)
+      bp.frequency.exponentialRampToValueAtTime(2600, now + 0.6)
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(0.0001, now)
+      g.gain.linearRampToValueAtTime(0.26, now + 0.4)
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 1.0)
+      src.connect(bp); bp.connect(g); g.connect(dry); sendTo(g, 0.5); src.start(now); src.stop(now + 1.1)
+      const o = ctx.createOscillator(), og = ctx.createGain()
+      o.type = 'sawtooth'
+      o.frequency.setValueAtTime(70, now); o.frequency.exponentialRampToValueAtTime(520, now + 0.6)
+      const olp = ctx.createBiquadFilter(); olp.type = 'lowpass'; olp.frequency.value = 1800
+      og.gain.setValueAtTime(0.0001, now)
+      og.gain.linearRampToValueAtTime(0.13, now + 0.4); og.gain.exponentialRampToValueAtTime(0.0001, now + 0.9)
+      o.connect(olp); olp.connect(og); og.connect(dry); o.start(now); o.stop(now + 0.95)
+    }
+
+    const playVictory = (winner) => {
+      if (mutedLocal) return
+      const now = ctx.currentTime
+      if (buffers.victory) { playSample(buffers.victory, 0.9, 1, 0.4); return }
+      const freqs = winner === 'RED' ? [98, 196, 233.1, 294] : [130.8, 261.6, 329.6, 392]
+      freqs.forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter()
+        o.type = i === 0 ? 'sine' : 'triangle'; o.frequency.value = f
+        lp.type = 'lowpass'; lp.frequency.value = 2200
+        const tt = now + i * 0.08
+        g.gain.setValueAtTime(0.0001, tt)
+        g.gain.linearRampToValueAtTime(i === 0 ? 0.2 : 0.13, tt + 0.05)
+        g.gain.exponentialRampToValueAtTime(0.0001, tt + 1.5)
+        o.connect(lp); lp.connect(g); g.connect(dry); sendTo(g, 0.4); o.start(tt); o.stop(tt + 1.6)
+      })
+    }
+
+    // subtle ambient drone (two detuned low sines)
+    const droneG = ctx.createGain(); droneG.gain.value = 0.03; droneG.connect(dry)
+    const d1 = ctx.createOscillator(); d1.type = 'sine'; d1.frequency.value = 54;   d1.connect(droneG); d1.start()
+    const d2 = ctx.createOscillator(); d2.type = 'sine'; d2.frequency.value = 54.5; d2.connect(droneG); d2.start()
+
+    const applyVol = () => master.gain.setTargetAtTime(mutedLocal ? 0 : TARGET_VOL, ctx.currentTime, 0.06)
+    const setMutedFn = (m) => { mutedLocal = m; applyVol() }
+    const resume = () => { if (ctx.state === 'suspended') ctx.resume(); applyVol() }
+    resume()
+    window.addEventListener('pointerdown', resume)
+
+    audioRef.current = { playLaser, playExplosion, playJump, playVictory, setMuted: setMutedFn }
+
+    return () => {
+      window.removeEventListener('pointerdown', resume)
+      try { d1.stop(); d2.stop() } catch (_) {}
+      audioRef.current = null
+      ctx.close()
+    }
+  }, [])
+
+  useEffect(() => { audioRef.current?.setMuted(muted) }, [muted])
 
   useEffect(() => {
     const mount = mountRef.current
@@ -510,6 +698,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         s.mesh.position.copy(s.pos)
       }
       let introT = 0
+      audioRef.current?.playJump()
 
       // ── Bolts, explosions, embers, capital wrecks ─────────────────────────────
       const bolts = []
@@ -544,6 +733,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         mesh.quaternion.setFromUnitVectors(yAxis, dir)
         scene.add(mesh)
         bolts.push({ mesh, dir, target, willHit, life: 0, shooter })
+        audioRef.current?.playLaser(shooter.team)
       }
 
       const spawnBlast = (pos, big = false) => {
@@ -557,6 +747,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         ring.position.copy(pos); ring.scale.setScalar(0.5 * s)
         scene.add(ring)
         blasts.push({ fire, fmat, ring, rmat, life: 0, max: 0.6, s })
+        audioRef.current?.playExplosion(big)
       }
 
       const addKill = (killer, victim) => {
@@ -828,6 +1019,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         if (!gameOver && (c.blue === 0 || c.red === 0)) {
           gameOver = true
           setWinner(c.blue > 0 ? 'BLUE' : c.red > 0 ? 'RED' : 'DRAW')
+          audioRef.current?.playVictory(c.blue > 0 ? 'BLUE' : 'RED')
           const sumKills = team => ships.filter(s => s.team === team).reduce((a, s) => a + (s.kills || 0), 0)
           const cap = team => { const k = ships.find(s => s.isCapital && s.team === team); return { name: k.name, kills: k.kills || 0, alive: k.alive } }
           setStats({
@@ -974,6 +1166,10 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             </div>
           </div>
         </div>
+
+        <button className={`sb-sound${muted ? ' sb-sound--off' : ''}`} onClick={() => setMuted(m => !m)}>
+          {muted ? '♪ SOUND OFF' : '♪ SOUND ON'}
+        </button>
 
         <div className="sb-hint">DRAG TO ORBIT // SCROLL TO ZOOM</div>
       </div>
