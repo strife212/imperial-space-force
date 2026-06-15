@@ -16,10 +16,10 @@ const SCREENS_COL1 = [
   { key: 'main',         label: 'Main Panel'              },
   { key: 'power',        label: 'Power Management Screen' },
   { key: 'monitor',      label: 'Launch Monitor Screen'  },
+  { key: 'reactor',      label: 'Reactor Control Screen'  },
 ]
 
 const SCREENS_COL2 = [
-  { key: 'reactor',         label: 'Reactor Control Screen'   },
   { key: 'targeting',       label: 'Targeting Screen'          },
   { key: 'gameover',        label: 'Game Over Screen'          },
   { key: 'encyclopedia',    label: 'Encyclopedia Screen'       },
@@ -64,14 +64,9 @@ export default function DebugScreen({ onNavigate, onDebugMain, onDebugAttack, on
         <div className="debug-title">⬢ DEBUG // SCREEN SELECT</div>
         <div className="debug-body">
 
-          {/* Column 1 — screens 1–5 */}
+          {/* Column 1 — screens + shortcuts */}
           <ul className="debug-list">
             {SCREENS_COL1.map(screenBtn)}
-          </ul>
-
-          {/* Column 2 — screens 6–10 + shortcuts */}
-          <ul className="debug-list">
-            {SCREENS_COL2.map(screenBtn)}
             <li>
               <button className="debug-item debug-item--shortcut" onClick={onDebugMain}>
                 <span className="debug-item-key">[⚡]</span>
@@ -84,6 +79,11 @@ export default function DebugScreen({ onNavigate, onDebugMain, onDebugAttack, on
                 <span className="debug-item-label">Main Panel — under attack mode</span>
               </button>
             </li>
+          </ul>
+
+          {/* Column 2 — screens + shortcuts */}
+          <ul className="debug-list">
+            {SCREENS_COL2.map(screenBtn)}
             <li>
               <button className="debug-item debug-item--shortcut" onClick={onDebugFail}>
                 <span className="debug-item-key">[✕]</span>

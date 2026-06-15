@@ -5,21 +5,108 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { RIM_VERT, RIM_FRAG, DISK_VERT, DISK_FRAG } from '../lib/shaders'
 import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
+
+// ── Shared GLSL value-noise / fbm (for the nebula skydome and the planet) ──────
+const GLSL_NOISE = /* glsl */`
+  float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+  float vnoise(vec3 x){
+    vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
+                   mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+               mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                   mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+  }
+  float fbm(vec3 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a * vnoise(p); p *= 2.03; a *= 0.5; } return v; }
+`
+
+// ── Nebula skydome — soft fbm gas clouds painted on the inside of a far sphere ──
+const NEBULA_VERT = /* glsl */`
+  varying vec3 vDir;
+  void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+`
+const NEBULA_FRAG = /* glsl */`
+  precision highp float;
+  varying vec3 vDir;
+  uniform vec3 uColA; uniform vec3 uColB; uniform vec3 uColWarm;
+` + GLSL_NOISE + /* glsl */`
+  void main() {
+    vec3 d = normalize(vDir);
+    float n  = fbm(d * 2.4 + 3.1);
+    float n2 = fbm(d * 5.3 + 9.7);
+    float clouds = smoothstep(0.30, 0.95, n * 0.75 + n2 * 0.35);
+    vec3 col = vec3(0.012, 0.020, 0.045);                 // deep-space base
+    col = mix(col, uColA, clouds * 0.7);                  // cool nebula body
+    col = mix(col, uColB, smoothstep(0.55, 1.05, n) * 0.55);  // denser purple cores
+    float warm = smoothstep(0.15, 1.0, d.x * 0.5 + 0.5) * smoothstep(0.45, 0.95, n2);
+    col += uColWarm * warm * 0.22;                        // faint warm region to one side
+    gl_FragColor = vec4(col, 1.0);
+  }
+`
+
+// ── Gas-giant planet — banded fbm surface with a soft day/night terminator ─────
+const PLANET_VERT = /* glsl */`
+  varying vec3 vWN; varying vec3 vPosL;
+  void main() {
+    vWN = normalize(mat3(modelMatrix) * normal);
+    vPosL = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+const PLANET_FRAG = /* glsl */`
+  precision highp float;
+  varying vec3 vWN; varying vec3 vPosL;
+  uniform vec3 uLightDir; uniform vec3 uColA; uniform vec3 uColB; uniform vec3 uColC;
+` + GLSL_NOISE + /* glsl */`
+  void main() {
+    vec3 n = normalize(vPosL);
+    float bands = sin(n.y * 9.0 + fbm(vPosL * 1.4) * 2.6);
+    float t = bands * 0.5 + 0.5;
+    vec3 surf = mix(uColA, uColB, t);
+    surf = mix(surf, uColC, smoothstep(0.62, 0.96, fbm(vPosL * 2.1 + 5.0)));   // storm highlights
+    float ndl = dot(normalize(vWN), normalize(uLightDir));
+    float lit = smoothstep(-0.3, 0.55, ndl);              // soft terminator
+    gl_FragColor = vec4(surf * (0.04 + lit * 1.05), 1.0);
+  }
+`
+
+// ── Planetary ring — concentric dust bands with a Cassini-style gap ─────────────
+const RING_VERT = /* glsl */`
+  varying vec2 vPos;
+  void main() { vPos = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+`
+const RING_FRAG = /* glsl */`
+  precision highp float;
+  varying vec2 vPos;
+  uniform float uInner; uniform float uOuter;
+  uniform vec3 uColA; uniform vec3 uColB;
+  void main() {
+    float r = length(vPos);
+    float t = clamp((r - uInner) / (uOuter - uInner), 0.0, 1.0);
+    float bands = 0.5 + 0.5 * sin(t * 70.0);
+    float gap = smoothstep(0.40, 0.45, t) * (1.0 - smoothstep(0.52, 0.57, t));   // dark division
+    float edge = smoothstep(0.0, 0.05, t) * (1.0 - smoothstep(0.92, 1.0, t));
+    vec3 col = mix(uColA, uColB, bands);
+    float alpha = edge * (0.45 + 0.4 * bands) * (1.0 - gap * 0.92);
+    gl_FragColor = vec4(col, alpha * 0.9);
+  }
+`
 
 // ── Battle parameters ──────────────────────────────────────────────────────────
 const FLEET_SIZE  = 25
 const SHIP_HP     = 6
 const CAP_HP      = 60       // capital ship — tanky flagship
-const CAP_SPEED   = 3.3      // capital ships lumber
+const CAP_SPEED   = 1.25     // capital ships lumber (very slow & ponderous)
 const CAP_WEAPONS = 4        // bolts per capital volley
 const BOLT_SPEED  = 46       // world units / second
 const MISS_CHANCE = 0.28
 const MAX_SPEED   = 7.5
 const MIN_SPEED   = 2.6
 const SEP_RADIUS  = 3.0
-const BOUND_R     = 22       // ships steer back inside this radius
+const BOUND_R     = 34       // ships steer back inside this radius
+const STANDOFF    = 14       // preferred engagement range — keeps a frontline gap
 const TURN_RATE   = 7        // orientation slerp responsiveness
 const TEAMS = {
   blue: { color: 0x3a93ff, bolt: 0x8fc6ff },
@@ -71,25 +158,138 @@ function buildRedCapital() {
   return mergeGeometries(parts, false)
 }
 
+// ── Background bodies ──────────────────────────────────────────────────────────
+// Each builder adds its meshes to the scene and pushes geometry/materials to
+// `disposables`; it returns an optional per-frame tick(t) for animated bodies.
+function makeGasGiant(scene, disposables, pos, lightDir) {
+  const R = 40
+  const geo = new THREE.SphereGeometry(R, 64, 64)
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: PLANET_VERT, fragmentShader: PLANET_FRAG,
+    uniforms: {
+      uLightDir: { value: lightDir },
+      uColA: { value: new THREE.Color(0.17, 0.21, 0.29) },
+      uColB: { value: new THREE.Color(0.09, 0.14, 0.19) },
+      uColC: { value: new THREE.Color(0.42, 0.44, 0.48) },
+    },
+  })
+  const body = new THREE.Mesh(geo, mat); body.position.copy(pos); scene.add(body)
+  const aGeo = new THREE.SphereGeometry(R * 1.05, 48, 48)
+  const aMat = new THREE.ShaderMaterial({
+    vertexShader: RIM_VERT, fragmentShader: RIM_FRAG,
+    uniforms: { uColor: { value: new THREE.Color(0x5fa0ff) }, uPower: { value: 3.4 } },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide,
+  })
+  const atmo = new THREE.Mesh(aGeo, aMat); atmo.position.copy(pos); scene.add(atmo)
+  disposables.push(geo, mat, aGeo, aMat)
+  return null
+}
+
+function makeRingedPlanet(scene, disposables, pos, lightDir) {
+  const R = 26
+  const geo = new THREE.SphereGeometry(R, 64, 64)
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: PLANET_VERT, fragmentShader: PLANET_FRAG,
+    uniforms: {
+      uLightDir: { value: lightDir },
+      uColA: { value: new THREE.Color(0.26, 0.20, 0.12) },   // sandy tan (dimmed)
+      uColB: { value: new THREE.Color(0.16, 0.13, 0.075) },
+      uColC: { value: new THREE.Color(0.39, 0.34, 0.225) },
+    },
+  })
+  const body = new THREE.Mesh(geo, mat); body.position.copy(pos); scene.add(body)
+  const rIn = R * 1.4, rOut = R * 2.4
+  const rGeo = new THREE.RingGeometry(rIn, rOut, 120, 1)
+  const rMat = new THREE.ShaderMaterial({
+    vertexShader: RING_VERT, fragmentShader: RING_FRAG,
+    uniforms: {
+      uInner: { value: rIn }, uOuter: { value: rOut },
+      uColA: { value: new THREE.Color(0.435, 0.375, 0.27) },
+      uColB: { value: new THREE.Color(0.225, 0.19, 0.13) },
+    },
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+  })
+  const ring = new THREE.Mesh(rGeo, rMat)
+  ring.position.copy(pos)
+  ring.rotation.set(-1.15, 0.4, 0)        // tilt for a 3/4 view
+  scene.add(ring)
+  disposables.push(geo, mat, rGeo, rMat)
+  return null
+}
+
+function makeBlackHole(scene, disposables, pos) {
+  const HR = 12
+  const ehGeo = new THREE.SphereGeometry(HR, 48, 48)
+  const ehMat = new THREE.MeshBasicMaterial({ color: 0x000000 })
+  const eh = new THREE.Mesh(ehGeo, ehMat); eh.position.copy(pos); scene.add(eh)
+  const rimGeo = new THREE.SphereGeometry(HR * 1.05, 48, 48)
+  const rimMat = new THREE.ShaderMaterial({
+    vertexShader: RIM_VERT, fragmentShader: RIM_FRAG,
+    uniforms: { uColor: { value: new THREE.Color(0xacdcff) }, uPower: { value: 5.0 } },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide,
+  })
+  const rim = new THREE.Mesh(rimGeo, rimMat); rim.position.copy(pos); scene.add(rim)
+  const dIn = HR * 1.9, dOut = HR * 4.4
+  const dGeo = new THREE.RingGeometry(dIn, dOut, 180, 12)
+  const dMat = new THREE.ShaderMaterial({
+    vertexShader: DISK_VERT, fragmentShader: DISK_FRAG,
+    uniforms: { uTime: { value: 0 }, uInner: { value: dIn }, uOuter: { value: dOut } },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  })
+  const disk = new THREE.Mesh(dGeo, dMat)
+  disk.position.copy(pos)
+  disk.rotation.set(-Math.PI / 2 + 0.5, 0.3, 0)   // tilt for a 3/4 view
+  scene.add(disk)
+  disposables.push(ehGeo, ehMat, rimGeo, rimMat, dGeo, dMat)
+  return (t) => { dMat.uniforms.uTime.value = t }
+}
+
+// Pick a random background body and place it at a random spot that is on-screen
+// in the opening shot (by unprojecting a random point of the camera's view).
+function makeBackdrop(scene, disposables, lightDir, camera) {
+  const ndcX = Math.random() * 1.5 - 0.75    // -0.75 .. 0.75 (horizontal)
+  const ndcY = Math.random() * 1.05 - 0.30   // -0.30 .. 0.75 (biased upward)
+  const ray = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(camera).sub(camera.position).normalize()
+  const dist = 120 + Math.random() * 45
+  const pos = camera.position.clone().addScaledVector(ray, dist)
+  const pick = Math.floor(Math.random() * 3)
+  if (pick === 0) return makeGasGiant(scene, disposables, pos, lightDir)
+  if (pick === 1) return makeRingedPlanet(scene, disposables, pos, lightDir)
+  return makeBlackHole(scene, disposables, pos)
+}
+
 export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpen }) {
   const mountRef     = useRef(null)
   const blueCountRef = useRef(null)
   const redCountRef  = useRef(null)
   const [winner, setWinner] = useState(null)   // null | 'BLUE' | 'RED' | 'DRAW'
   const [runId,  setRunId]  = useState(0)
+  const [kills,  setKills]  = useState([])      // recent kill-feed entries
+  const killSeq = useRef(0)
+  const blueCapRef = useRef(null), blueShieldRef = useRef(null)
+  const redCapRef  = useRef(null), redShieldRef  = useRef(null)
+
+  // ── Player tactics (blue fleet only) ──────────────────────────────────────
+  const [capTactic,     setCapTactic]     = useState('hold')   // 'hold' | 'engage'
+  const [fighterTactic, setFighterTactic] = useState('all')    // 'all' | 'fighters' | 'capital'
+  const capTacticRef     = useRef(capTactic)
+  const fighterTacticRef = useRef(fighterTactic)
+  useEffect(() => { capTacticRef.current = capTactic }, [capTactic])
+  useEffect(() => { fighterTacticRef.current = fighterTactic }, [fighterTactic])
 
   useEffect(() => {
     const mount = mountRef.current
     if (!mount) return
     let renderer, composer, raf
     const disposables = []
+    setKills([])   // fresh kill feed each battle
 
     try {
       const w = mount.clientWidth || 1, h = mount.clientHeight || 1
 
       const scene = new THREE.Scene()
       const camera = new THREE.PerspectiveCamera(52, w / h, 0.1, 600)
-      camera.position.set(0, 17, 40)
+      camera.position.set(0, 25, 60)   // ~30% further back
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
       renderer.setSize(w, h)
@@ -107,25 +307,58 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       controls.target.set(0, 0, 0)
 
       // ── Lighting ─────────────────────────────────────────────────────────────
-      scene.add(new THREE.AmbientLight(0x4a5a80, 0.8))
-      const key = new THREE.DirectionalLight(0xbcd4ff, 0.7)
-      key.position.set(0, 8, 12)
+      scene.add(new THREE.AmbientLight(0x4a5a80, 0.75))
+      const lightDir = new THREE.Vector3(0.12, 0.42, 0.9).normalize()
+      const key = new THREE.DirectionalLight(0xcfe0ff, 0.8)
+      key.position.copy(lightDir).multiplyScalar(40)
       scene.add(key)
+      const rim = new THREE.DirectionalLight(0x4060a0, 0.35)   // cool back-fill
+      rim.position.set(-20, -6, -30)
+      scene.add(rim)
 
-      // ── Starfield ────────────────────────────────────────────────────────────
-      const starCount = 1400
+      // ── Nebula skydome ─────────────────────────────────────────────────────────
+      const nebGeo = new THREE.SphereGeometry(330, 32, 32)
+      const nebMat = new THREE.ShaderMaterial({
+        vertexShader: NEBULA_VERT, fragmentShader: NEBULA_FRAG,
+        uniforms: {
+          uColA:    { value: new THREE.Color(0.030, 0.055, 0.140) },
+          uColB:    { value: new THREE.Color(0.090, 0.035, 0.150) },
+          uColWarm: { value: new THREE.Color(0.180, 0.070, 0.030) },
+        },
+        side: THREE.BackSide, depthWrite: false, depthTest: false,
+      })
+      const neb = new THREE.Mesh(nebGeo, nebMat)
+      neb.renderOrder = -10
+      scene.add(neb)
+      disposables.push(nebGeo, nebMat)
+
+      // ── Background body — random type, placed somewhere on-screen up front ──────
+      camera.lookAt(0, 0, 0)            // orient the camera so the unproject is correct
+      camera.updateMatrixWorld()
+      const backdropTick = makeBackdrop(scene, disposables, lightDir, camera)
+
+      // ── Starfield (cool dim field + a few bright stars) ─────────────────────────
+      const starCount = 1500
       const starPos = new Float32Array(starCount * 3)
+      const starCol = new Float32Array(starCount * 3)
       for (let i = 0; i < starCount; i++) {
-        const rr = 90 + Math.random() * 200
+        const rr = 120 + Math.random() * 180
         const th = Math.random() * Math.PI * 2
         const ph = Math.acos(2 * Math.random() - 1)
         starPos[i * 3]     = rr * Math.sin(ph) * Math.cos(th)
         starPos[i * 3 + 1] = rr * Math.sin(ph) * Math.sin(th)
         starPos[i * 3 + 2] = rr * Math.cos(ph)
+        const roll = Math.random()
+        let r, g, b
+        if (roll > 0.95)      { r = 0.95; g = 0.97; b = 1.0 }                              // bright blue-white
+        else if (roll > 0.92) { r = 1.0;  g = 0.85; b = 0.62 }                             // occasional warm star
+        else { const v = 0.3 + Math.random() * 0.4; r = v * 0.72; g = v * 0.85; b = v }    // dim cool field
+        starCol[i * 3] = r; starCol[i * 3 + 1] = g; starCol[i * 3 + 2] = b
       }
       const starGeo = new THREE.BufferGeometry()
       starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3))
-      const starMat = new THREE.PointsMaterial({ color: 0x9fc4ff, size: 0.5, sizeAttenuation: true, transparent: true, opacity: 0.8 })
+      starGeo.setAttribute('color', new THREE.BufferAttribute(starCol, 3))
+      const starMat = new THREE.PointsMaterial({ size: 0.75, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.9 })
       scene.add(new THREE.Points(starGeo, starMat))
       disposables.push(starGeo, starMat)
 
@@ -134,19 +367,26 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const capGeo  = { blue: buildBlueCapital(), red: buildRedCapital() }
       const boltGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.7, 6)
       const blastGeo = new THREE.SphereGeometry(1, 12, 12)
-      disposables.push(teamGeo.blue, teamGeo.red, capGeo.blue, capGeo.red, boltGeo, blastGeo)
+      const ringGeo = new THREE.RingGeometry(0.62, 1.0, 32)
+      disposables.push(teamGeo.blue, teamGeo.red, capGeo.blue, capGeo.red, boltGeo, blastGeo, ringGeo)
       const boltMat = {
         blue: new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
         red:  new THREE.MeshBasicMaterial({ color: TEAMS.red.bolt,  transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
       }
-      disposables.push(boltMat.blue, boltMat.red)
+      const glowMat = {   // engine glow — bright additive, tucked at each ship's tail
+        blue: new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
+        red:  new THREE.MeshBasicMaterial({ color: TEAMS.red.bolt,  transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
+      }
+      disposables.push(boltMat.blue, boltMat.red, glowMat.blue, glowMat.red)
 
       // reusable scratch objects (avoid per-frame allocation)
       const yAxis = new THREE.Vector3(0, 1, 0)
       const UP    = new THREE.Vector3(0, 1, 0)
       const ORIGIN = new THREE.Vector3(0, 0, 0)
       const _dir = new THREE.Vector3(), _tmp = new THREE.Vector3(), _acc = new THREE.Vector3()
+      const _proj = new THREE.Vector3()
       const _m = new THREE.Matrix4(), _q = new THREE.Quaternion()
+      let cw = w, ch = h   // canvas size, for projecting labels to screen px
 
       const orient = (mesh, dir, smooth) => {
         if (dir.lengthSq() < 1e-6) return
@@ -166,7 +406,12 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             emissiveIntensity: 0.5, metalness: 0.6, roughness: 0.4,
           })
           disposables.push(mat)
-          const mesh = new THREE.Mesh(teamGeo[team], mat)
+          const mesh = new THREE.Group()
+          mesh.add(new THREE.Mesh(teamGeo[team], mat))
+          const glow = new THREE.Mesh(blastGeo, glowMat[team])  // engine glow at the tail
+          glow.scale.setScalar(0.3)
+          glow.position.set(0, 0, -0.95)
+          mesh.add(glow)
           const pos = new THREE.Vector3(
             sx + (Math.random() - 0.5) * 5,
             (row - 2) * 2.6 + (Math.random() - 0.5) * 2,
@@ -178,35 +423,79 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           scene.add(mesh)
           ships.push({
             mesh, mat, team, hp: SHIP_HP, alive: true, pos, vel,
+            name: team === 'blue' ? 'Blue Interceptor' : 'Red Marauder',
             fireCd: 0.5 + Math.random() * 2.5, flash: 0,
-            isCapital: false, weapons: 1, maxSpeed: MAX_SPEED, minSpeed: MIN_SPEED, radius: 0,
+            isCapital: false, weapons: 1, maxSpeed: MAX_SPEED, minSpeed: MIN_SPEED, radius: 0, turn: TURN_RATE,
+            standoff: STANDOFF, bound: BOUND_R,
           })
         }
       }
-      spawnFleet('blue', -17, 1)    // blue charges from the left (+X)
-      spawnFleet('red',   17, -1)   // red charges from the right (-X)
+      spawnFleet('blue', -31, 1)    // blue charges from the left (+X)
+      spawnFleet('red',   31, -1)   // red charges from the right (-X)
 
-      // ── Capital ships (one tanky, heavily-armed flagship per side) ───────────
-      const spawnCapital = (team, sx, vdir) => {
+      // ── Capital ships — huge flagships that fly a fixed circular patrol ───────
+      // The orbit (radius, height, direction) is rolled once at the start of the
+      // battle; the two flagships ride it 180° apart, sweeping the rear of the
+      // field on a smooth, predictable route instead of steering randomly.
+      const orbitR = 38 + Math.random() * 5   // capital patrol scaled out with the arena
+      const orbit = {
+        R: orbitR,
+        y: (Math.random() - 0.5) * 6,
+        omega: (CAP_SPEED / orbitR) * (Math.random() < 0.5 ? 1 : -1),
+      }
+      const spawnCapital = (team, startAngle) => {
         const mat = new THREE.MeshStandardMaterial({
           color: TEAMS[team].color, emissive: TEAMS[team].color,
           emissiveIntensity: 0.55, metalness: 0.65, roughness: 0.35,
         })
         disposables.push(mat)
-        const mesh = new THREE.Mesh(capGeo[team], mat)
-        const pos = new THREE.Vector3(sx, 0, (Math.random() - 0.5) * 4)
-        const vel = new THREE.Vector3(vdir * 2, 0, 0)
+        const mesh = new THREE.Group()
+        mesh.add(new THREE.Mesh(capGeo[team], mat))
+        for (const ex of [-0.45, 0.45]) {          // twin engine glows
+          const glow = new THREE.Mesh(blastGeo, glowMat[team])
+          glow.scale.setScalar(0.7)
+          glow.position.set(ex, 0, -3.1)
+          mesh.add(glow)
+        }
+        mesh.scale.setScalar(3.2)                   // huge flagship
+        const route = { R: orbit.R, y: orbit.y, omega: orbit.omega, angle: startAngle }
+        const pos = new THREE.Vector3(Math.cos(startAngle) * route.R, route.y, Math.sin(startAngle) * route.R)
+        const sgn = route.omega >= 0 ? 1 : -1
+        const vel = new THREE.Vector3(-Math.sin(startAngle) * sgn, 0, Math.cos(startAngle) * sgn)
         mesh.position.copy(pos)
         orient(mesh, vel)
         scene.add(mesh)
         ships.push({
           mesh, mat, team, hp: CAP_HP, alive: true, pos, vel,
+          name: team === 'blue' ? 'HMSS Limitless Light' : 'Rebel Capital Ship',
+          labelEl:  team === 'blue' ? blueCapRef.current   : redCapRef.current,
+          shieldEl: team === 'blue' ? blueShieldRef.current : redShieldRef.current,
           fireCd: 0.5 + Math.random(), flash: 0,
-          isCapital: true, weapons: CAP_WEAPONS, maxSpeed: CAP_SPEED, minSpeed: 0.8, radius: 5.5,
+          isCapital: true, weapons: CAP_WEAPONS, radius: 16, route,
         })
       }
-      spawnCapital('blue', -28, 1)
-      spawnCapital('red',   28, -1)
+      spawnCapital('blue', Math.PI)   // start on the left
+      spawnCapital('red', 0)          // start opposite, on the right
+      const redCapital = ships.find(s => s.isCapital && s.team === 'red')
+
+      // ── Hyperspace jump-in: stage every ship far out along its flank, then
+      // streak it into its formation slot before combat begins ──────────────────
+      const STREAK_DUR = 0.85, CAP_LEAD = 0.6, FIGHTER_STAGGER = 0.5
+      const INTRO_TOTAL = CAP_LEAD + FIGHTER_STAGGER + STREAK_DUR + 0.1
+      const jumpAxis = {
+        blue: new THREE.Vector3(-1, 0.05, -0.3).normalize(),
+        red:  new THREE.Vector3( 1, 0.05, -0.3).normalize(),
+      }
+      for (const s of ships) {
+        s.home = s.pos.clone()
+        s.baseScale = s.isCapital ? 3.2 : 1
+        // capitals jump in first; the fighters follow them in
+        s.jumpDelay = s.isCapital ? Math.random() * 0.15 : CAP_LEAD + Math.random() * FIGHTER_STAGGER
+        s.jumpFrom = s.home.clone().addScaledVector(jumpAxis[s.team], 95)
+        s.pos.copy(s.jumpFrom)
+        s.mesh.position.copy(s.pos)
+      }
+      let introT = 0
 
       // ── Bolts & explosions ───────────────────────────────────────────────────
       const bolts = []
@@ -225,25 +514,38 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         mesh.position.copy(start)
         mesh.quaternion.setFromUnitVectors(yAxis, dir)
         scene.add(mesh)
-        bolts.push({ mesh, dir, target, willHit, life: 0 })
+        bolts.push({ mesh, dir, target, willHit, life: 0, shooter })
       }
 
-      const spawnBlast = (pos) => {
-        const mat = new THREE.MeshBasicMaterial({ color: 0xffb04a, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false })
-        const mesh = new THREE.Mesh(blastGeo, mat)
-        mesh.position.copy(pos)
-        mesh.scale.setScalar(0.4)
-        scene.add(mesh)
-        blasts.push({ mesh, mat, life: 0, max: 0.55 })
+      const spawnBlast = (pos, big = false) => {
+        const s = big ? 1.7 : 1.0
+        const fmat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false })
+        const fire = new THREE.Mesh(blastGeo, fmat)
+        fire.position.copy(pos); fire.scale.setScalar(0.3 * s)
+        scene.add(fire)
+        const rmat = new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+        const ring = new THREE.Mesh(ringGeo, rmat)
+        ring.position.copy(pos); ring.scale.setScalar(0.5 * s)
+        scene.add(ring)
+        blasts.push({ fire, fmat, ring, rmat, life: 0, max: 0.6, s })
       }
 
-      const damage = (ship) => {
+      const addKill = (killer, victim) => {
+        setKills(prev => [...prev, {
+          id: killSeq.current++,
+          kName: killer.name, kTeam: killer.team,
+          vName: victim.name, vTeam: victim.team,
+        }].slice(-7))
+      }
+
+      const damage = (ship, killer) => {
         ship.hp -= 1
         ship.flash = 0.12
         if (ship.hp <= 0 && ship.alive) {
           ship.alive = false
-          spawnBlast(ship.pos)
+          spawnBlast(ship.pos, ship.isCapital)
           scene.remove(ship.mesh)
+          if (killer) addKill(killer, ship)
         }
       }
 
@@ -257,52 +559,99 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const clock = new THREE.Clock()
       const frame = () => {
         const dt = Math.min(clock.getDelta(), 0.05)
+        introT += dt
+        const intro = introT < INTRO_TOTAL
 
         // ── Ships: steer (seek nearest enemy + separation + bounds), then fire ──
         for (const s of ships) {
           if (!s.alive) continue
 
-          // find nearest living enemy
-          let nearest = null, nd = Infinity
+          // hyperspace jump-in: streak from the staging point into formation
+          if (intro) {
+            const p = Math.min(1, Math.max(0, (introT - s.jumpDelay) / STREAK_DUR))
+            const e = 1 - Math.pow(1 - p, 3)                       // ease-out into place
+            s.pos.lerpVectors(s.jumpFrom, s.home, e)
+            s.mesh.position.copy(s.pos)
+            orient(s.mesh, _dir.subVectors(s.home, s.jumpFrom))    // face travel direction
+            const stretch = 1 + Math.pow(1 - p, 3) * (s.isCapital ? 4 : 14)
+            s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale * stretch)
+            continue
+          }
+          if (s.mesh.scale.z !== s.baseScale) s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale)
+
+          // find nearest living enemy (and nearest enemy fighter)
+          let nearest = null, nd = Infinity, nearestFighter = null, nfd = Infinity
           for (const e of ships) {
             if (!e.alive || e.team === s.team) continue
             const d = s.pos.distanceToSquared(e.pos)
             if (d < nd) { nd = d; nearest = e }
+            if (!e.isCapital && d < nfd) { nfd = d; nearestFighter = e }
+          }
+          // blue fighters obey the player's targeting tactic; everyone else hits nearest
+          let target = nearest
+          if (s.team === 'blue' && !s.isCapital) {
+            const tac = fighterTacticRef.current
+            if (tac === 'capital') target = (redCapital && redCapital.alive) ? redCapital : nearest
+            else if (tac === 'fighters') target = nearestFighter || nearest
           }
 
-          _acc.set(0, 0, 0)
-          if (nearest) {
-            _tmp.subVectors(nearest.pos, s.pos).normalize()
-            _acc.addScaledVector(_tmp, 9)                       // seek
-          }
-          // separation from all nearby ships (keeps the melee from collapsing;
-          // larger ships claim more space via their radius)
-          for (const o of ships) {
-            if (o === s || !o.alive) continue
-            const d = s.pos.distanceTo(o.pos)
-            const sepR = SEP_RADIUS + s.radius + o.radius
-            if (d > 0 && d < sepR) {
-              // small ships are pushed away from capitals far more firmly so they
-              // don't clip into the hull; capitals aren't shoved by their escorts
-              const w = (o.isCapital && !s.isCapital) ? 65 : 16
-              _tmp.subVectors(s.pos, o.pos).multiplyScalar((sepR - d) / (d * sepR))
-              _acc.addScaledVector(_tmp, w)
+          if (s.route) {
+            // capitals cruise toward their patrol-slot on the circle (smooth,
+            // predictable). The blue flagship can be ordered to leave the patrol
+            // and push to the centre, then later make its way back to the route.
+            const rt = s.route
+            rt.angle += rt.omega * dt
+            let tx = Math.cos(rt.angle) * rt.R, ty = rt.y, tz = Math.sin(rt.angle) * rt.R
+            if (s.team === 'blue' && capTacticRef.current === 'engage') { tx = 0; ty = 0; tz = 0 }
+            const dx = tx - s.pos.x, dy = ty - s.pos.y, dz = tz - s.pos.z
+            const dist = Math.hypot(dx, dy, dz)
+            const step = CAP_SPEED * dt
+            if (dist > 1e-4) {
+              const f = Math.min(step, dist) / dist
+              s.pos.x += dx * f; s.pos.y += dy * f; s.pos.z += dz * f
+              orient(s.mesh, _dir.set(dx, dy, dz), 1 - Math.exp(-1.5 * dt))
             }
-          }
-          // wander + keep inside the arena
-          _acc.x += (Math.random() - 0.5) * 5
-          _acc.y += (Math.random() - 0.5) * 4
-          _acc.z += (Math.random() - 0.5) * 5
-          const r = s.pos.length()
-          if (r > BOUND_R) _acc.addScaledVector(_tmp.copy(s.pos).normalize(), -(r - BOUND_R) * 2.2)
+            s.mesh.position.copy(s.pos)
+          } else {
+            _acc.set(0, 0, 0)
+            if (target) {
+              // approach the enemy only down to STANDOFF, then ease off / back away —
+              // this holds a gap between the two fleets rather than one merged blob
+              _tmp.subVectors(target.pos, s.pos)
+              const dist = _tmp.length() || 1
+              _tmp.divideScalar(dist)
+              const drive = THREE.MathUtils.clamp((dist - s.standoff) * 0.8, -5, 9)
+              _acc.addScaledVector(_tmp, drive)
+            }
+            // separation from all nearby ships (keeps the melee from collapsing;
+            // larger ships claim more space via their radius)
+            for (const o of ships) {
+              if (o === s || !o.alive) continue
+              const d = s.pos.distanceTo(o.pos)
+              const sepR = SEP_RADIUS + s.radius + o.radius
+              if (d > 0 && d < sepR) {
+                // small ships are pushed away from capitals far more firmly so they
+                // don't clip into the hull; capitals aren't shoved by their escorts
+                const w = (o.isCapital && !s.isCapital) ? 65 : 16
+                _tmp.subVectors(s.pos, o.pos).multiplyScalar((sepR - d) / (d * sepR))
+                _acc.addScaledVector(_tmp, w)
+              }
+            }
+            // wander + keep inside the arena
+            _acc.x += (Math.random() - 0.5) * 5
+            _acc.y += (Math.random() - 0.5) * 4
+            _acc.z += (Math.random() - 0.5) * 5
+            const r = s.pos.length()
+            if (r > s.bound) _acc.addScaledVector(_tmp.copy(s.pos).normalize(), -(r - s.bound) * 2.2)
 
-          s.vel.addScaledVector(_acc, dt)
-          let sp = s.vel.length()
-          if (sp > s.maxSpeed) s.vel.multiplyScalar(s.maxSpeed / sp)
-          else if (sp < s.minSpeed && sp > 0) s.vel.multiplyScalar(s.minSpeed / sp)
-          s.pos.addScaledVector(s.vel, dt)
-          s.mesh.position.copy(s.pos)
-          orient(s.mesh, _dir.copy(s.vel), 1 - Math.exp(-TURN_RATE * dt))
+            s.vel.addScaledVector(_acc, dt)
+            let sp = s.vel.length()
+            if (sp > s.maxSpeed) s.vel.multiplyScalar(s.maxSpeed / sp)
+            else if (sp < s.minSpeed && sp > 0) s.vel.multiplyScalar(s.minSpeed / sp)
+            s.pos.addScaledVector(s.vel, dt)
+            s.mesh.position.copy(s.pos)
+            orient(s.mesh, _dir.copy(s.vel), 1 - Math.exp(-s.turn * dt))
+          }
 
           if (s.flash > 0) {
             s.flash -= dt
@@ -316,8 +665,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
                 const enemies = ships.filter(e => e.alive && e.team !== s.team)
                 if (enemies.length) for (let k = 0; k < s.weapons; k++) fireBolt(s, enemies[(Math.random() * enemies.length) | 0], true)
                 s.fireCd = 0.7 + Math.random() * 0.9
-              } else if (nearest) {
-                fireBolt(s, nearest)
+              } else if (target) {
+                fireBolt(s, target)
                 s.fireCd = 1.2 + Math.random() * 2.8
               }
             }
@@ -332,7 +681,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           if (b.willHit && b.target.alive) {
             _tmp.subVectors(b.target.pos, b.mesh.position)
             const d = _tmp.length()
-            if (d < 1.3) { damage(b.target); done = true }
+            if (d < 1.3) { damage(b.target, b.shooter); done = true }
             else {
               b.dir.lerp(_tmp.normalize(), 0.12).normalize()
               b.mesh.quaternion.setFromUnitVectors(yAxis, b.dir)
@@ -345,18 +694,39 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           if (done) { scene.remove(b.mesh); bolts.splice(i, 1) }
         }
 
-        // ── Explosions: expand & fade ──────────────────────────────────────────
+        // ── Explosions: fireball (white→orange→red) + expanding shockwave ring ──
         for (let i = blasts.length - 1; i >= 0; i--) {
           const x = blasts[i]
           x.life += dt
           const k = x.life / x.max
-          x.mesh.scale.setScalar(0.4 + k * 5)
-          x.mat.opacity = Math.max(0, 1 - k)
+          // fireball
+          x.fire.scale.setScalar((0.3 + k * 3.4) * x.s)
+          x.fmat.color.setRGB(1.0, 0.85 - k * 0.55, 0.5 - k * 0.45)
+          x.fmat.opacity = Math.max(0, 1 - k)
+          // shockwave ring — expands faster, fades sooner, billboarded to camera
+          const rk = Math.min(1, k * 1.4)
+          x.ring.scale.setScalar((0.5 + rk * 6.0) * x.s)
+          x.ring.lookAt(camera.position)
+          x.rmat.opacity = Math.max(0, 0.85 * (1 - rk))
           if (x.life >= x.max) {
-            scene.remove(x.mesh)
-            x.mat.dispose()
+            scene.remove(x.fire); scene.remove(x.ring)
+            x.fmat.dispose(); x.rmat.dispose()
             blasts.splice(i, 1)
           }
+        }
+
+        // ── Capital ship labels (name + shield %), projected above each hull ────
+        for (const s of ships) {
+          if (!s.labelEl) continue
+          if (!s.alive || intro) { s.labelEl.style.opacity = '0'; continue }
+          _proj.copy(s.pos); _proj.y += 7
+          _proj.project(camera)
+          if (_proj.z > 1) { s.labelEl.style.opacity = '0'; continue }
+          const lx = (_proj.x * 0.5 + 0.5) * cw
+          const ly = (-_proj.y * 0.5 + 0.5) * ch
+          s.labelEl.style.opacity = '1'
+          s.labelEl.style.transform = `translate(-50%, -100%) translate(${lx}px, ${ly}px)`
+          if (s.shieldEl) s.shieldEl.textContent = Math.max(0, Math.round(s.hp / CAP_HP * 100))
         }
 
         // ── Scoreboard + victory check ─────────────────────────────────────────
@@ -368,6 +738,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           setWinner(c.blue > 0 ? 'BLUE' : c.red > 0 ? 'RED' : 'DRAW')
         }
 
+        if (backdropTick) backdropTick(clock.elapsedTime)
         controls.update()
         composer.render()
         raf = requestAnimationFrame(frame)
@@ -376,13 +747,14 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       // ── Bloom ────────────────────────────────────────────────────────────────
       composer = new EffectComposer(renderer)
       composer.addPass(new RenderPass(scene, camera))
-      composer.addPass(new UnrealBloomPass(new THREE.Vector2(w, h), 0.85, 0.55, 0.15))
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(w, h), 0.9, 0.6, 0.2))
 
       frame()
 
       const onResize = () => {
         const nw = mount.clientWidth, nh = mount.clientHeight
         if (!nw || !nh) return
+        cw = nw; ch = nh
         camera.aspect = nw / nh
         camera.updateProjectionMatrix()
         renderer.setSize(nw, nh)
@@ -396,7 +768,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         ro.disconnect()
         controls.dispose()
         disposables.forEach(d => d.dispose && d.dispose())
-        blasts.forEach(x => x.mat.dispose())
+        blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
         composer.dispose && composer.dispose()
         renderer.dispose()
         if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement)
@@ -423,6 +795,15 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       <div className="sb-stage">
         <div className="sb-canvas" ref={mountRef} />
 
+        <div className="sb-cap-label sb-cap-label--blue" ref={blueCapRef}>
+          <div className="sb-cap-name">HMSS Limitless Light</div>
+          <div className="sb-cap-shield">SHIELD <span ref={blueShieldRef}>100</span>%</div>
+        </div>
+        <div className="sb-cap-label sb-cap-label--red" ref={redCapRef}>
+          <div className="sb-cap-name">Rebel Capital Ship</div>
+          <div className="sb-cap-shield">SHIELD <span ref={redShieldRef}>100</span>%</div>
+        </div>
+
         <div className="sb-scoreboard">
           <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{FLEET_SIZE + 1}</span></span>
           <span className="sb-vs">⚔ ENGAGED ⚔</span>
@@ -435,11 +816,40 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             <div className={`sb-victory-title sb-victory-title--${winner.toLowerCase()}`}>
               {winner === 'DRAW' ? 'MUTUAL ANNIHILATION' : `${winner} FLEET VICTORIOUS`}
             </div>
-            <button className="sb-restart" onClick={() => { setWinner(null); setRunId(k => k + 1) }}>
+            <button className="sb-restart" onClick={() => { setWinner(null); setKills([]); setRunId(k => k + 1) }}>
               ⟳ RUN NEW ENGAGEMENT
             </button>
           </div>
         )}
+
+        <div className="sb-killfeed">
+          {kills.map(k => (
+            <div key={k.id} className="sb-kill">
+              <span className={`sb-kill-name sb-kill-name--${k.kTeam}`}>{k.kName}</span>
+              <span className="sb-kill-verb"> destroyed </span>
+              <span className={`sb-kill-name sb-kill-name--${k.vTeam}`}>{k.vName}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="sb-tactics">
+          <div className="sb-tac-title">⬢ TACTICAL COMMAND // BLUE FLEET</div>
+          <div className="sb-tac-group">
+            <div className="sb-tac-label">CAPITAL SHIP</div>
+            <div className="sb-tac-btns">
+              <button className={`sb-tac-btn${capTactic === 'hold' ? ' sb-tac-btn--on' : ''}`} onClick={() => setCapTactic('hold')}>HOLD BACK</button>
+              <button className={`sb-tac-btn${capTactic === 'engage' ? ' sb-tac-btn--on' : ''}`} onClick={() => setCapTactic('engage')}>DIRECTLY ENGAGE</button>
+            </div>
+          </div>
+          <div className="sb-tac-group">
+            <div className="sb-tac-label">FIGHTERS</div>
+            <div className="sb-tac-btns">
+              <button className={`sb-tac-btn${fighterTactic === 'all' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterTactic('all')}>ATTACK ALL</button>
+              <button className={`sb-tac-btn${fighterTactic === 'fighters' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterTactic('fighters')}>ENEMY FIGHTERS</button>
+              <button className={`sb-tac-btn${fighterTactic === 'capital' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterTactic('capital')}>ENEMY CAPITAL SHIP</button>
+            </div>
+          </div>
+        </div>
 
         <div className="sb-hint">DRAG TO ORBIT // SCROLL TO ZOOM</div>
       </div>
