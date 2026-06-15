@@ -265,6 +265,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [winner, setWinner] = useState(null)   // null | 'BLUE' | 'RED' | 'DRAW'
   const [runId,  setRunId]  = useState(0)
   const [kills,  setKills]  = useState([])      // recent kill-feed entries
+  const [stats,  setStats]  = useState(null)    // post-battle breakdown
   const killSeq = useRef(0)
   const blueCapRef = useRef(null), blueShieldRef = useRef(null)
   const redCapRef  = useRef(null), redShieldRef  = useRef(null)
@@ -425,7 +426,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             mesh, mat, team, hp: SHIP_HP, alive: true, pos, vel,
             name: team === 'blue' ? 'Blue Interceptor' : 'Red Marauder',
             fireCd: 0.5 + Math.random() * 2.5, flash: 0,
-            isCapital: false, weapons: 1, maxSpeed: MAX_SPEED, minSpeed: MIN_SPEED, radius: 0, turn: TURN_RATE,
+            isCapital: false, kills: 0, weapons: 1, maxSpeed: MAX_SPEED, minSpeed: MIN_SPEED, radius: 0, turn: TURN_RATE,
             standoff: STANDOFF, bound: BOUND_R,
           })
         }
@@ -451,11 +452,24 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         disposables.push(mat)
         const mesh = new THREE.Group()
         mesh.add(new THREE.Mesh(capGeo[team], mat))
+        const glows = []
         for (const ex of [-0.45, 0.45]) {          // twin engine glows
           const glow = new THREE.Mesh(blastGeo, glowMat[team])
           glow.scale.setScalar(0.7)
           glow.position.set(ex, 0, -3.1)
-          mesh.add(glow)
+          mesh.add(glow); glows.push(glow)
+        }
+        // damage-state hull fires — revealed progressively as the ship is worn down
+        const fires = []
+        for (let i = 0; i < 6; i++) {
+          const fMat = new THREE.MeshBasicMaterial({ color: 0xff7a30, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+          const fm = new THREE.Mesh(blastGeo, fMat)
+          fm.scale.setScalar(0.16)
+          fm.position.set((Math.random() - 0.5) * 1.4, (Math.random() - 0.5) * 0.9, (Math.random() - 0.5) * 5)
+          fm.visible = false
+          mesh.add(fm)
+          fires.push({ mesh: fm, mat: fMat })
+          disposables.push(fMat)
         }
         mesh.scale.setScalar(3.2)                   // huge flagship
         const route = { R: orbit.R, y: orbit.y, omega: orbit.omega, angle: startAngle }
@@ -471,7 +485,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           labelEl:  team === 'blue' ? blueCapRef.current   : redCapRef.current,
           shieldEl: team === 'blue' ? blueShieldRef.current : redShieldRef.current,
           fireCd: 0.5 + Math.random(), flash: 0,
-          isCapital: true, weapons: CAP_WEAPONS, radius: 16, route,
+          isCapital: true, kills: 0, weapons: CAP_WEAPONS, radius: 16, route, glows, fires, emitCd: 0,
         })
       }
       spawnCapital('blue', Math.PI)   // start on the left
@@ -497,9 +511,24 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       }
       let introT = 0
 
-      // ── Bolts & explosions ───────────────────────────────────────────────────
+      // ── Bolts, explosions, embers, capital wrecks ─────────────────────────────
       const bolts = []
       const blasts = []
+      const embers = []
+      const wrecks = []
+      const DEATH_DUR = 1.8
+      const _e = new THREE.Vector3()
+      // a random world point within an oriented box around a capital's hull
+      const hullPoint = (sh) => _e.set((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 18)
+        .applyQuaternion(sh.mesh.quaternion).add(sh.pos)
+      const spawnEmber = (pos, color) => {
+        const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
+        const m = new THREE.Mesh(blastGeo, mat)
+        m.position.copy(pos)
+        m.scale.setScalar(0.3 + Math.random() * 0.4)
+        scene.add(m)
+        embers.push({ mesh: m, mat, vel: new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5 + 0.4, (Math.random() - 0.5) * 2.5), life: 0, max: 0.6 + Math.random() * 0.5 })
+      }
 
       const fireBolt = (shooter, target, big = false) => {
         const willHit = Math.random() > MISS_CHANCE
@@ -531,6 +560,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       }
 
       const addKill = (killer, victim) => {
+        killer.kills = (killer.kills || 0) + 1
         setKills(prev => [...prev, {
           id: killSeq.current++,
           kName: killer.name, kTeam: killer.team,
@@ -543,9 +573,15 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         ship.flash = 0.12
         if (ship.hp <= 0 && ship.alive) {
           ship.alive = false
-          spawnBlast(ship.pos, ship.isCapital)
-          scene.remove(ship.mesh)
           if (killer) addKill(killer, ship)
+          if (ship.isCapital) {
+            // begin the drawn-out death; the hull stays as drifting wreckage
+            ship.driftVel = _tmp.set(0, 0, 1).applyQuaternion(ship.mesh.quaternion).multiplyScalar(0.9).clone()
+            wrecks.push({ ship, t: 0, blastCd: 0, final: false })
+          } else {
+            spawnBlast(ship.pos, false)
+            scene.remove(ship.mesh)
+          }
         }
       }
 
@@ -559,6 +595,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const clock = new THREE.Clock()
       const frame = () => {
         const dt = Math.min(clock.getDelta(), 0.05)
+        const t  = clock.elapsedTime
         introT += dt
         const intro = introT < INTRO_TOTAL
 
@@ -655,7 +692,24 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
 
           if (s.flash > 0) {
             s.flash -= dt
-            s.mat.emissiveIntensity = s.flash > 0 ? 1.7 : 0.5
+            s.mat.emissiveIntensity = s.flash > 0 ? 1.7 : (s.isCapital ? 0.55 : 0.5)
+          }
+          // capital damage states: reveal hull fires and spit embers as HP falls
+          if (s.isCapital) {
+            const dmg = 1 - s.hp / CAP_HP
+            const nf = Math.floor(dmg * s.fires.length)
+            for (let i = 0; i < s.fires.length; i++) {
+              const f = s.fires[i]
+              f.mesh.visible = i < nf
+              if (i < nf) f.mat.opacity = 0.4 + 0.5 * Math.abs(Math.sin(t * 7 + i * 1.7))
+            }
+            if (dmg > 0.15) {
+              s.emitCd -= dt
+              if (s.emitCd <= 0) {
+                spawnEmber(hullPoint(s), dmg > 0.6 ? 0xff5424 : 0xffa848)
+                s.emitCd = 0.3 - dmg * 0.22
+              }
+            }
           }
           if (!gameOver) {
             s.fireCd -= dt
@@ -715,6 +769,44 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           }
         }
 
+        // ── Dying / wrecked capitals ────────────────────────────────────────────
+        for (const wk of wrecks) {
+          const sh = wk.ship
+          wk.t += dt
+          sh.pos.addScaledVector(sh.driftVel, dt)
+          sh.mesh.position.copy(sh.pos)
+          sh.mesh.rotateZ(0.06 * dt); sh.mesh.rotateX(0.025 * dt)   // slow tumble
+          if (wk.t < DEATH_DUR) {
+            // secondary explosions ripple along the hull, hull flickers violently
+            wk.blastCd -= dt
+            if (wk.blastCd <= 0) { spawnBlast(hullPoint(sh), false); wk.blastCd = 0.1 + Math.random() * 0.2 }
+            sh.mat.emissiveIntensity = 0.6 + Math.random() * 1.2
+            for (const f of sh.fires) if (f.mesh.visible) f.mat.opacity = 0.5 + 0.5 * Math.random()
+          } else if (!wk.final) {
+            // final blast, then settle into a darkened drifting hulk
+            wk.final = true
+            spawnBlast(sh.pos, true)
+            sh.mat.color.setHex(0x2b2e34); sh.mat.emissive.setHex(0x160b06)
+            sh.mat.emissiveIntensity = 0.25; sh.mat.metalness = 0.3; sh.mat.roughness = 0.95
+            sh.glows.forEach(g => (g.visible = false))
+            sh.fires.forEach((f, i) => { f.mesh.visible = i < 2 })
+          } else {
+            // persistent wreckage: a couple of smouldering fires + the odd ember
+            for (const f of sh.fires) if (f.mesh.visible) f.mat.opacity = 0.2 + 0.2 * Math.abs(Math.sin(t * 4 + sh.pos.x))
+            if (Math.random() < 0.04) spawnEmber(hullPoint(sh), 0xff6a30)
+          }
+        }
+
+        // ── Embers: damage sparks / wreck smoulder ──────────────────────────────
+        for (let i = embers.length - 1; i >= 0; i--) {
+          const em = embers[i]
+          em.life += dt
+          em.mesh.position.addScaledVector(em.vel, dt)
+          em.mesh.scale.multiplyScalar(0.986)
+          em.mat.opacity = Math.max(0, 0.9 * (1 - em.life / em.max))
+          if (em.life >= em.max) { scene.remove(em.mesh); em.mat.dispose(); embers.splice(i, 1) }
+        }
+
         // ── Capital ship labels (name + shield %), projected above each hull ────
         for (const s of ships) {
           if (!s.labelEl) continue
@@ -736,6 +828,13 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         if (!gameOver && (c.blue === 0 || c.red === 0)) {
           gameOver = true
           setWinner(c.blue > 0 ? 'BLUE' : c.red > 0 ? 'RED' : 'DRAW')
+          const sumKills = team => ships.filter(s => s.team === team).reduce((a, s) => a + (s.kills || 0), 0)
+          const cap = team => { const k = ships.find(s => s.isCapital && s.team === team); return { name: k.name, kills: k.kills || 0, alive: k.alive } }
+          setStats({
+            blueKills: sumKills('blue'), redKills: sumKills('red'),
+            blueLeft: c.blue, redLeft: c.red,
+            blueCap: cap('blue'), redCap: cap('red'),
+          })
         }
 
         if (backdropTick) backdropTick(clock.elapsedTime)
@@ -769,6 +868,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         controls.dispose()
         disposables.forEach(d => d.dispose && d.dispose())
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
+        embers.forEach(e => e.mat.dispose())
         composer.dispose && composer.dispose()
         renderer.dispose()
         if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement)
@@ -816,7 +916,31 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             <div className={`sb-victory-title sb-victory-title--${winner.toLowerCase()}`}>
               {winner === 'DRAW' ? 'MUTUAL ANNIHILATION' : `${winner} FLEET VICTORIOUS`}
             </div>
-            <button className="sb-restart" onClick={() => { setWinner(null); setKills([]); setRunId(k => k + 1) }}>
+
+            {stats && (
+              <div className="sb-stats">
+                <div className="sb-stats-grid">
+                  <span className="sb-stat-val sb-stat--blue">{stats.blueKills}</span>
+                  <span className="sb-stat-mid">TOTAL KILLS</span>
+                  <span className="sb-stat-val sb-stat--red">{stats.redKills}</span>
+                  <span className="sb-stat-val sb-stat--blue">{stats.blueLeft}</span>
+                  <span className="sb-stat-mid">SHIPS REMAINING</span>
+                  <span className="sb-stat-val sb-stat--red">{stats.redLeft}</span>
+                </div>
+                <div className="sb-stat-caps">
+                  <div className="sb-stat-cap">
+                    <span className="sb-stat--blue">{stats.blueCap.name}</span>
+                    <span className="sb-stat-cap-meta">{stats.blueCap.kills} KILLS · {stats.blueCap.alive ? 'SURVIVED' : 'DESTROYED'}</span>
+                  </div>
+                  <div className="sb-stat-cap">
+                    <span className="sb-stat--red">{stats.redCap.name}</span>
+                    <span className="sb-stat-cap-meta">{stats.redCap.kills} KILLS · {stats.redCap.alive ? 'SURVIVED' : 'DESTROYED'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button className="sb-restart" onClick={() => { setWinner(null); setKills([]); setStats(null); setRunId(k => k + 1) }}>
               ⟳ RUN NEW ENGAGEMENT
             </button>
           </div>
