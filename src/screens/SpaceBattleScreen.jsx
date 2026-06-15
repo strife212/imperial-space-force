@@ -279,7 +279,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [runId,  setRunId]  = useState(0)
   const [kills,  setKills]  = useState([])      // recent kill-feed entries
   const [stats,  setStats]  = useState(null)    // post-battle breakdown
-  const [muted,  setMuted]  = useState(false)
+  const [muted,  setMuted]  = useState(true)    // sound off by default
   const killSeq = useRef(0)
   const audioRef = useRef(null)
   const blueCapRef = useRef(null), blueShieldRef = useRef(null)
@@ -324,7 +324,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
     const nd = noiseBuf.getChannelData(0)
     for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1
 
-    let mutedLocal = false, lastLaser = 0, lastBoom = 0
+    let mutedLocal = true, lastLaser = 0, lastBoom = 0   // sound off by default
 
     // sample buffers — loaded from public/sfx/ when present; missing files are
     // ignored so each sound keeps its synthesised fallback below.
@@ -693,7 +693,15 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         s.baseScale = s.isCapital ? 3.2 : 1
         // capitals jump in first; the fighters follow them in
         s.jumpDelay = s.isCapital ? Math.random() * 0.15 : CAP_LEAD + Math.random() * FIGHTER_STAGGER
-        s.jumpFrom = s.home.clone().addScaledVector(jumpAxis[s.team], 95)
+        if (s.route) {
+          // capitals warp in *along* their patrol tangent, so they arrive already
+          // pointed the right way and slide straight onto the route — no post-warp turn
+          const sgn = s.route.omega >= 0 ? 1 : -1
+          _dir.set(-Math.sin(s.route.angle) * sgn, 0, Math.cos(s.route.angle) * sgn)
+          s.jumpFrom = s.home.clone().addScaledVector(_dir, -95)
+        } else {
+          s.jumpFrom = s.home.clone().addScaledVector(jumpAxis[s.team], 95)
+        }
         s.pos.copy(s.jumpFrom)
         s.mesh.position.copy(s.pos)
       }
