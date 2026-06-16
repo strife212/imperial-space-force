@@ -62,7 +62,7 @@ export default function App() {
   const [battleSource,      setBattleSource]      = useState(() => pathScreen() === 'battle' ? 'login' : 'debug')
   const [bhOutput,          setBhOutput]          = useState(0)
   const [bhYield,           setBhYield]           = useState(0)
-  const [messages,          setMessages]          = useState(INITIAL_MESSAGES)
+  const [messages,          setMessages]          = useState([])   // inbox fills on first main-panel visit
   const [mailOpen,          setMailOpen]          = useState(false)
   const [repliedIds,        setRepliedIds]        = useState(new Set())
   const [sessionFlags,      setSessionFlags]      = useState(new Set())
@@ -106,6 +106,7 @@ export default function App() {
   useEffect(() => {
     if (screen === 'main' && !hasShownInitialToast.current) {
       hasShownInitialToast.current = true
+      setMessages(INITIAL_MESSAGES)   // initial mail arrives on first main-panel visit
       const t = setTimeout(() => {
         setToastKey(k => k + 1)
         setToastVisible(true)
