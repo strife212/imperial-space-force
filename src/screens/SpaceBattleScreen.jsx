@@ -262,10 +262,10 @@ function makeBackdrop(scene, disposables, lightDir, camera) {
 // synthesised sounds; any missing file simply falls back to the procedural synth.
 // (Team/size-specific keys are preferred, with a generic fallback in brackets.)
 const SOUND_FILES = {
-  laser:        'sfx/laser.wav',          // generic laser (both teams)
+  laser:        'sfx/laser.mp3',          // generic laser (both teams)
   laserBlue:    'sfx/laser-blue.wav',     // optional per-team override → falls back to `laser`
   laserRed:     'sfx/laser-red.wav',
-  explosion:    'sfx/explosion.wav',      // fighter / secondary blast
+  explosion:    'sfx/explosion.mp3',      // fighter / secondary blast
   explosionBig: 'sfx/explosion-big.wav',  // capital blast → falls back to `explosion`
   jump:         'sfx/jump.wav',           // hyperspace jump-in
   victory:      'sfx/victory.wav',        // engagement resolved
