@@ -271,6 +271,45 @@ const SOUND_FILES = {
   victory:      'sfx/victory.wav',        // engagement resolved
 }
 
+const CAP_NAME = { blue: 'HMSS Limitless Light', red: 'Rebel Capital Ship' }
+
+// ── 2D ship sprites (top-down silhouettes) for the pre-battle order of battle —
+// They echo the 3D hulls: blue = sleek delta interceptor / dagger flagship,
+// red = forked marauder / blocky battlecruiser.
+const SPRITE_PATHS = {
+  blueFighter: 'M12 2 L15 13 L21 20 L12 17 L3 20 L9 13 Z',
+  redFighter:  'M6 3 L12 11 L18 3 L16 9 L21 21 L12 17 L3 21 L8 9 Z',
+  blueCapital: 'M12 2 L16 24 L15 52 L18 61 L12 57 L6 61 L9 52 L8 24 Z',
+  redCapital:  'M14 3 L20 12 L20 20 L25 26 L25 34 L20 38 L20 56 L16 61 L12 61 L8 56 L8 38 L3 34 L3 26 L8 20 L8 12 Z',
+}
+function ShipSprite({ team, kind }) {
+  const cap = kind === 'capital'
+  const vb = cap ? (team === 'blue' ? '0 0 24 64' : '0 0 28 64') : '0 0 24 24'
+  return (
+    <svg className={`sb-sprite sb-sprite--${team}${cap ? ' sb-sprite--cap' : ''}`} viewBox={vb} aria-hidden="true">
+      <path d={SPRITE_PATHS[team + (cap ? 'Capital' : 'Fighter')]} />
+    </svg>
+  )
+}
+function TeamRoster({ team }) {
+  return (
+    <div className={`sb-brief-team sb-brief-team--${team}`}>
+      <div className="sb-brief-team-title">{team === 'blue' ? 'BLUE FLEET' : 'RED FLEET'}</div>
+      <div className="sb-brief-cap">
+        <ShipSprite team={team} kind="capital" />
+        <div className="sb-brief-cap-info">
+          <div className="sb-brief-cap-name">{CAP_NAME[team]}</div>
+          <div className="sb-brief-cap-class">CAPITAL SHIP</div>
+        </div>
+      </div>
+      <div className="sb-brief-fighters-label">FIGHTERS <span className="sb-brief-fighters-count">×{FLEET_SIZE}</span></div>
+      <div className="sb-brief-fighters">
+        {Array.from({ length: FLEET_SIZE }, (_, i) => <ShipSprite key={i} team={team} kind="fighter" />)}
+      </div>
+    </div>
+  )
+}
+
 export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpen }) {
   const mountRef     = useRef(null)
   const blueCountRef = useRef(null)
@@ -280,6 +319,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [kills,  setKills]  = useState([])      // recent kill-feed entries
   const [stats,  setStats]  = useState(null)    // post-battle breakdown
   const [muted,  setMuted]  = useState(true)    // sound off by default
+  const [started, setStarted] = useState(false) // pre-battle briefing until START
   const killSeq = useRef(0)
   const audioRef = useRef(null)
   const blueCapRef = useRef(null), blueShieldRef = useRef(null)
@@ -467,6 +507,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   useEffect(() => { audioRef.current?.setMuted(muted) }, [muted])
 
   useEffect(() => {
+    if (!started) return   // hold on the briefing until the player starts
     const mount = mountRef.current
     if (!mount) return
     let renderer, composer, raf
@@ -669,7 +710,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         scene.add(mesh)
         ships.push({
           mesh, mat, team, hp: CAP_HP, alive: true, pos, vel,
-          name: team === 'blue' ? 'HMSS Limitless Light' : 'Rebel Capital Ship',
+          name: CAP_NAME[team],
           labelEl:  team === 'blue' ? blueCapRef.current   : redCapRef.current,
           shieldEl: team === 'blue' ? blueShieldRef.current : redShieldRef.current,
           fireCd: 0.5 + Math.random(), flash: 0,
@@ -1077,7 +1118,9 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       console.error('Space battle failed to initialise:', err)
       if (renderer) { try { renderer.dispose() } catch (_) {} }
     }
-  }, [runId])
+  }, [runId, started])
+
+  const startBattle = () => { setWinner(null); setKills([]); setStats(null); setStarted(true); setRunId(k => k + 1) }
 
   return (
     <div id="battle-screen">
@@ -1095,12 +1138,25 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       <div className="sb-stage">
         <div className="sb-canvas" ref={mountRef} />
 
+        {!started && (
+          <div className="sb-briefing">
+            <div className="sb-brief-head">
+              <div className="sb-brief-sub">FLEET ENGAGEMENT // ORDER OF BATTLE</div>
+              <button className="sb-brief-start" onClick={startBattle}>▶ START BATTLE</button>
+            </div>
+            <div className="sb-brief-teams">
+              <TeamRoster team="blue" />
+              <TeamRoster team="red" />
+            </div>
+          </div>
+        )}
+
         <div className="sb-cap-label sb-cap-label--blue" ref={blueCapRef}>
-          <div className="sb-cap-name">HMSS Limitless Light</div>
+          <div className="sb-cap-name">{CAP_NAME.blue}</div>
           <div className="sb-cap-shield">SHIELD <span ref={blueShieldRef}>100</span>%</div>
         </div>
         <div className="sb-cap-label sb-cap-label--red" ref={redCapRef}>
-          <div className="sb-cap-name">Rebel Capital Ship</div>
+          <div className="sb-cap-name">{CAP_NAME.red}</div>
           <div className="sb-cap-shield">SHIELD <span ref={redShieldRef}>100</span>%</div>
         </div>
 
@@ -1140,8 +1196,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
               </div>
             )}
 
-            <button className="sb-restart" onClick={() => { setWinner(null); setKills([]); setStats(null); setRunId(k => k + 1) }}>
-              ⟳ RUN NEW ENGAGEMENT
+            <button className="sb-restart" onClick={() => { setWinner(null); setKills([]); setStats(null); setStarted(false) }}>
+              ⟳ NEW ENGAGEMENT
             </button>
           </div>
         )}
@@ -1187,7 +1243,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         <span className="sep">│</span>
         <span>DOCTRINE: <em className="ok">ATTRITION</em></span>
         <span className="sep">│</span>
-        <span>SIM STATE: <em className={winner ? 'warn' : 'ok'}>{winner ? 'RESOLVED' : 'LIVE'}</em></span>
+        <span>SIM STATE: <em className={winner || !started ? 'warn' : 'ok'}>{winner ? 'RESOLVED' : started ? 'LIVE' : 'STANDBY'}</em></span>
       </HudFooter>
     </div>
   )
