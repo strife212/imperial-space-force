@@ -272,6 +272,16 @@ const SOUND_FILES = {
 }
 
 const CAP_NAME = { blue: 'HMSS Limitless Light', red: 'Rebel Capital Ship' }
+// Comms-broadcast portraits: player portrait for blue, the Discord image for red
+const COMMS_PORTRAIT = {
+  blue: `${import.meta.env.BASE_URL}portrait.png`,
+  red:  `${import.meta.env.BASE_URL}darkness.webp`,
+}
+// Persistent end-of-battle broadcast from the victor
+const VICTORY_LINE = {
+  blue: 'Enemy destroyed. Long live the Universal Order!',
+  red:  'Enemy destroyed. Down with the false Empire!',
+}
 
 // ── 2D ship sprites (top-down silhouettes) for the pre-battle order of battle —
 // They echo the 3D hulls: blue = sleek delta interceptor / dagger flagship,
@@ -320,6 +330,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [stats,  setStats]  = useState(null)    // post-battle breakdown
   const [muted,  setMuted]  = useState(true)    // sound off by default
   const [started, setStarted] = useState(false) // pre-battle briefing until START
+  const [comms, setComms]   = useState(null)    // active capital broadcast { id, team, name, portrait, text, persist }
+  const [commsText, setCommsText] = useState('')// progressively-typed body
+  const commsSeq   = useRef(0)
+  const commsQueue = useRef([])                 // pending broadcasts waiting their turn
+  const commsBusy  = useRef(false)              // a broadcast is currently on screen
   const killSeq = useRef(0)
   const audioRef = useRef(null)
   const blueCapRef = useRef(null), blueShieldRef = useRef(null)
@@ -332,6 +347,35 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const fighterTacticRef = useRef(fighterTactic)
   useEffect(() => { capTacticRef.current = capTactic }, [capTactic])
   useEffect(() => { fighterTacticRef.current = fighterTactic }, [fighterTactic])
+
+  // Enqueue a broadcast; show it now if the box is free, otherwise queue it so
+  // simultaneous lines play one after another rather than overlapping.
+  const enqueueComms = (item) => {
+    if (commsBusy.current) { commsQueue.current.push(item); return }
+    commsBusy.current = true
+    setComms(item)
+  }
+
+  // ── Capital comms broadcast: chirp, type the line out, then show the next ──
+  useEffect(() => {
+    if (!comms) { setCommsText(''); return }
+    audioRef.current?.playComms()                          // chirp each time a box appears
+    setCommsText('')
+    let i = 0
+    const full = comms.text
+    const typer = setInterval(() => {
+      i++
+      setCommsText(full.slice(0, i))
+      if (i >= full.length) clearInterval(typer)
+    }, 42)
+    if (comms.persist) return () => clearInterval(typer)   // victory line stays until restart
+    const hide = setTimeout(() => {
+      const next = commsQueue.current.shift()
+      if (next) setComms(next)                             // advance the queue
+      else { commsBusy.current = false; setComms(null) }
+    }, 2800)                                               // visible for a couple of seconds
+    return () => { clearInterval(typer); clearTimeout(hide) }
+  }, [comms?.id])
 
   // ── Procedural audio engine (synthesised — no asset files) ─────────────────
   useEffect(() => {
@@ -483,6 +527,26 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       })
     }
 
+    // comms-open chirp — a short two-tone radio blip when a broadcast appears
+    const playComms = () => {
+      if (mutedLocal) return
+      const now = ctx.currentTime
+      const bus = ctx.createGain(); bus.gain.value = 0.5
+      bus.connect(dry); sendTo(bus, 0.18)
+      const blip = (f, t0, dur) => {
+        const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = f
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 6
+        const g = ctx.createGain()
+        g.gain.setValueAtTime(0.0001, now + t0)
+        g.gain.exponentialRampToValueAtTime(0.5, now + t0 + 0.008)
+        g.gain.exponentialRampToValueAtTime(0.0001, now + t0 + dur)
+        o.connect(bp); bp.connect(g); g.connect(bus)
+        o.start(now + t0); o.stop(now + t0 + dur + 0.02)
+      }
+      blip(720, 0, 0.07)
+      blip(1080, 0.085, 0.12)
+    }
+
     // subtle ambient drone (two detuned low sines)
     const droneG = ctx.createGain(); droneG.gain.value = 0.03; droneG.connect(dry)
     const d1 = ctx.createOscillator(); d1.type = 'sine'; d1.frequency.value = 54;   d1.connect(droneG); d1.start()
@@ -494,7 +558,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
     resume()
     window.addEventListener('pointerdown', resume)
 
-    audioRef.current = { playLaser, playExplosion, playJump, playVictory, setMuted: setMutedFn }
+    audioRef.current = { playLaser, playExplosion, playJump, playVictory, playComms, setMuted: setMutedFn }
 
     return () => {
       window.removeEventListener('pointerdown', resume)
@@ -513,6 +577,12 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
     let renderer, composer, raf
     const disposables = []
     setKills([])   // fresh kill feed each battle
+    setComms(null); commsQueue.current = []; commsBusy.current = false   // clear any lingering broadcasts
+
+    // surface a capital broadcast (queued, typewriter + chirp), driven by battle events
+    const showComms = (team, text, persist = false) => {
+      enqueueComms({ id: ++commsSeq.current, team, name: CAP_NAME[team], portrait: COMMS_PORTRAIT[team], text, persist })
+    }
 
     try {
       const w = mount.clientWidth || 1, h = mount.clientHeight || 1
@@ -811,6 +881,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const damage = (ship, killer) => {
         ship.hp -= 1
         ship.flash = 0.12
+        // capital crosses 25% shield → critical-damage broadcast (once per ship)
+        if (ship.isCapital && ship.alive && !ship.commsCritical && ship.hp <= CAP_HP * 0.25 && ship.hp > 0) {
+          ship.commsCritical = true
+          showComms(ship.team, 'Critical damage sustained!')
+        }
         if (ship.hp <= 0 && ship.alive) {
           ship.alive = false
           if (killer) addKill(killer, ship)
@@ -1069,6 +1144,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           gameOver = true
           setWinner(c.blue > 0 ? 'BLUE' : c.red > 0 ? 'RED' : 'DRAW')
           audioRef.current?.playVictory(c.blue > 0 ? 'BLUE' : 'RED')
+          // clear any pending battle chatter and broadcast the victor's line (persists until restart)
+          const wTeam = c.blue > 0 ? 'blue' : c.red > 0 ? 'red' : null
+          commsQueue.current = []; commsBusy.current = true
+          if (wTeam) setComms({ id: ++commsSeq.current, team: wTeam, name: CAP_NAME[wTeam], portrait: COMMS_PORTRAIT[wTeam], text: VICTORY_LINE[wTeam], persist: true })
+          else setComms(null)
           const sumKills = team => ships.filter(s => s.team === team).reduce((a, s) => a + (s.kills || 0), 0)
           const cap = team => { const k = ships.find(s => s.isCapital && s.team === team); return { name: k.name, kills: k.kills || 0, alive: k.alive } }
           setStats({
@@ -1196,7 +1276,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
               </div>
             )}
 
-            <button className="sb-restart" onClick={() => { setWinner(null); setKills([]); setStats(null); setStarted(false) }}>
+            <button className="sb-restart" onClick={() => { setWinner(null); setKills([]); setStats(null); setComms(null); commsQueue.current = []; commsBusy.current = false; setStarted(false) }}>
               ⟳ NEW ENGAGEMENT
             </button>
           </div>
@@ -1211,6 +1291,16 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             </div>
           ))}
         </div>
+
+        {comms && (
+          <div className={`sb-comms sb-comms--${comms.team}`} key={comms.id}>
+            <img className="sb-comms-portrait" src={comms.portrait} alt="" />
+            <div className="sb-comms-body">
+              <div className="sb-comms-name">{comms.name}</div>
+              <div className="sb-comms-text">{commsText}<span className="sb-comms-cursor">▋</span></div>
+            </div>
+          </div>
+        )}
 
         <div className="sb-tactics">
           <div className="sb-tac-title">⬢ TACTICAL COMMAND // BLUE FLEET</div>

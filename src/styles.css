@@ -6078,6 +6078,59 @@ body {
 .sb-brief-team--blue .sb-sprite--cap { filter: drop-shadow(0 0 7px rgba(26, 128, 255, 0.6)); }
 .sb-brief-team--red  .sb-sprite--cap { filter: drop-shadow(0 0 7px rgba(255, 36, 0, 0.5)); }
 
+/* ── Capital comms broadcast — bottom-centre dialogue box ───────────────── */
+.sb-comms {
+  position: absolute;
+  bottom: 40px; left: 50%;
+  z-index: 4;
+  display: flex;
+  gap: 12px;
+  width: min(440px, 78%);
+  padding: 12px 14px;
+  background: rgba(2, 6, 18, 0.92);
+  border: 1px solid var(--c-line-2);
+  border-radius: 3px;
+  box-shadow: 0 0 22px rgba(0, 20, 60, 0.5);
+  pointer-events: none;
+  animation: sb-comms-in 0.25s ease both;
+}
+@keyframes sb-comms-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+.sb-comms--blue { border-left: 3px solid var(--c-scarlet); }
+.sb-comms--red  { border-left: 3px solid var(--c-bad); }
+.sb-comms-portrait {
+  width: 56px; height: 74px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: #03060f;
+  filter: saturate(0.9) contrast(1.05);
+}
+.sb-comms--blue .sb-comms-portrait { border: 1px solid rgba(26, 128, 255, 0.6); box-shadow: 0 0 10px rgba(26, 128, 255, 0.35); }
+.sb-comms--red  .sb-comms-portrait { border: 1px solid rgba(255, 36, 0, 0.55);  box-shadow: 0 0 10px rgba(255, 36, 0, 0.3); }
+.sb-comms-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; justify-content: center; }
+.sb-comms-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.sb-comms--blue .sb-comms-name { color: var(--c-scarlet); text-shadow: 0 0 8px rgba(26, 128, 255, 0.5); }
+.sb-comms--red  .sb-comms-name { color: var(--c-bad);     text-shadow: 0 0 8px rgba(255, 36, 0, 0.45); }
+.sb-comms-text {
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+  color: rgba(214, 228, 250, 0.96);
+}
+.sb-comms-cursor {
+  margin-left: 1px;
+  color: rgba(150, 185, 235, 0.8);
+  animation: blink 0.7s steps(1) infinite;
+}
+
 /* kill feed — bottom-right */
 .sb-killfeed {
   position: absolute;
