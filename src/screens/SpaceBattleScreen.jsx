@@ -277,10 +277,37 @@ const COMMS_PORTRAIT = {
   blue: `${import.meta.env.BASE_URL}portrait.png`,
   red:  `${import.meta.env.BASE_URL}darkness.webp`,
 }
-// Persistent end-of-battle broadcast from the victor
-const VICTORY_LINE = {
-  blue: 'Enemy destroyed. Long live the Universal Order!',
-  red:  'Enemy destroyed. Down with the false Empire!',
+// Persistent end-of-battle broadcast from the victor. Rich segments so the
+// typewriter can break after the first sentence and colour the key phrase.
+const VICTORY_SEGMENTS = {
+  blue: [
+    { text: 'Enemy destroyed.\n' },
+    { text: 'Long live the ' },
+    { text: 'Universal Order', cls: 'sb-comms-em--blue' },
+    { text: '!' },
+  ],
+  red: [
+    { text: 'Enemy destroyed.\n' },
+    { text: 'Down with the ' },
+    { text: 'false Empire', cls: 'sb-comms-em--red' },
+    { text: '!' },
+  ],
+}
+// Render the revealed slice of segmented body text, honouring \n line breaks
+// and per-segment colour classes (used for the typewriter effect).
+function renderCommsBody(segments, revealed) {
+  const out = []
+  let remaining = revealed, key = 0
+  for (const seg of segments) {
+    if (remaining <= 0) break
+    const shown = seg.text.slice(0, remaining)
+    remaining -= shown.length
+    shown.split('\n').forEach((line, i) => {
+      if (i > 0) out.push(<br key={key++} />)
+      if (line) out.push(<span key={key++} className={seg.cls || undefined}>{line}</span>)
+    })
+  }
+  return out
 }
 
 // ── 2D ship sprites (top-down silhouettes) for the pre-battle order of battle —
@@ -582,7 +609,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
 
     // surface a capital broadcast (queued, typewriter + chirp), driven by battle events
     const showComms = (team, text, persist = false) => {
-      enqueueComms({ id: ++commsSeq.current, team, name: CAP_NAME[team], portrait: COMMS_PORTRAIT[team], text, persist })
+      enqueueComms({ id: ++commsSeq.current, team, name: CAP_NAME[team], portrait: COMMS_PORTRAIT[team], text, segments: [{ text }], persist })
     }
 
     try {
@@ -1148,7 +1175,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           // clear any pending battle chatter and broadcast the victor's line (persists until restart)
           const wTeam = c.blue > 0 ? 'blue' : c.red > 0 ? 'red' : null
           commsQueue.current = []; commsBusy.current = true
-          if (wTeam) setComms({ id: ++commsSeq.current, team: wTeam, name: CAP_NAME[wTeam], portrait: COMMS_PORTRAIT[wTeam], text: VICTORY_LINE[wTeam], persist: true })
+          if (wTeam) { const segs = VICTORY_SEGMENTS[wTeam]; setComms({ id: ++commsSeq.current, team: wTeam, name: CAP_NAME[wTeam], portrait: COMMS_PORTRAIT[wTeam], text: segs.map(s => s.text).join(''), segments: segs, persist: true }) }
           else setComms(null)
           const sumKills = team => ships.filter(s => s.team === team).reduce((a, s) => a + (s.kills || 0), 0)
           const cap = team => { const k = ships.find(s => s.isCapital && s.team === team); return { name: k.name, kills: k.kills || 0, alive: k.alive } }
@@ -1298,7 +1325,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             <img className="sb-comms-portrait" src={comms.portrait} alt="" />
             <div className="sb-comms-body">
               <div className="sb-comms-name">{comms.name}</div>
-              <div className="sb-comms-text">{commsText}<span className="sb-comms-cursor">▋</span></div>
+              <div className="sb-comms-text">{renderCommsBody(comms.segments || [{ text: comms.text }], commsText.length)}<span className="sb-comms-cursor">▋</span></div>
             </div>
           </div>
         )}
