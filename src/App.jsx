@@ -22,6 +22,15 @@ import { getTargetName, TARGETS } from './lib/planetData'
 
 const countTrueFlags = () => Object.values(getFlags()).filter(Boolean).length
 
+// ── Deep links: a bare path (e.g. /battlesim) opens straight to that screen ───
+// On GitHub Pages the unknown path is served by 404.html, which bounces it back
+// to index.html where a snippet restores the real URL before React mounts.
+const DEEP_LINKS = { battlesim: 'battle' }
+const pathScreen = () => {
+  const slug = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase()
+  return DEEP_LINKS[slug] || null
+}
+
 // ── Urgent-message sequence triggered by under-attack ────────────────────────
 const URGENT_ATTACK_SEQ = [
   {
@@ -42,7 +51,7 @@ const URGENT_ATTACK_SEQ = [
 ]
 
 export default function App() {
-  const [screen,            setScreen]            = useState('login')
+  const [screen,            setScreen]            = useState(() => pathScreen() || 'login')
   const [launchPackage,     setLaunchPackage]     = useState('')
   const [plasmaLevel,       setPlasmaLevel]       = useState(0)
   const [targetIdx,         setTargetIdx]         = useState(-1)
@@ -50,6 +59,7 @@ export default function App() {
   const [reactorSource,     setReactorSource]     = useState('main')
   const [blackholeSource,   setBlackholeSource]   = useState('debug')
   const [powerSource,       setPowerSource]       = useState('debug')
+  const [battleSource,      setBattleSource]      = useState(() => pathScreen() === 'battle' ? 'login' : 'debug')
   const [bhOutput,          setBhOutput]          = useState(0)
   const [bhYield,           setBhYield]           = useState(0)
   const [messages,          setMessages]          = useState(INITIAL_MESSAGES)
@@ -135,7 +145,7 @@ export default function App() {
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}
       {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setCountdownSeconds(10); setScreen('monitor') }} onPower={() => { setPowerSource('main'); setScreen('power') }} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} onAdjustAntenna={() => setScreen('antenna')} antennaAligned={antennaAligned} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} targetIdx={targetIdx} countdownSeconds={countdownSeconds} underAttack={underAttack} onRadioFreq={(f) => { setRadioFreq(f); if (f === 9.2 && antennaAligned) setUnderAttack(true) }} radioFreq={radioFreq} {...mailProps} />}
       {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => { const imperial = !!TARGETS[targetIdx]?.system?.imperial; setGameOverFail(imperial); setScreen('gameover') }} onLogout={() => { const imperial = !!TARGETS[targetIdx]?.system?.imperial; setGameOverFail(imperial); setScreen('gameover') }} packageName={launchPackage} targetName={targetName} {...mailProps} />}
-      {screen === 'debug'     && <DebugScreen onNavigate={(s) => { if (s === 'targeting') setTargetingSource('debug'); if (s === 'reactor') setReactorSource('main'); if (s === 'blackhole') setBlackholeSource('debug'); if (s === 'power') setPowerSource('debug'); setGameOverFail(false); setUnderAttack(false); setScreen(s) }} onDebugMain={() => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(false); setScreen('main') }} onDebugAttack={() => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(true); setScreen('main') }} onDebugFail={() => { setGameOverFail(true); setScreen('gameover') }} />}
+      {screen === 'debug'     && <DebugScreen onNavigate={(s) => { if (s === 'targeting') setTargetingSource('debug'); if (s === 'reactor') setReactorSource('main'); if (s === 'blackhole') setBlackholeSource('debug'); if (s === 'power') setPowerSource('debug'); if (s === 'battle') setBattleSource('debug'); setGameOverFail(false); setUnderAttack(false); setScreen(s) }} onDebugMain={() => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(false); setScreen('main') }} onDebugAttack={() => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(true); setScreen('main') }} onDebugFail={() => { setGameOverFail(true); setScreen('gameover') }} />}
       {screen === 'reactor'   && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); if (density >= 25) triggerFlag('reactorPoweredUp'); setScreen(reactorSource) }} onLogout={() => setScreen(reactorSource)} initialPlasma={plasmaLevel} {...mailProps} />}
       {screen === 'targeting' && <TargetingScreen onBack={(idx) => { setTargetIdx(idx); setScreen(targetingSource) }} initialSelectedIdx={targetIdx} {...mailProps} />}
       {screen === 'gameover'      && <GameOverScreen initialFlagCount={initialFlagCount} onEncyclopedia={() => goEncyclopedia('gameover')} fail={gameOverFail} targetName={targetName} />}
@@ -143,7 +153,7 @@ export default function App() {
       {screen === 'antenna'         && <AntennaAlignmentScreen onBack={() => setScreen('main')} onAlignComplete={() => { setAntennaAligned(true); triggerFlag('antennaAligned') }} {...mailProps} />}
       {screen === 'launch-sequence' && <LaunchSequenceScreen onReturn={() => setScreen('debug')} />}
       {screen === 'blackhole'       && <BlackHoleScreen onReturn={() => setScreen(blackholeSource)} initialYield={bhYield} onPower={(out, yld) => { setBhOutput(out); setBhYield(yld) }} {...mailProps} />}
-      {screen === 'battle'          && <SpaceBattleScreen onReturn={() => setScreen('debug')} {...mailProps} />}
+      {screen === 'battle'          && <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />}
       {screen === 'power'           && <PowerManagementScreen onReactor={() => { setReactorSource('power'); setScreen('reactor') }} onBlackHole={() => { setBlackholeSource('power'); setScreen('blackhole') }} onReturn={() => setScreen(powerSource)} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} {...mailProps} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
 

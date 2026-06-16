@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Imperial Space Force</title>
+    <!--
+      SPA fallback for GitHub Pages. Any unknown path (e.g. /battlesim) is served
+      this file; we redirect to the root, stashing the original path in the query
+      string. index.html then restores the real URL before React mounts.
+      Custom domain at the root => keep zero leading path segments.
+    -->
+    <script>
+      (function (l) {
+        var pathSegmentsToKeep = 0
+        l.replace(
+          l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+          l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+          l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash
+        )
+      })(window.location)
+    </script>
+  </head>
+  <body></body>
+</html>
