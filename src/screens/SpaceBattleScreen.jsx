@@ -306,6 +306,7 @@ function TeamRoster({ team }) {
     <div className={`sb-brief-team sb-brief-team--${team}`}>
       <div className="sb-brief-team-title">{team === 'blue' ? 'BLUE FLEET' : 'RED FLEET'}</div>
       <div className="sb-brief-cap">
+        <img className="sb-brief-portrait" src={COMMS_PORTRAIT[team]} alt="" />
         <ShipSprite team={team} kind="capital" />
         <div className="sb-brief-cap-info">
           <div className="sb-brief-cap-name">{CAP_NAME[team]}</div>

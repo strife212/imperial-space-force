@@ -6032,12 +6032,22 @@ body {
 .sb-brief-cap {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
   min-height: 90px;
   padding-bottom: 14px;
   margin-bottom: 12px;
   border-bottom: 1px solid var(--c-line-2);
 }
+.sb-brief-portrait {
+  width: 62px; height: 82px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: #03060f;
+  filter: saturate(0.9) contrast(1.05);
+}
+.sb-brief-team--blue .sb-brief-portrait { border: 1px solid rgba(26, 128, 255, 0.6); box-shadow: 0 0 10px rgba(26, 128, 255, 0.35); }
+.sb-brief-team--red  .sb-brief-portrait { border: 1px solid rgba(255, 36, 0, 0.55);  box-shadow: 0 0 10px rgba(255, 36, 0, 0.3); }
 .sb-brief-cap-name {
   font-size: 15px;
   font-weight: 700;
