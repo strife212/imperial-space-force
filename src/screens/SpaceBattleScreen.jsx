@@ -363,6 +363,9 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const commsSeq   = useRef(0)
   const commsQueue = useRef([])                 // pending broadcasts waiting their turn
   const commsBusy  = useRef(false)              // a broadcast is currently on screen
+  const [followName, setFollowName] = useState(null)  // tracked ship name (third-person view active)
+  const followRef    = useRef(null)             // the ship the camera is following (or null)
+  const exitFollowRef = useRef(null)            // revert-to-tactical fn, wired up inside the scene
   const killSeq = useRef(0)
   const audioRef = useRef(null)
   const blueCapRef = useRef(null), blueShieldRef = useRef(null)
@@ -606,6 +609,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
     const disposables = []
     setKills([])   // fresh kill feed each battle
     setComms(null); commsQueue.current = []; commsBusy.current = false   // clear any lingering broadcasts
+    followRef.current = null; setFollowName(null)                        // start in tactical view
 
     // surface a capital broadcast (queued, typewriter + chirp), driven by battle events
     const showComms = (team, text, persist = false) => {
@@ -934,6 +938,42 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         red:  ships.filter(s => s.team === 'red'  && s.alive).length,
       })
 
+      // ── Third-person camera: click a ship to follow it ────────────────────────
+      const TAC_POS = new THREE.Vector3(0, 25, 60)   // the default tactical view
+      const _camGoal = new THREE.Vector3(), _fwd = new THREE.Vector3(), _lookAt = new THREE.Vector3()
+      const raycaster = new THREE.Raycaster()
+      const pointer = new THREE.Vector2()
+      // restore the orbiting tactical view and drop any followed ship
+      const revertToTactical = () => {
+        followRef.current = null
+        setFollowName(null)
+        camera.position.copy(TAC_POS)
+        controls.target.set(0, 0, 0)
+        controls.enabled = true
+        controls.update()
+      }
+      exitFollowRef.current = revertToTactical
+      // a near-stationary press (not an orbit drag) selects the ship under the cursor
+      let downX = 0, downY = 0, downT = 0
+      const onDown = (e) => { downX = e.clientX; downY = e.clientY; downT = performance.now() }
+      const onUp = (e) => {
+        if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6 || performance.now() - downT > 500) return
+        const rect = renderer.domElement.getBoundingClientRect()
+        pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+        pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+        raycaster.setFromCamera(pointer, camera)
+        const live = ships.filter(s => s.alive)
+        const hits = raycaster.intersectObjects(live.map(s => s.mesh), true)
+        if (!hits.length) return
+        const m2s = new Map(live.map(s => [s.mesh, s]))
+        let o = hits[0].object
+        while (o && !m2s.has(o)) o = o.parent
+        const ship = o && m2s.get(o)
+        if (ship && ship.alive) { followRef.current = ship; setFollowName(ship.name); controls.enabled = false }
+      }
+      renderer.domElement.addEventListener('pointerdown', onDown)
+      renderer.domElement.addEventListener('pointerup', onUp)
+
       // ── Frame loop ───────────────────────────────────────────────────────────
       const clock = new THREE.Clock()
       const frame = () => {
@@ -1170,6 +1210,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         if (redCountRef.current)  redCountRef.current.textContent  = c.red
         if (!gameOver && (c.blue === 0 || c.red === 0)) {
           gameOver = true
+          if (followRef.current) revertToTactical()   // present the result in tactical view
           setWinner(c.blue > 0 ? 'BLUE' : c.red > 0 ? 'RED' : 'DRAW')
           audioRef.current?.playVictory(c.blue > 0 ? 'BLUE' : 'RED')
           // clear any pending battle chatter and broadcast the victor's line (persists until restart)
@@ -1187,7 +1228,21 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         }
 
         if (backdropTick) backdropTick(clock.elapsedTime)
-        controls.update()
+
+        // camera: third-person chase when following a ship, else the orbiting tactical view
+        const fol = followRef.current
+        if (fol && !fol.alive) revertToTactical()     // followed ship destroyed → tactical view
+        const follow = followRef.current
+        if (follow) {
+          _fwd.set(0, 0, 1).applyQuaternion(follow.mesh.quaternion).normalize()
+          const d = follow.isCapital ? 56 : 8, h = follow.isCapital ? 18 : 3
+          _camGoal.copy(follow.pos).addScaledVector(_fwd, -d); _camGoal.y += h
+          camera.position.lerp(_camGoal, 1 - Math.exp(-5 * dt))
+          _lookAt.copy(follow.pos).addScaledVector(_fwd, follow.isCapital ? 12 : 4)
+          camera.lookAt(_lookAt)
+        } else {
+          controls.update()
+        }
         composer.render()
         raf = requestAnimationFrame(frame)
       }
@@ -1214,6 +1269,9 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       return () => {
         cancelAnimationFrame(raf)
         ro.disconnect()
+        renderer.domElement.removeEventListener('pointerdown', onDown)
+        renderer.domElement.removeEventListener('pointerup', onUp)
+        exitFollowRef.current = null
         controls.dispose()
         disposables.forEach(d => d.dispose && d.dispose())
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
@@ -1353,7 +1411,16 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           {muted ? '♪ SOUND OFF' : '♪ SOUND ON'}
         </button>
 
-        <div className="sb-hint">DRAG TO ORBIT // SCROLL TO ZOOM</div>
+        {followName && (
+          <div className="sb-follow">
+            <div className="sb-follow-label">◉ TRACKING // {followName}</div>
+            <button className="sb-follow-exit" onClick={() => exitFollowRef.current && exitFollowRef.current()}>
+              ↩ RETURN TO TACTICAL VIEW
+            </button>
+          </div>
+        )}
+
+        {!followName && <div className="sb-hint">DRAG TO ORBIT // SCROLL TO ZOOM // CLICK A SHIP TO TRACK</div>}
       </div>
 
       <HudFooter>

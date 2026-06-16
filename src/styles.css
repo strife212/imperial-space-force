@@ -6143,6 +6143,47 @@ body {
 .sb-comms-em--blue { color: var(--c-scarlet); font-weight: 700; text-shadow: 0 0 8px rgba(26, 128, 255, 0.5); }
 .sb-comms-em--red  { color: var(--c-bad);     font-weight: 700; text-shadow: 0 0 8px rgba(255, 36, 0, 0.45); }
 
+/* ── Third-person tracking banner + return button (top-centre) ──────────── */
+.sb-follow {
+  position: absolute;
+  top: 64px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  pointer-events: none;
+}
+.sb-follow-label {
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(150, 185, 235, 0.9);
+  text-shadow: 0 0 8px rgba(26, 128, 255, 0.4);
+}
+.sb-follow-exit {
+  pointer-events: auto;
+  background: rgba(120, 180, 255, 0.12);
+  border: 1px solid rgba(120, 180, 255, 0.7);
+  color: #eaf4ff;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 10px 24px;
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(80, 140, 220, 0.4);
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.sb-follow-exit:hover {
+  background: rgba(120, 180, 255, 0.22);
+  border-color: rgba(150, 205, 255, 0.95);
+  box-shadow: 0 0 24px rgba(80, 140, 220, 0.6);
+}
+
 /* kill feed — bottom-right */
 .sb-killfeed {
   position: absolute;
