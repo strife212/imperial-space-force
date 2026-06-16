@@ -374,10 +374,15 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   // ── Player tactics (blue fleet only) ──────────────────────────────────────
   const [capTactic,     setCapTactic]     = useState('hold')   // 'hold' | 'engage'
   const [fighterTactic, setFighterTactic] = useState('all')    // 'all' | 'fighters' | 'capital'
-  const capTacticRef     = useRef(capTactic)
-  const fighterTacticRef = useRef(fighterTactic)
+  const [fighterManoeuvre, setFighterManoeuvre] = useState('free')  // 'free' | 'screen'
+  const capTacticRef        = useRef(capTactic)
+  const fighterTacticRef    = useRef(fighterTactic)
+  const fighterManoeuvreRef = useRef(fighterManoeuvre)
   useEffect(() => { capTacticRef.current = capTactic }, [capTactic])
   useEffect(() => { fighterTacticRef.current = fighterTactic }, [fighterTactic])
+  useEffect(() => { fighterManoeuvreRef.current = fighterManoeuvre }, [fighterManoeuvre])
+  // focusing the enemy flagship means charging it — auto-select free manoeuvre
+  useEffect(() => { if (fighterTactic === 'capital') setFighterManoeuvre('free') }, [fighterTactic])
 
   // Enqueue a broadcast; show it now if the box is free, otherwise queue it so
   // simultaneous lines play one after another rather than overlapping.
@@ -821,7 +826,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       }
       spawnCapital('blue', Math.PI)   // start on the left
       spawnCapital('red', 0)          // start opposite, on the right
-      const redCapital = ships.find(s => s.isCapital && s.team === 'red')
+      const redCapital  = ships.find(s => s.isCapital && s.team === 'red')
+      const blueCapital = ships.find(s => s.isCapital && s.team === 'blue')
 
       // ── Hyperspace jump-in: stage every ship far out along its flank, then
       // streak it into its formation slot before combat begins ──────────────────
@@ -1034,7 +1040,16 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             s.mesh.position.copy(s.pos)
           } else {
             _acc.set(0, 0, 0)
-            if (target) {
+            // blue fighters can be ordered to screen their flagship instead of charging
+            const screening = s.team === 'blue' && fighterManoeuvreRef.current === 'screen' && blueCapital && blueCapital.alive
+            if (screening) {
+              // hold a protective ring around the friendly capital (it still fires on enemies)
+              _tmp.subVectors(blueCapital.pos, s.pos)
+              const dist = _tmp.length() || 1
+              _tmp.divideScalar(dist)
+              const drive = THREE.MathUtils.clamp((dist - (blueCapital.radius + 10)) * 0.9, -6, 9)
+              _acc.addScaledVector(_tmp, drive)
+            } else if (target) {
               // approach the enemy only down to STANDOFF, then ease off / back away —
               // this holds a gap between the two fleets rather than one merged blob
               _tmp.subVectors(target.pos, s.pos)
@@ -1398,11 +1413,18 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             </div>
           </div>
           <div className="sb-tac-group">
-            <div className="sb-tac-label">FIGHTERS</div>
+            <div className="sb-tac-label">FIGHTER TARGETING</div>
             <div className="sb-tac-btns">
               <button className={`sb-tac-btn${fighterTactic === 'all' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterTactic('all')}>ATTACK ALL</button>
               <button className={`sb-tac-btn${fighterTactic === 'fighters' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterTactic('fighters')}>ENEMY FIGHTERS</button>
               <button className={`sb-tac-btn${fighterTactic === 'capital' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterTactic('capital')}>ENEMY CAPITAL SHIP</button>
+            </div>
+          </div>
+          <div className="sb-tac-group">
+            <div className="sb-tac-label">FIGHTER MANOEUVRE</div>
+            <div className="sb-tac-btns">
+              <button className={`sb-tac-btn${fighterManoeuvre === 'free' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterManoeuvre('free')}>FREE MANOEUVRE</button>
+              <button className={`sb-tac-btn${fighterManoeuvre === 'screen' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterManoeuvre('screen')}>SCREEN CAPITAL SHIP</button>
             </div>
           </div>
         </div>
