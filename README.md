@@ -37,7 +37,11 @@ src/
 │   ├── GameOverScreen.jsx   # End state with encyclopedia unlock summary
 │   ├── LaunchCodeVerifier.jsx      # Launch authorisation dialog
 │   ├── BlackHoleScreen.jsx  # three.js black hole visualiser (accretion disk, labelled features)
-│   ├── SpaceBattleScreen.jsx       # three.js fleet battle sim (25v25 + capitals, tactics, sound)
+│   ├── SpaceBattleScreen.jsx       # three.js fleet battle sim — screen component, sim loop & audio
+│   ├── battle/                     # battle-screen modules (split out of SpaceBattleScreen.jsx)
+│   │   ├── constants.js            # fleet/ship stats, point costs, armour, names, comms & sound data
+│   │   ├── geometry.js             # GLSL shaders + ship-model & backdrop builders
+│   │   └── RosterUI.jsx            # pre-battle order-of-battle UI (rosters, info tooltips, briefing)
 │   └── DebugScreen.jsx      # Dev tool for jumping between screens and toggling flags
 ├── components/
 │   ├── HudHeader.jsx        # Persistent top bar (used across HUD screens)
@@ -90,6 +94,17 @@ A self-contained three.js set-piece (reachable from the debug screen) that plays
 - **Presentation** — a hyperspace **jump-in** (capitals first, fighters following into formation), a nebula skydome with a random on-screen background body (gas giant / ringed planet / black hole), engine glows, fireball + shockwave explosions, a live **kill feed**, capital name/shield labels, and a **post-battle stats breakdown**.
 - **Player tactics** (blue fleet only) — capital *Hold Back* / *Directly Engage*, and fighter targeting *Attack All* / *Enemy Fighters* / *Enemy Capital Ship*.
 - **Audio** — laser, explosion, jump-in, victory and ambient sounds are synthesised at runtime via the Web Audio API through a shared bus (compressor + soft-clip saturation + reverb send), rate-limited so massed fire stays a crackle rather than a wall of noise. Each sound can be overridden by dropping a file into `public/sfx/` — missing files fall back to the synth.
+
+### File breakdown
+
+The battle screen was split out of a single ~2000-line file into focused modules under `src/screens/`. Imports flow one way: `constants → geometry → RosterUI → SpaceBattleScreen`.
+
+| File | Responsibility |
+|---|---|
+| `SpaceBattleScreen.jsx` | The screen component: React state and player tactics, the three.js scene with its per-frame simulation loop (spawning, steering, combat, fighter reserves/reinforcements, follow camera, picture-in-picture event cam, scoreboard & victory), and the Web Audio engine. |
+| `battle/constants.js` | Pure data and helpers — fleet/ship stats (HP, speed, damage, armour), the per-ship point costs and 1000-point fleet budget, capital-ship name list, comms portraits and victory text, the optional sound-file map, and the `compStrength` / `splitCapName` helpers. No React or three.js. |
+| `battle/geometry.js` | All three.js geometry: the inline GLSL shaders (nebula skydome, gas giant, ring), the six ship-model builders (fighter / bomber / capital × blue / red), and the random backdrop builders (gas giant / ringed planet / black hole). |
+| `battle/RosterUI.jsx` | The pre-battle order-of-battle UI: the `Briefing` screen, per-team `TeamRoster`, `ShipSprite`, the `+`/`−` `CountAdjust` fleet builder controls, and the ship info tooltip (`ShipInfoTip` with its slowly rotating 3D `ShipModel3D`) — plus `renderCommsBody` for the in-battle comms typewriter. |
 
 ---
 
