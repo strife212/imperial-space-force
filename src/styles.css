@@ -5880,11 +5880,11 @@ body {
 /* ── Sim speed selector + realtime battle clock (top-right) ──────────────── */
 .sb-simctl {
   position: absolute;
-  top: 14px; right: 16px;
+  top: 14px; left: 16px;
   z-index: 3;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 7px;
 }
 .sb-speed-label {
@@ -6236,6 +6236,58 @@ body {
   color: #fff;
 }
 .sb-brief-adj-btn:disabled { opacity: 0.28; cursor: not-allowed; }
+
+/* ── Ship info tooltips (pre-battle) ─────────────────────────────────────── */
+.sb-info { position: relative; display: inline-flex; vertical-align: middle; letter-spacing: normal; }
+.sb-info-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 13px; height: 13px;
+  border: 1px solid rgba(150, 190, 250, 0.5);
+  border-radius: 50%;
+  color: rgba(190, 222, 255, 0.9);
+  cursor: help;
+}
+.sb-info-icon svg { width: 9px; height: 9px; fill: currentColor; display: block; }
+.sb-info-icon:hover { border-color: rgba(150, 190, 250, 0.95); color: #fff; }
+.sb-info-panel {
+  position: absolute;
+  top: calc(100% + 7px); left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  width: 210px;
+  padding: 12px;
+  background: rgba(4, 8, 20, 0.97);
+  border: 1px solid var(--c-line-2);
+  border-radius: 4px;
+  box-shadow: 0 10px 34px rgba(0, 8, 28, 0.65);
+  text-align: left;
+  pointer-events: none;
+  animation: sb-pip-in 0.14s ease both;   /* opacity-only fade */
+}
+.sb-info-panel--blue { border-top: 2px solid var(--c-scarlet); }
+.sb-info-panel--red  { border-top: 2px solid var(--c-bad); }
+.sb-info-title {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.sb-info-panel--blue .sb-info-title { color: var(--c-scarlet); }
+.sb-info-panel--red  .sb-info-title { color: var(--c-bad); }
+.sb-info-model {
+  width: 100%; height: 116px;
+  background: radial-gradient(ellipse at center, rgba(40, 70, 130, 0.28), transparent 70%);
+  border-radius: 3px;
+  margin-bottom: 9px;
+  overflow: hidden;
+}
+.sb-info-model canvas { display: block; }
+.sb-info-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+.sb-info-stat { display: flex; justify-content: space-between; align-items: baseline; font-size: 10px; letter-spacing: 0.06em; }
+.sb-info-stat span { color: var(--c-ash-dim); text-transform: uppercase; }
+.sb-info-stat b { color: var(--c-ash); font-weight: 700; font-family: var(--font-mono); }
+.sb-info-notes {
+  margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--c-line-2);
+  font-size: 9.5px; letter-spacing: 0.05em; line-height: 1.45; color: var(--c-rose);
+}
 .sb-brief-fighters {
   display: grid;
   grid-template-columns: repeat(auto-fill, 24px);
@@ -6444,12 +6496,22 @@ body {
   margin-top: 1px;
 }
 .sb-cap-shield span { color: var(--c-ash); }
+.sb-cap-reserve {
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: var(--c-ash-dim);
+  text-transform: uppercase;
+  margin-top: 2px;
+  opacity: 0.85;
+}
+.sb-cap-label--blue .sb-cap-reserve { color: rgba(120, 180, 255, 0.85); }
+.sb-cap-label--red  .sb-cap-reserve { color: rgba(255, 120, 96, 0.85); }
 
 /* sound toggle — top-left of the stage */
 .sb-sound,
 .sb-restart-top {
   position: absolute;
-  left: 14px;
+  right: 14px;
   z-index: 3;
   background: rgba(2, 6, 18, 0.6);
   border: 1px solid var(--c-line-2);

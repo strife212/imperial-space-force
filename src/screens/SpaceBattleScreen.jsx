@@ -117,6 +117,13 @@ const SEP_RADIUS  = 3.0
 const BOUND_R     = 34       // ships steer back inside this radius
 const STANDOFF    = 14       // preferred engagement range — keeps a frontline gap
 const TURN_RATE   = 7        // orientation slerp responsiveness
+const FIELD_FIGHTER_CAP = 30 // max fighters a team can have on the field at once
+const REINFORCE_INTERVAL = 10 // seconds between reinforcement waves from the reserve
+// Armour: % chance an incoming bolt that connects is deflected to zero damage.
+// Applies to laser bolts only — bomber bombs always land in full.
+const ARMOR_FIGHTER  = 0
+const ARMOR_BOMBER   = 5
+const ARMOR_FLAGSHIP = 10
 
 // Fleet "strength" valuation, balanced so the standard fleet (1 flagship +
 // 5 bombers + 25 fighters) totals exactly 1000. Started from HP × DPS, then
@@ -192,13 +199,18 @@ function buildBlueBomber() {
 }
 function buildRedBomber() {
   const parts = []
-  let g = new THREE.BoxGeometry(1.0, 0.62, 2.0); parts.push(g)                              // bulky bomb-bay hull
-  g = new THREE.BoxGeometry(0.18, 0.18, 1.35); g.translate(0.38, 0, 1.15);  parts.push(g)   // forward prong R
-  g = new THREE.BoxGeometry(0.18, 0.18, 1.35); g.translate(-0.38, 0, 1.15); parts.push(g)   // forward prong L
-  g = new THREE.BoxGeometry(0.46, 0.5, 0.7); g.translate(0, 0.44, -0.2); parts.push(g)      // command tower
-  g = new THREE.BoxGeometry(0.3, 0.32, 1.35); g.translate(0.68, 0, -0.25);  parts.push(g)   // engine pod R
-  g = new THREE.BoxGeometry(0.3, 0.32, 1.35); g.translate(-0.68, 0, -0.25); parts.push(g)   // engine pod L
-  g = new THREE.BoxGeometry(0.56, 0.32, 0.6); g.translate(0, -0.36, 0.2); parts.push(g)     // ventral bomb pod
+  let g = new THREE.BoxGeometry(1.2, 0.64, 2.1); parts.push(g)                                // heavy slab hull
+  g = new THREE.BoxGeometry(0.2, 0.2, 1.3); g.translate(0.5, 0, 1.25);  parts.push(g)         // forked ram prong R
+  g = new THREE.BoxGeometry(0.2, 0.2, 1.3); g.translate(-0.5, 0, 1.25); parts.push(g)         // forked ram prong L
+  g = new THREE.BoxGeometry(0.52, 0.54, 1.7); g.translate(0.92, -0.04, -0.1);  parts.push(g)  // outboard ordnance sponson R
+  g = new THREE.BoxGeometry(0.52, 0.54, 1.7); g.translate(-0.92, -0.04, -0.1); parts.push(g)  // outboard ordnance sponson L
+  for (const sx of [0.92, -0.92]) for (const sz of [0.42, -0.12, -0.66]) {                    // slung bomb racks under each sponson
+    g = new THREE.BoxGeometry(0.16, 0.2, 0.32); g.translate(sx, -0.44, sz); parts.push(g)
+  }
+  g = new THREE.BoxGeometry(0.5, 0.52, 0.85); g.translate(0, 0.5, -0.15); parts.push(g)       // command tower
+  g = new THREE.BoxGeometry(0.84, 0.54, 1.4); g.translate(0, -0.46, 0.1); parts.push(g)       // deep ventral bomb bay
+  g = new THREE.BoxGeometry(0.5, 0.5, 0.95); g.translate(0.5, 0, -1.45);  parts.push(g)       // engine block R
+  g = new THREE.BoxGeometry(0.5, 0.5, 0.95); g.translate(-0.5, 0, -1.45); parts.push(g)       // engine block L
   return mergeGeometries(parts, false)
 }
 
@@ -406,6 +418,82 @@ function CountAdjust({ count, cost, free, onAdjust }) {
     </span>
   )
 }
+
+// ── Pre-battle ship info tooltips ────────────────────────────────────────────
+const SHIP_INFO = {
+  capital: { hp: CAP_HP,    dmg: `${CAP_WEAPONS} × 1`, speed: CAP_SPEED,    armor: ARMOR_FLAGSHIP, notes: [] },
+  bomber:  { hp: BOMBER_HP, dmg: BOMB_DMG,             speed: BOMBER_SPEED, armor: ARMOR_BOMBER,   notes: ['Can only target capital ships'] },
+  fighter: { hp: SHIP_HP,   dmg: 1,                    speed: MAX_SPEED,    armor: ARMOR_FIGHTER,  notes: [] },
+}
+const shipClass = (kind, team) =>
+  kind === 'capital' ? 'Capital Ship'
+  : kind === 'bomber' ? 'Heavy Bomber'
+  : team === 'blue' ? 'Interceptor' : 'Marauder'
+const buildShipGeo = (kind, team) =>
+  kind === 'capital' ? (team === 'blue' ? buildBlueCapital() : buildRedCapital())
+  : kind === 'bomber' ? (team === 'blue' ? buildBlueBomber() : buildRedBomber())
+  : (team === 'blue' ? buildBlueModel() : buildRedModel())
+
+// A small WebGL viewport that slowly spins a ship model (mounted only while a tip is open)
+function ShipModel3D({ kind, team }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const mount = ref.current
+    const w = mount.clientWidth || 186, h = mount.clientHeight || 116
+    const scene = new THREE.Scene()
+    const cam = new THREE.PerspectiveCamera(42, w / h, 0.1, 100)
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio))
+    renderer.setSize(w, h)
+    mount.appendChild(renderer.domElement)
+    scene.add(new THREE.AmbientLight(0x90a8d0, 0.7))
+    const key = new THREE.DirectionalLight(0xffffff, 1.2); key.position.set(3, 5, 4); scene.add(key)
+    const rim = new THREE.DirectionalLight(TEAMS[team].color, 0.8); rim.position.set(-4, -1, -3); scene.add(rim)
+    const geo = buildShipGeo(kind, team); geo.center(); geo.computeBoundingSphere()
+    const mat = new THREE.MeshStandardMaterial({ color: TEAMS[team].color, emissive: TEAMS[team].color, emissiveIntensity: 0.32, metalness: 0.6, roughness: 0.4 })
+    const mesh = new THREE.Mesh(geo, mat); scene.add(mesh)
+    const r = geo.boundingSphere.radius
+    cam.position.set(0, r * 0.65, r * 2.5); cam.lookAt(0, 0, 0)
+    let raf, last = performance.now()
+    const loop = () => {
+      const now = performance.now(); const dt = (now - last) / 1000; last = now
+      mesh.rotation.y += dt * 0.6   // slow turntable spin
+      renderer.render(scene, cam)
+      raf = requestAnimationFrame(loop)
+    }
+    loop()
+    return () => { cancelAnimationFrame(raf); renderer.domElement.remove(); geo.dispose(); mat.dispose(); renderer.dispose() }
+  }, [kind, team])
+  return <div className="sb-info-model" ref={ref} />
+}
+
+// Info icon that reveals a stat panel with a spinning 3D model on hover
+function ShipInfoTip({ kind, team }) {
+  const [open, setOpen] = useState(false)
+  const info = SHIP_INFO[kind]
+  return (
+    <span className="sb-info" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <span className="sb-info-icon" aria-label={`${shipClass(kind, team)} info`}>
+        <svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="3" r="1.3" /><rect x="4.85" y="4.9" width="2.3" height="5" rx="1.15" /></svg>
+      </span>
+      {open && (
+        <div className={`sb-info-panel sb-info-panel--${team}`}>
+          <div className="sb-info-title">{shipClass(kind, team)}</div>
+          <ShipModel3D kind={kind} team={team} />
+          <div className="sb-info-stats">
+            <div className="sb-info-stat"><span>Health</span><b>{info.hp}</b></div>
+            <div className="sb-info-stat"><span>Damage</span><b>{info.dmg}</b></div>
+            <div className="sb-info-stat"><span>Speed</span><b>{info.speed}</b></div>
+            <div className="sb-info-stat"><span>Armor</span><b>{info.armor}%</b></div>
+          </div>
+          {info.notes.length > 0 && (
+            <div className="sb-info-notes">{info.notes.map((n, i) => <div key={i}>▸ {n}</div>)}</div>
+          )}
+        </div>
+      )}
+    </span>
+  )
+}
 function TeamRoster({ team, capName, onCycleName, comp, onAdjust }) {
   const { prefix, name } = splitCapName(capName)
   const strength = compStrength(comp)
@@ -419,21 +507,21 @@ function TeamRoster({ team, capName, onCycleName, comp, onAdjust }) {
         <div className="sb-brief-cap-info">
           {prefix && <div className="sb-cap-prefix">{prefix}</div>}
           <div className="sb-brief-cap-name">{name}</div>
-          <div className="sb-brief-cap-class">CAPITAL SHIP</div>
+          <div className="sb-brief-cap-class">CAPITAL SHIP <ShipInfoTip kind="capital" team={team} /></div>
         </div>
         {onCycleName && (
           <button className="sb-cap-cycle" onClick={onCycleName} title="Randomise name" aria-label="Randomise name">↻</button>
         )}
       </div>
       <div className="sb-brief-fighters-label">
-        <span>BOMBERS <span className="sb-brief-fighters-count">×{comp.bombers}</span></span>
+        <span>BOMBERS <ShipInfoTip kind="bomber" team={team} /> <span className="sb-brief-fighters-count">×{comp.bombers}</span></span>
         <CountAdjust count={comp.bombers} cost={PTS_BOMBER} free={free} onAdjust={(d) => onAdjust('bombers', d)} />
       </div>
       <div className="sb-brief-fighters sb-brief-bombers">
         {Array.from({ length: comp.bombers }, (_, i) => <ShipSprite key={i} team={team} kind="bomber" />)}
       </div>
       <div className="sb-brief-fighters-label">
-        <span>FIGHTERS <span className="sb-brief-fighters-count">×{comp.fighters}</span></span>
+        <span>FIGHTERS <ShipInfoTip kind="fighter" team={team} /> <span className="sb-brief-fighters-count">×{comp.fighters}</span></span>
         <CountAdjust count={comp.fighters} cost={PTS_FIGHTER} free={free} onAdjust={(d) => onAdjust('fighters', d)} />
       </div>
       <div className="sb-brief-fighters">
@@ -490,8 +578,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const exitFollowRef = useRef(null)            // revert-to-tactical fn, wired up inside the scene
   const killSeq = useRef(0)
   const audioRef = useRef(null)
-  const blueCapRef = useRef(null), blueShieldRef = useRef(null)
-  const redCapRef  = useRef(null), redShieldRef  = useRef(null)
+  const blueCapRef = useRef(null), blueShieldRef = useRef(null), blueReserveRef = useRef(null)
+  const redCapRef  = useRef(null), redShieldRef  = useRef(null), redReserveRef  = useRef(null)
 
   // ── Player tactics (blue fleet only) ──────────────────────────────────────
   const [capTactic,     setCapTactic]     = useState('hold')      // 'hold' | 'engage'
@@ -868,9 +956,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       }
 
       // ── Spawn the two fleets (loose cloud on each flank, charging inward) ─────
+      const reserveLeft = { blue: 0, red: 0 }   // fighters held off-field, fed in as reinforcements
       const ships = []
       const spawnFleet = (team, sx, vdir) => {
         for (let i = 0; i < compRef.current[team].fighters; i++) {
+          const reserve = i >= FIELD_FIGHTER_CAP     // beyond the field cap: held back as reinforcements
           const row = i % 5, col = Math.floor(i / 5)
           const mat = new THREE.MeshStandardMaterial({
             color: TEAMS[team].color, emissive: TEAMS[team].color,
@@ -891,15 +981,17 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           const vel = new THREE.Vector3(vdir * (2 + Math.random() * 2), (Math.random() - 0.5), (Math.random() - 0.5))
           mesh.position.copy(pos)
           orient(mesh, vel)
+          mesh.visible = !reserve
           scene.add(mesh)
           ships.push({
-            mesh, mat, team, hp: SHIP_HP, alive: true, pos, vel,
+            mesh, mat, team, hp: SHIP_HP, alive: !reserve, reserve, pos, vel,
             name: team === 'blue' ? 'Blue Interceptor' : 'Red Marauder',
             fireCd: 0.5 + Math.random() * 2.5, flash: 0,
-            isCapital: false, kills: 0, weapons: 1, maxSpeed: MAX_SPEED, minSpeed: MIN_SPEED, radius: 0, turn: TURN_RATE,
+            isCapital: false, kills: 0, weapons: 1, armor: ARMOR_FIGHTER, maxSpeed: MAX_SPEED, minSpeed: MIN_SPEED, radius: 0, turn: TURN_RATE,
             standoff: STANDOFF, bound: BOUND_R,
           })
         }
+        reserveLeft[team] = Math.max(0, compRef.current[team].fighters - FIELD_FIGHTER_CAP)
       }
       spawnFleet('blue', -31, 1)    // blue charges from the left (+X)
       spawnFleet('red',   31, -1)   // red charges from the right (-X)
@@ -954,8 +1046,9 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           name: team === 'blue' ? blueCapNameRef.current : RED_CAP_NAME,
           labelEl:  team === 'blue' ? blueCapRef.current   : redCapRef.current,
           shieldEl: team === 'blue' ? blueShieldRef.current : redShieldRef.current,
+          reserveEl: team === 'blue' ? blueReserveRef.current : redReserveRef.current,
           fireCd: 0.5 + Math.random(), flash: 0,
-          isCapital: true, kills: 0, weapons: CAP_WEAPONS, radius: 16, route, glows, fires, emitCd: 0,
+          isCapital: true, kills: 0, weapons: CAP_WEAPONS, armor: ARMOR_FLAGSHIP, radius: 16, route, glows, fires, emitCd: 0,
         })
       }
       spawnCapital('blue', Math.PI)   // start on the left
@@ -990,7 +1083,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             mesh, mat, team, hp: BOMBER_HP, alive: false, pos: home.clone(), vel: new THREE.Vector3(),
             name: team === 'blue' ? 'Blue Bomber' : 'Red Bomber', bIndex: i,
             fireCd: 1 + Math.random() * 1.5, flash: 0,
-            isCapital: false, isBomber: true, kills: 0, weapons: 1,
+            isCapital: false, isBomber: true, kills: 0, weapons: 1, armor: ARMOR_BOMBER,
             maxSpeed: BOMBER_SPEED, minSpeed: BOMBER_MIN, radius: 1.2, turn: TURN_RATE * 0.7,
             standoff: STANDOFF, bound: BOUND_R, baseScale: BOMBER_SCALE,
             home, jumpFrom, warpDur: 0.85, warping: false, entered: false, warpT: 0,
@@ -1108,7 +1201,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         setPipCaption({ team, text })
       }
 
-      const damage = (ship, killer, amount = 1) => {
+      const damage = (ship, killer, amount = 1, bomb = false) => {
+        if (!bomb && Math.random() * 100 < ship.armor) return   // armour deflects the bolt — no damage
         ship.hp -= amount
         ship.flash = 0.12
         // capital crosses 25% shield → critical-damage broadcast (once per ship)
@@ -1136,6 +1230,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       }
 
       let gameOver = false
+      let retreatTeam = null, retreatTime = 0, retreatWarped = false   // bombers-only "break and retreat" sequence
+      let reinforceAt = REINFORCE_INTERVAL                              // next reserve-reinforcement check (sim seconds)
       const counts = () => ({
         blue: ships.filter(s => s.team === 'blue' && s.alive).length,
         red:  ships.filter(s => s.team === 'red'  && s.alive).length,
@@ -1218,6 +1314,18 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         for (const s of ships) {
           if (!s.alive) continue
 
+          // retreat: streak away in a hyperspace jump, then vanish from the field
+          if (s.warpOut) {
+            s.warpT += dt
+            const p = Math.min(1, s.warpT / s.warpDur)
+            const e = Math.pow(p, 3)                               // ease-in — accelerate away
+            s.pos.lerpVectors(s.warpFrom, s.warpTo, e)
+            s.mesh.position.copy(s.pos)
+            orient(s.mesh, _dir.subVectors(s.warpTo, s.warpFrom))
+            s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale * (1 + e * 14))
+            if (p >= 1) { s.alive = false; s.mesh.visible = false }
+            continue
+          }
           // hyperspace jump-in: streak from the staging point into formation
           if (intro) {
             const p = Math.min(1, Math.max(0, (introT - s.jumpDelay) / STREAK_DUR))
@@ -1229,8 +1337,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale * stretch)
             continue
           }
-          // bombers streak in on their own delayed warp
-          if (s.isBomber && !s.entered) {
+          // bombers and reinforcement fighters streak in on their own delayed warp
+          if (s.warping && !s.entered) {
             s.warpT += dt
             const p = Math.min(1, s.warpT / s.warpDur)
             const e = 1 - Math.pow(1 - p, 3)
@@ -1363,7 +1471,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
               }
             }
           }
-          if (!gameOver) {
+          if (!gameOver && s.team !== retreatTeam) {
             s.fireCd -= dt
             if (s.fireCd <= 0) {
               if (s.isBomber) {
@@ -1393,7 +1501,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           if (b.willHit && b.target.alive) {
             _tmp.subVectors(b.target.pos, b.mesh.position)
             const d = _tmp.length()
-            if (d < 1.3) { damage(b.target, b.shooter, b.dmg); done = true }
+            if (d < 1.3) { damage(b.target, b.shooter, b.dmg, b.bomb); done = true }
             else {
               b.dir.lerp(_tmp.normalize(), 0.12).normalize()
               b.mesh.quaternion.setFromUnitVectors(yAxis, b.dir)
@@ -1499,12 +1607,60 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           s.labelEl.style.opacity = '1'
           s.labelEl.style.transform = `translate(-50%, -100%) translate(${lx}px, ${ly}px)`
           if (s.shieldEl) s.shieldEl.textContent = Math.max(0, Math.round(s.hp / CAP_HP * 100))
+          if (s.reserveEl) {
+            const r = reserveLeft[s.team]
+            if (r > 0) { s.reserveEl.style.display = ''; s.reserveEl.textContent = `RESERVE FIGHTERS: ${r}` }
+            else s.reserveEl.style.display = 'none'
+          }
         }
 
         // ── Scoreboard + victory check ─────────────────────────────────────────
         const c = counts()
         if (blueCountRef.current) blueCountRef.current.textContent = c.blue
         if (redCountRef.current)  redCountRef.current.textContent  = c.red
+        // Reinforcements: on a fixed cadence, top each team's on-field fighters back up
+        // to the cap from its reserve stockpile, warping the fresh wave in from the flank.
+        if (!gameOver && t >= reinforceAt) {
+          reinforceAt += REINFORCE_INTERVAL
+          for (const tm of ['blue', 'red']) {
+            if (reserveLeft[tm] <= 0) continue
+            let onField = 0
+            for (const s of ships) if (s.team === tm && s.alive && !s.isCapital && !s.isBomber) onField++
+            let need = Math.min(FIELD_FIGHTER_CAP - onField, reserveLeft[tm])
+            if (need <= 0) continue
+            let sent = 0
+            for (const s of ships) {
+              if (need <= 0) break
+              if (s.team !== tm || !s.reserve) continue
+              s.reserve = false; s.alive = true; s.mesh.visible = true
+              s.warping = true; s.entered = false; s.warpT = 0; s.warpDur = 0.7
+              reserveLeft[tm]--; need--; sent++
+            }
+            if (sent) audioRef.current?.playJump()
+          }
+        }
+        // A team reduced to bombers alone (flagship + every fighter gone) breaks and
+        // retreats: broadcast the order, then warp its bombers out 3s later — which,
+        // by emptying the team, ends the engagement.
+        if (!gameOver && !retreatTeam) {
+          for (const tm of ['blue', 'red']) {
+            let cap = false, fighters = false, bombers = false
+            for (const s of ships) {
+              if (s.team !== tm || !s.alive) continue
+              if (s.isCapital) cap = true; else if (s.isBomber) bombers = true; else fighters = true
+            }
+            if (bombers && !fighters && !cap && reserveLeft[tm] === 0) { retreatTeam = tm; retreatTime = t; showComms(tm, 'Fleet integrity lost! Retreat!'); break }
+          }
+        }
+        if (retreatTeam && !retreatWarped && t - retreatTime >= 3) {
+          retreatWarped = true
+          audioRef.current?.playJump()
+          for (const b of ships) if (b.isBomber && b.team === retreatTeam && b.alive) {
+            b.warpOut = true; b.warpT = 0
+            b.warpFrom = b.pos.clone()
+            b.warpTo = b.pos.clone().addScaledVector(jumpAxis[retreatTeam], 95)
+          }
+        }
         if (!gameOver && (c.blue === 0 || c.red === 0)) {
           gameOver = true
           pipRef.current = null; setPipCaption(null)   // drop any in-progress event cam the instant the match resolves
@@ -1648,16 +1804,18 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           <div className="sb-cap-prefix">{CAP_PREFIX}</div>
           <div className="sb-cap-name">{splitCapName(blueCapName).name}</div>
           <div className="sb-cap-shield">SHIELD <span ref={blueShieldRef}>100</span>%</div>
+          <div className="sb-cap-reserve" ref={blueReserveRef} style={{ display: 'none' }}></div>
         </div>
         <div className="sb-cap-label sb-cap-label--red" ref={redCapRef}>
           <div className="sb-cap-name">{RED_CAP_NAME}</div>
           <div className="sb-cap-shield">SHIELD <span ref={redShieldRef}>100</span>%</div>
+          <div className="sb-cap-reserve" ref={redReserveRef} style={{ display: 'none' }}></div>
         </div>
 
         <div className="sb-scoreboard">
-          <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{comp.blue.fighters + 1}</span></span>
+          <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.blue.fighters) + 1}</span></span>
           <span className="sb-vs">⚔ ENGAGED ⚔</span>
-          <span className="sb-score sb-score--red"><span ref={redCountRef} className="sb-count">{comp.red.fighters + 1}</span> RED FLEET</span>
+          <span className="sb-score sb-score--red"><span ref={redCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.red.fighters) + 1}</span> RED FLEET</span>
         </div>
 
         {/* sim speed selector + realtime battle clock (top-right) */}
