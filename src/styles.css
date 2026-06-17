@@ -6421,7 +6421,7 @@ body {
 /* ── Third-person tracking banner + return button (top-centre) ──────────── */
 .sb-follow {
   position: absolute;
-  top: 64px; left: 50%;
+  top: 112px; left: 50%;     /* clear the taller score banner (count + strength + ratio bar) */
   transform: translateX(-50%);
   z-index: 4;
   display: flex;
