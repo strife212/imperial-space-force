@@ -5832,6 +5832,70 @@ body {
 .sb-count { font-size: 22px; font-weight: 700; }
 .sb-score--blue { color: var(--c-scarlet); text-shadow: 0 0 10px rgba(26, 128, 255, 0.6); }
 .sb-score--red  { color: var(--c-bad);     text-shadow: 0 0 10px rgba(255, 36, 0, 0.55); }
+
+/* ── Sim speed selector + realtime battle clock (top-right) ──────────────── */
+.sb-simctl {
+  position: absolute;
+  top: 14px; right: 16px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+.sb-speed-label {
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--c-ash-dim);
+  margin-bottom: -2px;
+}
+.sb-speed {
+  display: flex;
+  border: 1px solid var(--c-line-2);
+  border-radius: 2px;
+  overflow: hidden;
+  background: rgba(2, 6, 18, 0.7);
+}
+.sb-speed-seg {
+  pointer-events: auto;
+  min-width: 38px;
+  padding: 5px 8px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--c-line-2);
+  color: var(--c-ash-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.sb-speed-seg:first-child { border-left: none; }
+.sb-speed-seg:hover { color: var(--c-pink); }
+.sb-speed-seg--on {
+  background: rgba(26, 100, 255, 0.22);
+  color: #eaf4ff;
+  box-shadow: inset 0 0 10px rgba(26, 128, 255, 0.35);
+}
+.sb-timer {
+  padding: 4px 12px;
+  background: rgba(2, 6, 18, 0.7);
+  border: 1px solid var(--c-line-2);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--c-ash-dim);
+  pointer-events: none;
+}
+.sb-timer-clock {
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  color: rgba(200, 222, 255, 0.95);
+  margin-left: 7px;
+}
 .sb-vs {
   font-size: 10px;
   letter-spacing: 0.26em;

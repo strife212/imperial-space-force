@@ -399,6 +399,10 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const mountRef     = useRef(null)
   const blueCountRef = useRef(null)
   const redCountRef  = useRef(null)
+  const timerRef     = useRef(null)             // realtime battle clock DOM node
+  const [simSpeed, setSimSpeed] = useState(1)   // 0 (paused) | 0.5 | 1
+  const simSpeedRef = useRef(1)
+  useEffect(() => { simSpeedRef.current = simSpeed }, [simSpeed])
   const [winner, setWinner] = useState(null)   // null | 'BLUE' | 'RED' | 'DRAW'
   const [runId,  setRunId]  = useState(0)
   const [kills,  setKills]  = useState([])      // recent kill-feed entries
@@ -662,6 +666,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
     setComms(null); commsQueue.current = []; commsBusy.current = false   // clear any lingering broadcasts
     followRef.current = null; setFollowName(null)                        // start in tactical view
     callBombersRef.current = false; setBombersCalled(false); setBlueBomberAlive(Array(BOMBER_COUNT).fill(true))  // bomber wing in reserve
+    simSpeedRef.current = 1; setSimSpeed(1)                               // every battle starts running at 1×
 
     // surface a capital broadcast (queued, typewriter + chirp), driven by battle events
     const showComms = (team, text, persist = false) => {
@@ -1088,9 +1093,16 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
 
       // ── Frame loop ───────────────────────────────────────────────────────────
       const clock = new THREE.Clock()
+      let simT = 0, battleRealT = 0
+      const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
       const frame = () => {
-        const dt = Math.min(clock.getDelta(), 0.05)
-        const t  = clock.elapsedTime
+        const realDt = Math.min(clock.getDelta(), 0.05)   // true wall-clock step (camera, timer)
+        const dt = realDt * simSpeedRef.current            // scaled sim step — 0 when paused
+        simT += dt
+        const t  = simT
+        // realtime battle clock — ticks while the fight is live and not paused
+        if (simSpeedRef.current > 0 && !gameOver) battleRealT += realDt
+        if (timerRef.current) timerRef.current.textContent = fmtTime(battleRealT)
         introT += dt
         const intro = introT < INTRO_TOTAL
 
@@ -1406,7 +1418,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           })
         }
 
-        if (backdropTick) backdropTick(clock.elapsedTime)
+        if (backdropTick) backdropTick(t)
 
         // camera: third-person chase when following a ship, else the orbiting tactical view
         const fol = followRef.current
@@ -1416,7 +1428,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           _fwd.set(0, 0, 1).applyQuaternion(follow.mesh.quaternion).normalize()
           const d = follow.isCapital ? 56 : 8, h = follow.isCapital ? 18 : 3
           _camGoal.copy(follow.pos).addScaledVector(_fwd, -d); _camGoal.y += h
-          camera.position.lerp(_camGoal, 1 - Math.exp(-5 * dt))
+          camera.position.lerp(_camGoal, 1 - Math.exp(-5 * realDt))   // realDt so it tracks even when paused
           _lookAt.copy(follow.pos).addScaledVector(_fwd, follow.isCapital ? 12 : 4)
           camera.lookAt(_lookAt)
         } else {
@@ -1514,6 +1526,21 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{FLEET_SIZE + 1}</span></span>
           <span className="sb-vs">⚔ ENGAGED ⚔</span>
           <span className="sb-score sb-score--red"><span ref={redCountRef} className="sb-count">{FLEET_SIZE + 1}</span> RED FLEET</span>
+        </div>
+
+        {/* sim speed selector + realtime battle clock (top-right) */}
+        <div className="sb-simctl">
+          <div className="sb-speed-label">SIM SPEED</div>
+          <div className="sb-speed" role="group" aria-label="Sim speed">
+            {[0, 0.5, 1].map(sp => (
+              <button
+                key={sp}
+                className={`sb-speed-seg${simSpeed === sp ? ' sb-speed-seg--on' : ''}`}
+                onClick={() => setSimSpeed(sp)}
+              >{sp === 0 ? '0' : sp === 0.5 ? '0.5×' : '1×'}</button>
+            ))}
+          </div>
+          <div className="sb-timer">BATTLE<span className="sb-timer-clock" ref={timerRef}>0:00</span></div>
         </div>
 
         {winner && (
