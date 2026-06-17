@@ -11,7 +11,7 @@ import {
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
-  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
+  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
 import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, makeBackdrop } from './battle/geometry'
@@ -1125,10 +1125,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         // Fleet strength /1000: every ship that isn't destroyed or warped out still
         // counts (reserves and unarrived bombers included), so it only falls on real losses.
         // The flagship's contribution scales with its remaining hull — full PTS_FLAGSHIP
-        // at 100% HP, falling linearly to 0 as it's whittled down — so battle damage to
-        // the capital erodes fleet power before it's actually destroyed.
+        // at 100% HP, falling linearly as it's whittled down — so battle damage to the
+        // capital erodes fleet power before it's destroyed. A living flagship never drops
+        // below PTS_FLAGSHIP_MIN, though (its guns and morale keep it worth something).
         const strength = { blue: 0, red: 0 }
-        for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? PTS_FLAGSHIP * Math.max(0, s.hp) / CAP_HP : s.isBomber ? PTS_BOMBER : PTS_FIGHTER
+        for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? Math.max(PTS_FLAGSHIP_MIN, PTS_FLAGSHIP * Math.max(0, s.hp) / CAP_HP) : s.isBomber ? PTS_BOMBER : PTS_FIGHTER
         if (blueStrengthRef.current) blueStrengthRef.current.textContent = Math.round(strength.blue)
         if (redStrengthRef.current)  redStrengthRef.current.textContent  = Math.round(strength.red)
         if (powerBarRef.current) {                                   // ratio bar: blue's share of total strength

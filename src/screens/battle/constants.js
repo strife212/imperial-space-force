@@ -40,6 +40,9 @@ const ARMOR_FLAGSHIP = 20
 const PTS_FIGHTER  = 10
 const PTS_BOMBER   = 40
 const PTS_FLAGSHIP = 550
+// A living flagship is never worth less than this in fleet strength: its guns
+// and the morale of an intact command vessel keep it valuable even at 1 HP.
+const PTS_FLAGSHIP_MIN = 50
 const FLEET_BUDGET = 1000
 const RETREAT_STRENGTH = 100 // a fleet that drops below this remaining power breaks and warps out
 const MORALE_BROKEN_STRENGTH = 150 // higher rout threshold once a fleet's flagship is destroyed
@@ -105,7 +108,7 @@ export {
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
-  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
+  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, BLUE_CAP_NAMES, CAP_PREFIX, randomBlueCapName, splitCapName, COMMS_PORTRAIT,
   VICTORY_SEGMENTS,
 }
