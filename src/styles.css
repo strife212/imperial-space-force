@@ -6075,6 +6075,11 @@ body {
   grid-template-columns: repeat(auto-fill, 24px);
   gap: 9px 8px;
   justify-content: start;
+  margin-bottom: 12px;
+}
+.sb-brief-bombers {
+  grid-template-columns: repeat(auto-fill, 32px);
+  gap: 9px 10px;
 }
 
 /* 2D ship sprites */
@@ -6082,6 +6087,9 @@ body {
 .sb-sprite--blue path { fill: var(--c-scarlet); }
 .sb-sprite--red  path { fill: var(--c-bad); }
 .sb-brief-fighters .sb-sprite { width: 22px; height: 22px; }
+.sb-brief-bombers .sb-sprite { width: 30px; height: 30px; }
+.sb-brief-bombers .sb-sprite--blue { filter: drop-shadow(0 0 4px rgba(26, 128, 255, 0.6)); }
+.sb-brief-bombers .sb-sprite--red  { filter: drop-shadow(0 0 4px rgba(255, 36, 0, 0.5)); }
 .sb-brief-fighters .sb-sprite--blue { filter: drop-shadow(0 0 3px rgba(26, 128, 255, 0.5)); }
 .sb-brief-fighters .sb-sprite--red  { filter: drop-shadow(0 0 3px rgba(255, 36, 0, 0.4)); }
 .sb-sprite--cap { height: 84px; width: auto; }
@@ -6314,6 +6322,17 @@ body {
   color: #eaf4ff;
   box-shadow: 0 0 10px rgba(26, 128, 255, 0.4);
 }
+.sb-tac-btn:disabled { cursor: default; opacity: 0.85; }
+
+/* bomber wing: Call Bombers button + a roster of greying sprites */
+.sb-tac-bombers { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.sb-tac-bomber-icons { display: flex; align-items: center; gap: 5px; }
+.sb-tac-bomber { display: block; line-height: 0; }
+.sb-tac-bomber .sb-sprite { width: 18px; height: 18px; }
+.sb-tac-bomber .sb-sprite--blue path { fill: var(--c-scarlet); }
+.sb-tac-bomber .sb-sprite { filter: drop-shadow(0 0 3px rgba(26, 128, 255, 0.5)); }
+.sb-tac-bomber--dead .sb-sprite path { fill: var(--c-ash-dim); }
+.sb-tac-bomber--dead .sb-sprite { opacity: 0.35; filter: none; }
 
 /* ── Ergosphere energy-extraction panel ───────────────────────────────────── */
 .ee-panel {

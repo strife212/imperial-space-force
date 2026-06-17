@@ -97,6 +97,14 @@ const RING_FRAG = /* glsl */`
 // ── Battle parameters ──────────────────────────────────────────────────────────
 const FLEET_SIZE  = 25
 const SHIP_HP     = 6
+const BOMBER_COUNT = 5       // heavy bombers per side
+const BOMBER_HP    = 10      // tankier than a fighter
+const BOMBER_SPEED = 4.05    // slower than fighters (MAX_SPEED 7.5)
+const BOMBER_MIN   = 1.62
+const BOMBER_SCALE = 1.43    // slightly larger than fighters
+const BOMB_DMG     = 5       // 5× a regular fighter bolt
+const BOMB_RANGE   = 30      // bombers must close to this range before bombing
+const BOMB_LIFE    = 1.0     // bombs are short-ranged — expire sooner than bolts
 const CAP_HP      = 60       // capital ship — tanky flagship
 const CAP_SPEED   = 1.25     // capital ships lumber (very slow & ponderous)
 const CAP_WEAPONS = 4        // bolts per capital volley
@@ -155,6 +163,30 @@ function buildRedCapital() {
   g = new THREE.BoxGeometry(0.65, 0.5, 0.85); g.translate(0, 0.98, -0.2); parts.push(g)               // turret mid
   g = new THREE.BoxGeometry(0.65, 0.5, 0.85); g.translate(0, 0.98, -1.9); parts.push(g)               // turret aft
   g = new THREE.BoxGeometry(1.7, 1.15, 1.0); g.translate(0, 0, -3.1); parts.push(g)                   // engine block
+  return mergeGeometries(parts, false)
+}
+
+// Bombers — heavier than fighters, same team aesthetic. Blue: broad sleek delta
+// with a bomb bay + twin pods.  Red: bulky forked hull with a ventral bomb pod.
+function buildBlueBomber() {
+  const parts = []
+  let g = new THREE.ConeGeometry(0.32, 1.0, 6); g.rotateX(Math.PI / 2); g.translate(0, 0, 0.7); parts.push(g)  // nose
+  g = new THREE.BoxGeometry(0.54, 0.36, 1.6); g.translate(0, 0, -0.1); parts.push(g)        // fuller fuselage / bomb bay
+  g = new THREE.BoxGeometry(2.2, 0.07, 0.95); g.translate(0, 0, -0.25); parts.push(g)       // broad delta wing
+  g = new THREE.BoxGeometry(0.05, 0.42, 0.5); g.translate(0, 0.27, -0.7); parts.push(g)     // tail fin
+  g = new THREE.BoxGeometry(0.24, 0.24, 0.85); g.translate(0.66, -0.04, -0.7); parts.push(g)  // engine pod R
+  g = new THREE.BoxGeometry(0.24, 0.24, 0.85); g.translate(-0.66, -0.04, -0.7); parts.push(g) // engine pod L
+  return mergeGeometries(parts, false)
+}
+function buildRedBomber() {
+  const parts = []
+  let g = new THREE.BoxGeometry(1.0, 0.62, 2.0); parts.push(g)                              // bulky bomb-bay hull
+  g = new THREE.BoxGeometry(0.18, 0.18, 1.35); g.translate(0.38, 0, 1.15);  parts.push(g)   // forward prong R
+  g = new THREE.BoxGeometry(0.18, 0.18, 1.35); g.translate(-0.38, 0, 1.15); parts.push(g)   // forward prong L
+  g = new THREE.BoxGeometry(0.46, 0.5, 0.7); g.translate(0, 0.44, -0.2); parts.push(g)      // command tower
+  g = new THREE.BoxGeometry(0.3, 0.32, 1.35); g.translate(0.68, 0, -0.25);  parts.push(g)   // engine pod R
+  g = new THREE.BoxGeometry(0.3, 0.32, 1.35); g.translate(-0.68, 0, -0.25); parts.push(g)   // engine pod L
+  g = new THREE.BoxGeometry(0.56, 0.32, 0.6); g.translate(0, -0.36, 0.2); parts.push(g)     // ventral bomb pod
   return mergeGeometries(parts, false)
 }
 
@@ -316,15 +348,18 @@ function renderCommsBody(segments, revealed) {
 const SPRITE_PATHS = {
   blueFighter: 'M12 2 L15 13 L21 20 L12 17 L3 20 L9 13 Z',
   redFighter:  'M6 3 L12 11 L18 3 L16 9 L21 21 L12 17 L3 21 L8 9 Z',
+  blueBomber:  'M12 2 L16 11 L21 20 L13 17 L13 21 L11 21 L11 17 L3 20 L8 11 Z',
+  redBomber:   'M5 3 L12 10 L19 3 L17 10 L22 21 L15 18 L12 21 L9 18 L2 21 L7 10 Z',
   blueCapital: 'M12 2 L16 24 L15 52 L18 61 L12 57 L6 61 L9 52 L8 24 Z',
   redCapital:  'M14 3 L20 12 L20 20 L25 26 L25 34 L20 38 L20 56 L16 61 L12 61 L8 56 L8 38 L3 34 L3 26 L8 20 L8 12 Z',
 }
+const SPRITE_SUFFIX = { capital: 'Capital', bomber: 'Bomber', fighter: 'Fighter' }
 function ShipSprite({ team, kind }) {
   const cap = kind === 'capital'
   const vb = cap ? (team === 'blue' ? '0 0 24 64' : '0 0 28 64') : '0 0 24 24'
   return (
-    <svg className={`sb-sprite sb-sprite--${team}${cap ? ' sb-sprite--cap' : ''}`} viewBox={vb} aria-hidden="true">
-      <path d={SPRITE_PATHS[team + (cap ? 'Capital' : 'Fighter')]} />
+    <svg className={`sb-sprite sb-sprite--${team}${cap ? ' sb-sprite--cap' : ''}${kind === 'bomber' ? ' sb-sprite--bomber' : ''}`} viewBox={vb} aria-hidden="true">
+      <path d={SPRITE_PATHS[team + SPRITE_SUFFIX[kind]]} />
     </svg>
   )
 }
@@ -339,6 +374,10 @@ function TeamRoster({ team }) {
           <div className="sb-brief-cap-name">{CAP_NAME[team]}</div>
           <div className="sb-brief-cap-class">CAPITAL SHIP</div>
         </div>
+      </div>
+      <div className="sb-brief-fighters-label">BOMBERS <span className="sb-brief-fighters-count">×{BOMBER_COUNT}</span></div>
+      <div className="sb-brief-fighters sb-brief-bombers">
+        {Array.from({ length: BOMBER_COUNT }, (_, i) => <ShipSprite key={i} team={team} kind="bomber" />)}
       </div>
       <div className="sb-brief-fighters-label">FIGHTERS <span className="sb-brief-fighters-count">×{FLEET_SIZE}</span></div>
       <div className="sb-brief-fighters">
@@ -375,6 +414,9 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [capTactic,     setCapTactic]     = useState('hold')   // 'hold' | 'engage'
   const [fighterTactic, setFighterTactic] = useState('all')    // 'all' | 'fighters' | 'capital'
   const [fighterManoeuvre, setFighterManoeuvre] = useState('free')  // 'free' | 'screen'
+  const [bombersCalled, setBombersCalled] = useState(false)              // player has called the blue bomber wing
+  const [blueBomberAlive, setBlueBomberAlive] = useState(() => Array(BOMBER_COUNT).fill(true))  // per-bomber status for the roster
+  const callBombersRef = useRef(false)
   const capTacticRef        = useRef(capTactic)
   const fighterTacticRef    = useRef(fighterTactic)
   const fighterManoeuvreRef = useRef(fighterManoeuvre)
@@ -615,6 +657,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
     setKills([])   // fresh kill feed each battle
     setComms(null); commsQueue.current = []; commsBusy.current = false   // clear any lingering broadcasts
     followRef.current = null; setFollowName(null)                        // start in tactical view
+    callBombersRef.current = false; setBombersCalled(false); setBlueBomberAlive(Array(BOMBER_COUNT).fill(true))  // bomber wing in reserve
 
     // surface a capital broadcast (queued, typewriter + chirp), driven by battle events
     const showComms = (team, text, persist = false) => {
@@ -702,14 +745,19 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       // ── Shared geometry ──────────────────────────────────────────────────────
       const teamGeo = { blue: buildBlueModel(), red: buildRedModel() }
       const capGeo  = { blue: buildBlueCapital(), red: buildRedCapital() }
+      const bomberGeo = { blue: buildBlueBomber(), red: buildRedBomber() }
       const boltGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.7, 6)
       const blastGeo = new THREE.SphereGeometry(1, 12, 12)
       const ringGeo = new THREE.RingGeometry(0.62, 1.0, 32)
-      disposables.push(teamGeo.blue, teamGeo.red, capGeo.blue, capGeo.red, boltGeo, blastGeo, ringGeo)
+      disposables.push(teamGeo.blue, teamGeo.red, capGeo.blue, capGeo.red, bomberGeo.blue, bomberGeo.red, boltGeo, blastGeo, ringGeo)
       const boltMat = {
         blue: new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
         red:  new THREE.MeshBasicMaterial({ color: TEAMS.red.bolt,  transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
       }
+      const bombMat = new THREE.MeshBasicMaterial({ color: 0xffb030, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })  // glowing bomb ordnance
+      const bombGeo = new THREE.BoxGeometry(0.6, 1.5, 0.2)   // a glowing rectangular slab (long axis = travel)
+      const smokeMatProto = new THREE.MeshBasicMaterial({ color: 0x8c8c8c, transparent: true, opacity: 0.5, depthWrite: false })  // template for trail puffs
+      disposables.push(bombMat, bombGeo, smokeMatProto)
       const glowMat = {   // engine glow — bright additive, tucked at each ship's tail
         blue: new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
         red:  new THREE.MeshBasicMaterial({ color: TEAMS.red.bolt,  transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -720,7 +768,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const yAxis = new THREE.Vector3(0, 1, 0)
       const UP    = new THREE.Vector3(0, 1, 0)
       const ORIGIN = new THREE.Vector3(0, 0, 0)
-      const _dir = new THREE.Vector3(), _tmp = new THREE.Vector3(), _acc = new THREE.Vector3()
+      const _dir = new THREE.Vector3(), _tmp = new THREE.Vector3(), _acc = new THREE.Vector3(), _tan = new THREE.Vector3()
       const _proj = new THREE.Vector3()
       const _m = new THREE.Matrix4(), _q = new THREE.Quaternion()
       let cw = w, ch = h   // canvas size, for projecting labels to screen px
@@ -829,6 +877,46 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const redCapital  = ships.find(s => s.isCapital && s.team === 'red')
       const blueCapital = ships.find(s => s.isCapital && s.team === 'blue')
 
+      // ── Bombers — heavy anti-capital craft that warp in as a wave ─────────────
+      // They stage off their flank (hidden); blue jump in when the player calls
+      // them, red at a random time. Then they run for the enemy flagship and
+      // orbit it dropping high-damage bombs.
+      const spawnBombers = (team) => {
+        const sx = team === 'blue' ? -28 : 28
+        const axis = new THREE.Vector3(team === 'blue' ? -1 : 1, 0.05, -0.3).normalize()
+        for (let i = 0; i < BOMBER_COUNT; i++) {
+          const mat = new THREE.MeshStandardMaterial({
+            color: TEAMS[team].color, emissive: TEAMS[team].color,
+            emissiveIntensity: 0.4, metalness: 0.6, roughness: 0.4,
+          })
+          disposables.push(mat)
+          const mesh = new THREE.Group()
+          mesh.add(new THREE.Mesh(bomberGeo[team], mat))
+          const glow = new THREE.Mesh(blastGeo, glowMat[team])
+          glow.scale.setScalar(0.5); glow.position.set(0, 0, -1.4); mesh.add(glow)
+          const home = new THREE.Vector3(sx + (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, -16 + i * 8)
+          const jumpFrom = home.clone().addScaledVector(axis, 95)
+          mesh.position.copy(home)
+          mesh.scale.setScalar(BOMBER_SCALE)
+          mesh.visible = false
+          scene.add(mesh)
+          ships.push({
+            mesh, mat, team, hp: BOMBER_HP, alive: false, pos: home.clone(), vel: new THREE.Vector3(),
+            name: team === 'blue' ? 'Blue Bomber' : 'Red Bomber', bIndex: i,
+            fireCd: 1 + Math.random() * 1.5, flash: 0,
+            isCapital: false, isBomber: true, kills: 0, weapons: 1,
+            maxSpeed: BOMBER_SPEED, minSpeed: BOMBER_MIN, radius: 1.2, turn: TURN_RATE * 0.7,
+            standoff: STANDOFF, bound: BOUND_R, baseScale: BOMBER_SCALE,
+            home, jumpFrom, warpDur: 0.85, warping: false, entered: false, warpT: 0,
+          })
+        }
+      }
+      spawnBombers('blue')
+      spawnBombers('red')
+      // blue bombers wait for the player's "Call Bombers" order; red bombers arrive 5–15s in
+      let blueBombersLaunched = false, redBombersLaunched = false
+      const redBomberEntry = 5 + Math.random() * 10
+
       // ── Hyperspace jump-in: stage every ship far out along its flank, then
       // streak it into its formation slot before combat begins ──────────────────
       const STREAK_DUR = 0.85, CAP_LEAD = 0.6, FIGHTER_STAGGER = 0.5
@@ -876,6 +964,17 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         embers.push({ mesh: m, mat, vel: new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5 + 0.4, (Math.random() - 0.5) * 2.5), life: 0, max: 0.6 + Math.random() * 0.5 })
       }
 
+      // grey smoke puffs that trail behind a bomb and expand/fade
+      const puffs = []
+      const spawnSmoke = (pos) => {
+        const mat = smokeMatProto.clone()
+        const m = new THREE.Mesh(blastGeo, mat)
+        m.position.copy(pos)
+        m.scale.setScalar(0.22 + Math.random() * 0.16)
+        scene.add(m)
+        puffs.push({ mesh: m, mat, life: 0, max: 0.5 + Math.random() * 0.3 })
+      }
+
       const fireBolt = (shooter, target, big = false) => {
         const willHit = Math.random() > MISS_CHANCE
         _tmp.set(0, 0, 1).applyQuaternion(shooter.mesh.quaternion)        // muzzle direction
@@ -884,12 +983,13 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         const aim = target.pos.clone()
         if (!willHit) aim.add(new THREE.Vector3((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9))
         const dir = aim.sub(start).normalize()
-        const mesh = new THREE.Mesh(boltGeo, boltMat[shooter.team])
+        const bomb = !!shooter.isBomber
+        const mesh = new THREE.Mesh(bomb ? bombGeo : boltGeo, bomb ? bombMat : boltMat[shooter.team])
         if (big) mesh.scale.set(2.3, 1.5, 2.3)
         mesh.position.copy(start)
         mesh.quaternion.setFromUnitVectors(yAxis, dir)
         scene.add(mesh)
-        bolts.push({ mesh, dir, target, willHit, life: 0, shooter })
+        bolts.push({ mesh, dir, target, willHit, life: 0, shooter, dmg: bomb ? BOMB_DMG : 1, bomb, maxLife: bomb ? BOMB_LIFE : 2.2, smokeCd: 0 })
         audioRef.current?.playLaser(shooter.team)
       }
 
@@ -916,8 +1016,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         }].slice(-7))
       }
 
-      const damage = (ship, killer) => {
-        ship.hp -= 1
+      const damage = (ship, killer, amount = 1) => {
+        ship.hp -= amount
         ship.flash = 0.12
         // capital crosses 25% shield → critical-damage broadcast (once per ship)
         if (ship.isCapital && ship.alive && !ship.commsCritical && ship.hp <= CAP_HP * 0.25 && ship.hp > 0) {
@@ -927,6 +1027,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         if (ship.hp <= 0 && ship.alive) {
           ship.alive = false
           if (killer) addKill(killer, ship)
+          // grey out the destroyed bomber in the blue bomber roster
+          if (ship.isBomber && ship.team === 'blue') setBlueBomberAlive(prev => prev.map((a, i) => i === ship.bIndex ? false : a))
           if (ship.isCapital) {
             // begin the drawn-out death; the hull stays as drifting wreckage
             ship.driftVel = _tmp.set(0, 0, 1).applyQuaternion(ship.mesh.quaternion).multiplyScalar(0.9).clone()
@@ -988,6 +1090,17 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         introT += dt
         const intro = introT < INTRO_TOTAL
 
+        // warp in a bomber wave: set them live + animating, with one jump cue
+        const launchBombers = (team) => {
+          audioRef.current?.playJump()
+          for (const b of ships) if (b.isBomber && b.team === team) { b.warping = true; b.alive = true; b.mesh.visible = true; b.warpT = 0 }
+        }
+        // blue bombers wait for the player's order; red bombers arrive at a random time
+        if (!gameOver) {
+          if (!blueBombersLaunched && callBombersRef.current) { blueBombersLaunched = true; launchBombers('blue') }
+          if (!redBombersLaunched && t >= redBomberEntry)     { redBombersLaunched = true; launchBombers('red') }
+        }
+
         // ── Ships: steer (seek nearest enemy + separation + bounds), then fire ──
         for (const s of ships) {
           if (!s.alive) continue
@@ -1003,21 +1116,37 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale * stretch)
             continue
           }
+          // bombers streak in on their own delayed warp
+          if (s.isBomber && !s.entered) {
+            s.warpT += dt
+            const p = Math.min(1, s.warpT / s.warpDur)
+            const e = 1 - Math.pow(1 - p, 3)
+            s.pos.lerpVectors(s.jumpFrom, s.home, e)
+            s.mesh.position.copy(s.pos)
+            orient(s.mesh, _dir.subVectors(s.home, s.jumpFrom))
+            const stretch = 1 + Math.pow(1 - p, 3) * 12
+            s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale * stretch)
+            if (p >= 1) { s.entered = true; s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale) }
+            continue
+          }
           if (s.mesh.scale.z !== s.baseScale) s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale)
 
-          // find nearest living enemy (and nearest enemy fighter)
-          let nearest = null, nd = Infinity, nearestFighter = null, nfd = Infinity
+          // find nearest living enemy (plus nearest enemy fighter / bomber)
+          let nearest = null, nd = Infinity, nearestFighter = null, nfd = Infinity, nearestBomber = null, nbd = Infinity
           for (const e of ships) {
             if (!e.alive || e.team === s.team) continue
             const d = s.pos.distanceToSquared(e.pos)
             if (d < nd) { nd = d; nearest = e }
-            if (!e.isCapital && d < nfd) { nfd = d; nearestFighter = e }
+            if (e.isBomber) { if (d < nbd) { nbd = d; nearestBomber = e } }
+            else if (!e.isCapital && d < nfd) { nfd = d; nearestFighter = e }
           }
-          // blue fighters obey the player's targeting tactic; everyone else hits nearest
+          // blue fighters obey the player's targeting tactic; everyone else hits nearest.
+          // a nearby enemy bomber is a priority kill for any fighter
+          const tac = (s.team === 'blue' && !s.isCapital && !s.isBomber) ? fighterTacticRef.current : 'all'
           let target = nearest
-          if (s.team === 'blue' && !s.isCapital) {
-            const tac = fighterTacticRef.current
+          if (!s.isCapital && !s.isBomber) {
             if (tac === 'capital') target = (redCapital && redCapital.alive) ? redCapital : nearest
+            else if (nearestBomber && nbd < 22 * 22) target = nearestBomber
             else if (tac === 'fighters') target = nearestFighter || nearest
           }
 
@@ -1040,9 +1169,18 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             s.mesh.position.copy(s.pos)
           } else {
             _acc.set(0, 0, 0)
-            // blue fighters can be ordered to screen their flagship instead of charging
-            const screening = s.team === 'blue' && fighterManoeuvreRef.current === 'screen' && blueCapital && blueCapital.alive
-            if (screening) {
+            const enemyCap = s.team === 'blue' ? redCapital : blueCapital
+            // blue fighters (not bombers) can be ordered to screen their flagship
+            const screening = s.team === 'blue' && !s.isBomber && fighterManoeuvreRef.current === 'screen' && blueCapital && blueCapital.alive
+            if (s.isBomber && enemyCap && enemyCap.alive) {
+              // run to the enemy flagship and orbit it, dropping bombs
+              _tmp.subVectors(s.pos, enemyCap.pos)            // outward radial
+              const dist = _tmp.length() || 1
+              _tmp.divideScalar(dist)
+              _acc.addScaledVector(_tmp, THREE.MathUtils.clamp((enemyCap.radius + 6 - dist) * 0.7, -6, 6))  // hold a tight bombing orbit
+              _tan.crossVectors(UP, _tmp).normalize()
+              _acc.addScaledVector(_tan, 5)                   // circle the target
+            } else if (screening) {
               // hold a protective ring around the friendly capital (it still fires on enemies)
               _tmp.subVectors(blueCapital.pos, s.pos)
               const dist = _tmp.length() || 1
@@ -1072,10 +1210,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
                 _acc.addScaledVector(_tmp, w)
               }
             }
-            // wander + keep inside the arena
-            _acc.x += (Math.random() - 0.5) * 5
-            _acc.y += (Math.random() - 0.5) * 4
-            _acc.z += (Math.random() - 0.5) * 5
+            // wander + keep inside the arena (bombers stay purposeful, less jitter)
+            const wj = s.isBomber ? 1.5 : 5
+            _acc.x += (Math.random() - 0.5) * wj
+            _acc.y += (Math.random() - 0.5) * (s.isBomber ? 1.2 : 4)
+            _acc.z += (Math.random() - 0.5) * wj
             const r = s.pos.length()
             if (r > s.bound) _acc.addScaledVector(_tmp.copy(s.pos).normalize(), -(r - s.bound) * 2.2)
 
@@ -1112,7 +1251,13 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           if (!gameOver) {
             s.fireCd -= dt
             if (s.fireCd <= 0) {
-              if (s.weapons > 1) {
+              if (s.isBomber) {
+                // bombers ONLY attack capital ships — bomb the enemy flagship in close range
+                const enemyCap = s.team === 'blue' ? redCapital : blueCapital
+                if (enemyCap && enemyCap.alive && s.pos.distanceTo(enemyCap.pos) < BOMB_RANGE) {
+                  fireBolt(s, enemyCap); s.fireCd = 1.6 + Math.random() * 1.4
+                }
+              } else if (s.weapons > 1) {
                 // capital: rapid multi-bolt broadside spread across the enemy fleet
                 const enemies = ships.filter(e => e.alive && e.team !== s.team)
                 if (enemies.length) for (let k = 0; k < s.weapons; k++) fireBolt(s, enemies[(Math.random() * enemies.length) | 0], true)
@@ -1133,7 +1278,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           if (b.willHit && b.target.alive) {
             _tmp.subVectors(b.target.pos, b.mesh.position)
             const d = _tmp.length()
-            if (d < 1.3) { damage(b.target, b.shooter); done = true }
+            if (d < 1.3) { damage(b.target, b.shooter, b.dmg); done = true }
             else {
               b.dir.lerp(_tmp.normalize(), 0.12).normalize()
               b.mesh.quaternion.setFromUnitVectors(yAxis, b.dir)
@@ -1141,7 +1286,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           }
           if (!done) {
             b.mesh.position.addScaledVector(b.dir, BOLT_SPEED * dt)
-            if (b.life > 2.2) done = true
+            if (b.life > b.maxLife) done = true
+          }
+          if (b.bomb) {   // lay a smoke trail behind the bomb
+            b.smokeCd -= dt
+            if (b.smokeCd <= 0) { spawnSmoke(b.mesh.position); b.smokeCd = 0.03 }
           }
           if (done) { scene.remove(b.mesh); bolts.splice(i, 1) }
         }
@@ -1203,6 +1352,15 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           em.mesh.scale.multiplyScalar(0.986)
           em.mat.opacity = Math.max(0, 0.9 * (1 - em.life / em.max))
           if (em.life >= em.max) { scene.remove(em.mesh); em.mat.dispose(); embers.splice(i, 1) }
+        }
+
+        // ── Bomb smoke trail: expand + fade ─────────────────────────────────────
+        for (let i = puffs.length - 1; i >= 0; i--) {
+          const p = puffs[i]
+          p.life += dt
+          p.mesh.scale.multiplyScalar(1 + dt * 1.6)
+          p.mat.opacity = Math.max(0, 0.5 * (1 - p.life / p.max))
+          if (p.life >= p.max) { scene.remove(p.mesh); p.mat.dispose(); puffs.splice(i, 1) }
         }
 
         // ── Capital ship labels (name + shield %), projected above each hull ────
@@ -1291,6 +1449,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         disposables.forEach(d => d.dispose && d.dispose())
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
         embers.forEach(e => e.mat.dispose())
+        puffs.forEach(p => p.mat.dispose())
         composer.dispose && composer.dispose()
         renderer.dispose()
         if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement)
@@ -1302,6 +1461,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   }, [runId, started])
 
   const startBattle = () => { setWinner(null); setKills([]); setStats(null); setStarted(true); setRunId(k => k + 1) }
+  // order the blue bomber wing to warp in (one-way; the loop picks up the ref)
+  const callBombers = () => { callBombersRef.current = true; setBombersCalled(true) }
 
   return (
     <div id="battle-screen">
@@ -1425,6 +1586,21 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             <div className="sb-tac-btns">
               <button className={`sb-tac-btn${fighterManoeuvre === 'free' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterManoeuvre('free')}>FREE MANOEUVRE</button>
               <button className={`sb-tac-btn${fighterManoeuvre === 'screen' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterManoeuvre('screen')}>SCREEN CAPITAL SHIP</button>
+            </div>
+          </div>
+          <div className="sb-tac-group">
+            <div className="sb-tac-label">BOMBER WING</div>
+            <div className="sb-tac-bombers">
+              <button className={`sb-tac-btn${bombersCalled ? ' sb-tac-btn--on' : ''}`} onClick={callBombers} disabled={bombersCalled}>
+                {bombersCalled ? 'BOMBERS INBOUND' : 'CALL BOMBERS'}
+              </button>
+              <div className="sb-tac-bomber-icons">
+                {blueBomberAlive.map((alive, i) => (
+                  <span key={i} className={`sb-tac-bomber${alive ? '' : ' sb-tac-bomber--dead'}`}>
+                    <ShipSprite team="blue" kind="bomber" />
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
