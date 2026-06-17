@@ -1120,10 +1120,13 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         if (redCountRef.current)  redCountRef.current.textContent  = c.red
         // Fleet strength /1000: every ship that isn't destroyed or warped out still
         // counts (reserves and unarrived bombers included), so it only falls on real losses.
+        // The flagship's contribution scales with its remaining hull — full PTS_FLAGSHIP
+        // at 100% HP, falling linearly to 0 as it's whittled down — so battle damage to
+        // the capital erodes fleet power before it's actually destroyed.
         const strength = { blue: 0, red: 0 }
-        for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? PTS_FLAGSHIP : s.isBomber ? PTS_BOMBER : PTS_FIGHTER
-        if (blueStrengthRef.current) blueStrengthRef.current.textContent = strength.blue
-        if (redStrengthRef.current)  redStrengthRef.current.textContent  = strength.red
+        for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? PTS_FLAGSHIP * Math.max(0, s.hp) / CAP_HP : s.isBomber ? PTS_BOMBER : PTS_FIGHTER
+        if (blueStrengthRef.current) blueStrengthRef.current.textContent = Math.round(strength.blue)
+        if (redStrengthRef.current)  redStrengthRef.current.textContent  = Math.round(strength.red)
         if (powerBarRef.current) {                                   // ratio bar: blue's share of total strength
           const tot = strength.blue + strength.red
           powerBarRef.current.style.width = (tot > 0 ? strength.blue / tot * 100 : 50) + '%'

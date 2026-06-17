@@ -3,7 +3,8 @@ import * as THREE from 'three'
 import {
   TEAMS, CAP_HP, CAP_WEAPONS, CAP_SPEED, ARMOR_FLAGSHIP, BOMBER_HP, BOMB_DMG, BOMBER_SPEED,
   ARMOR_BOMBER, SHIP_HP, MAX_SPEED, ARMOR_FIGHTER, splitCapName, compStrength, FLEET_BUDGET,
-  COMMS_PORTRAIT, PTS_BOMBER, PTS_FIGHTER, RED_CAP_NAME,
+  COMMS_PORTRAIT, PTS_BOMBER, PTS_FIGHTER, PTS_FLAGSHIP, RED_CAP_NAME,
+  RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, FIELD_FIGHTER_CAP, REINFORCE_INTERVAL,
 } from './constants'
 import { buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber } from './geometry'
 
@@ -170,9 +171,136 @@ function TeamRoster({ team, capName, onCycleName, comp, onAdjust }) {
   )
 }
 
+// A small ship glyph + spec block used in the manual's "Order of Battle" section.
+function ManualShip({ kind, name, cost, children }) {
+  return (
+    <div className="sb-instr-ship">
+      <span className="sb-instr-ship-icon"><ShipSprite team="blue" kind={kind} /></span>
+      <div className="sb-instr-ship-text">
+        <h4>{name} <span className="sb-instr-ship-cost">{cost} pts</span></h4>
+        <p>{children}</p>
+      </div>
+    </div>
+  )
+}
+
+// Nearly full-page "field manual" overlay explaining how to play. Click the
+// backdrop or the × to dismiss. Content is static — pulled from the live tuning
+// values so the numbers stay honest.
+function InstructionsModal({ onClose }) {
+  return (
+    <div className="sb-instr-overlay" onClick={onClose}>
+      <div className="sb-instr-box" onClick={(e) => e.stopPropagation()}>
+        <div className="sb-instr-head">
+          <div className="sb-instr-title">⬢ FLEET ENGAGEMENT // FIELD MANUAL</div>
+          <button className="sb-instr-close" onClick={onClose} aria-label="Close manual">×</button>
+        </div>
+        <div className="sb-instr-body">
+          <p className="sb-instr-intro">
+            Two fleets meet in a war of attrition — your <b className="sb-instr-blue">Blue fleet</b> against
+            the <b className="sb-instr-red">Red</b> enemy. You build your fleet before the battle, then
+            command it live. The enemy mirrors your options under AI control. Wipe them out, or break their
+            nerve until they retreat.
+          </p>
+
+          <section className="sb-instr-sec">
+            <h3>Objective</h3>
+            <p>
+              Destroy the enemy fleet, or grind it down until it routs. A fleet warps out of the fight the
+              moment its strength falls below <b>{RETREAT_STRENGTH}</b> — or below <b>{MORALE_BROKEN_STRENGTH}</b> once
+              its flagship has been destroyed and morale has broken. The last fleet left in the field wins.
+            </p>
+          </section>
+
+          <section className="sb-instr-sec">
+            <h3>Fleet Composition</h3>
+            <p>
+              You have a <b>{FLEET_BUDGET}-point</b> budget. Spend it with the <b>+</b> / <b>−</b> controls
+              beside each ship type on the briefing screen — the strength readout at the bottom of each roster
+              shows what you've committed. Three classes of ship:
+            </p>
+            <div className="sb-instr-ships">
+              <ManualShip kind="capital" name="Capital Ship — Flagship" cost={PTS_FLAGSHIP}>
+                Your command vessel: {CAP_HP} HP and {ARMOR_FLAGSHIP}% armour, but ponderously slow. Fires
+                heavy broadsides ({CAP_WEAPONS} bolts a volley) whose fire <b>ignores enemy armour</b>. Every
+                fleet has exactly one. Lose it and your fleet's morale breaks — it will rout far sooner.
+              </ManualShip>
+              <ManualShip kind="bomber" name="Heavy Bomber" cost={PTS_BOMBER}>
+                {BOMBER_HP} HP, {ARMOR_BOMBER}% armour, slow but tough. Its bombs hit for <b>{BOMB_DMG}</b> at
+                90% accuracy but <b>only target the enemy flagship</b>. A secondary point-defence laser swats
+                nearby fighters (or enemy bombers if no fighters are close). Murderous against a capital — if
+                you can escort it through the fighter screen.
+              </ManualShip>
+              <ManualShip kind="fighter" name="Fighter — Interceptor" cost={PTS_FIGHTER}>
+                {SHIP_HP} HP, no armour, fast and cheap. The all-rounder that engages anything. Only
+                <b> {FIELD_FIGHTER_CAP}</b> can be on the field per side at once; the rest wait in reserve and
+                warp in as reinforcements every {REINFORCE_INTERVAL}s to top the line back up.
+              </ManualShip>
+            </div>
+          </section>
+
+          <section className="sb-instr-sec">
+            <h3>Fleet Strength</h3>
+            <p>
+              The bar across the top of the battle shows each fleet's live strength out of {FLEET_BUDGET},
+              summed from the point value of every surviving ship (reserves included). The dividing line
+              shifts toward whoever is winning. Watch it — a fleet nearing the rout threshold is about to break.
+            </p>
+          </section>
+
+          <section className="sb-instr-sec">
+            <h3>Armour</h3>
+            <p>
+              Armour is the percentage chance a ship <b>shrugs off an incoming fighter-laser hit</b> entirely.
+              Bombs and capital-ship fire always connect — they ignore armour completely. So armour buys
+              protection against massed fighters, but nothing against bombers or flagships.
+            </p>
+          </section>
+
+          <section className="sb-instr-sec">
+            <h3>Tactical Command</h3>
+            <p>You issue these orders to your Blue fleet at any time during the battle:</p>
+            <ul className="sb-instr-list">
+              <li><b>Capital Ship — Hold Back / Directly Engage:</b> keep your flagship on its safe rear patrol, or drive it into the centre of the melee.</li>
+              <li><b>Fighter Control — Default:</b> engage the nearest enemy, prioritising any bomber that gets close.</li>
+              <li><b>Fighter Control — Screen Carrier:</b> fighters hold a defensive ring around your flagship instead of pushing forward.</li>
+              <li><b>Fighter Control — Pursue Bombers:</b> hunt down enemy bombers first — the counter to an enemy bomber run.</li>
+              <li><b>Fighter Control — Attack Capital Ship:</b> throw your fighters at the enemy flagship.</li>
+            </ul>
+          </section>
+
+          <section className="sb-instr-sec">
+            <h3>Deploying Bombers</h3>
+            <p>
+              Your bombers don't start on the field. Hit <b>CALL BOMBERS</b> to jump them in — time it for a
+              moment when the enemy's fighter screen is thin, or they'll be shot down before they reach the
+              flagship. You commit them once, so make the run count.
+            </p>
+          </section>
+
+          <section className="sb-instr-sec">
+            <h3>Camera &amp; Controls</h3>
+            <p>
+              Drag to orbit, scroll to zoom, and click any ship to track it in third-person. The sim-speed
+              buttons (<b>0</b> / <b>0.5×</b> / <b>1×</b>) pause or slow time so you can read the battle, and
+              Restart Combat sets up a fresh engagement.
+            </p>
+          </section>
+
+          <p className="sb-instr-tip">
+            ▸ Fighters win the brawl in the middle; bombers win the war by killing the flagship. Balance the
+            budget, screen your bombers, and time their run.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // The pre-battle order-of-battle screen: a START control over both fleet rosters.
 // State (composition, names) lives in the parent and is passed in as props.
 function Briefing({ comp, blueCapName, onCycleBlueName, onAdjust, onStart }) {
+  const [showInstr, setShowInstr] = useState(false)
   return (
     <div className="sb-briefing">
       <div className="sb-brief-head">
@@ -183,6 +311,13 @@ function Briefing({ comp, blueCapName, onCycleBlueName, onAdjust, onStart }) {
         <TeamRoster team="blue" capName={blueCapName} onCycleName={onCycleBlueName} comp={comp.blue} onAdjust={(kind, d) => onAdjust('blue', kind, d)} />
         <TeamRoster team="red" capName={RED_CAP_NAME} comp={comp.red} onAdjust={(kind, d) => onAdjust('red', kind, d)} />
       </div>
+      <button className="sb-brief-instr" onClick={() => setShowInstr(true)}>
+        <span className="sb-brief-instr-i" aria-hidden="true">
+          <svg viewBox="0 0 12 12"><circle cx="6" cy="3" r="1.3" /><rect x="4.85" y="4.9" width="2.3" height="5" rx="1.15" /></svg>
+        </span>
+        INSTRUCTIONS
+      </button>
+      {showInstr && <InstructionsModal onClose={() => setShowInstr(false)} />}
     </div>
   )
 }
