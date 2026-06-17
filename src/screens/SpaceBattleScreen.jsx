@@ -23,6 +23,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const redCountRef  = useRef(null)
   const blueStrengthRef = useRef(null)
   const redStrengthRef  = useRef(null)
+  const powerBarRef     = useRef(null)
   const timerRef     = useRef(null)             // realtime battle clock DOM node
   const [simSpeed, setSimSpeed] = useState(1)   // 0 (paused) | 0.5 | 1
   const simSpeedRef = useRef(1)
@@ -1110,6 +1111,10 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? PTS_FLAGSHIP : s.isBomber ? PTS_BOMBER : PTS_FIGHTER
         if (blueStrengthRef.current) blueStrengthRef.current.textContent = strength.blue
         if (redStrengthRef.current)  redStrengthRef.current.textContent  = strength.red
+        if (powerBarRef.current) {                                   // ratio bar: blue's share of total strength
+          const tot = strength.blue + strength.red
+          powerBarRef.current.style.width = (tot > 0 ? strength.blue / tot * 100 : 50) + '%'
+        }
         // Reinforcements: on a fixed cadence, top each team's on-field fighters back up
         // to the cap from its reserve stockpile, warping the fresh wave in from the flank.
         if (!gameOver && t >= reinforceAt) {
@@ -1302,6 +1307,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           </div>
           <div className="sb-strength-row">
             <span className="sb-strength sb-strength--blue">STRENGTH <span ref={blueStrengthRef}>{compStrength(comp.blue)}</span>/{FLEET_BUDGET}</span>
+            <div className="sb-power-bar"><div className="sb-power-bar-blue" ref={powerBarRef} /></div>
             <span className="sb-strength sb-strength--red"><span ref={redStrengthRef}>{compStrength(comp.red)}</span>/{FLEET_BUDGET} STRENGTH</span>
           </div>
         </div>

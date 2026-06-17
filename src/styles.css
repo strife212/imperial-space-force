@@ -5824,14 +5824,29 @@ body {
 }
 .sb-score-row { display: flex; align-items: center; justify-content: center; gap: 22px; }
 .sb-strength-row {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 22px;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
   padding-top: 5px; border-top: 1px solid var(--c-line-2);
   font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--c-ash-dim);
 }
+.sb-strength { white-space: nowrap; }
 .sb-strength span { font-weight: 700; font-family: var(--font-mono); letter-spacing: 0.04em; }
 .sb-strength--blue span { color: var(--c-scarlet); }
 .sb-strength--red  span { color: var(--c-bad); }
+/* Remaining-force ratio bar: blue fills from the left over a red track; the
+   boundary starts at 50% and shifts with each side's live strength. */
+.sb-power-bar {
+  flex: 1; min-width: 70px; height: 7px;
+  border-radius: 3px; overflow: hidden;
+  background: var(--c-bad);
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.45);
+}
+.sb-power-bar-blue {
+  width: 50%; height: 100%;
+  background: var(--c-scarlet);
+  box-shadow: 0 0 7px rgba(26, 128, 255, 0.75);
+  transition: width 0.25s ease;
+}
 .sb-score {
   font-size: 13px;
   letter-spacing: 0.2em;
