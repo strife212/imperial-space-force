@@ -8,10 +8,10 @@ import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
 import {
   FLEET_SIZE, SHIP_HP, BOMBER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
-  BOMB_DMG, BOMB_RANGE, BOMB_LIFE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
-  BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, TURN_RATE,
+  BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
+  BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
-  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, FLEET_BUDGET, compStrength, TEAMS, SOUND_FILES,
+  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, FLEET_BUDGET, RETREAT_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
 import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, makeBackdrop } from './battle/geometry'
@@ -567,7 +567,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           ships.push({
             mesh, mat, team, hp: BOMBER_HP, alive: false, pos: home.clone(), vel: new THREE.Vector3(),
             name: team === 'blue' ? 'Blue Bomber' : 'Red Bomber', bIndex: i,
-            fireCd: 1 + Math.random() * 1.5, flash: 0,
+            fireCd: 1 + Math.random() * 1.5, pdCd: 0.5 + Math.random() * 1.5, flash: 0,
             isCapital: false, isBomber: true, kills: 0, weapons: 1, armor: ARMOR_BOMBER,
             maxSpeed: BOMBER_SPEED, minSpeed: BOMBER_MIN, radius: 1.2, turn: TURN_RATE * 0.7,
             standoff: STANDOFF, bound: BOUND_R, baseScale: BOMBER_SCALE,
@@ -639,15 +639,14 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         puffs.push({ mesh: m, mat, life: 0, max: 0.5 + Math.random() * 0.3 })
       }
 
-      const fireBolt = (shooter, target, big = false) => {
-        const willHit = Math.random() > (shooter.isBomber ? BOMB_MISS_CHANCE : MISS_CHANCE)
+      const fireBolt = (shooter, target, big = false, bomb = !!shooter.isBomber) => {
+        const willHit = Math.random() > (bomb ? BOMB_MISS_CHANCE : MISS_CHANCE)   // lasers (incl. bomber PD) use fighter accuracy
         _tmp.set(0, 0, 1).applyQuaternion(shooter.mesh.quaternion)        // muzzle direction
         const start = shooter.pos.clone().addScaledVector(_tmp, big ? 2.6 : 1.0)
         if (big) start.add(new THREE.Vector3((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 3))  // spread across hardpoints
         const aim = target.pos.clone()
         if (!willHit) aim.add(new THREE.Vector3((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9))
         const dir = aim.sub(start).normalize()
-        const bomb = !!shooter.isBomber
         const mesh = new THREE.Mesh(bomb ? bombGeo : boltGeo, bomb ? bombMat : boltMat[shooter.team])
         if (big) mesh.scale.set(2.3, 1.5, 2.3)
         mesh.position.copy(start)
@@ -959,10 +958,22 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             }
           }
           if (!gameOver && s.team !== retreatTeam) {
+            // bomber point-defence laser: a purely defensive laser (no chasing) that fires
+            // at the nearest enemy fighter only while one strays within range
+            if (s.isBomber) {
+              s.pdCd -= dt
+              if (s.pdCd <= 0) {
+                const pdSq = PD_RANGE * PD_RANGE
+                // point-defence: prefer a nearby enemy fighter, else fall back to a nearby enemy bomber
+                const pdTarget = (nearestFighter && nfd < pdSq) ? nearestFighter
+                  : (nearestBomber && nbd < pdSq) ? nearestBomber : null
+                if (pdTarget) { fireBolt(s, pdTarget, false, false); s.pdCd = 1.2 + Math.random() * 2.8 }   // laser, not a bomb
+              }
+            }
             s.fireCd -= dt
             if (s.fireCd <= 0) {
               if (s.isBomber) {
-                // bombers ONLY attack capital ships — bomb the enemy flagship in close range
+                // bombers ONLY bomb capital ships — bomb the enemy flagship in close range
                 const enemyCap = s.team === 'blue' ? redCapital : blueCapital
                 if (enemyCap && enemyCap.alive && s.pos.distanceTo(enemyCap.pos) < BOMB_RANGE) {
                   fireBolt(s, enemyCap); s.fireCd = 1.6 + Math.random() * 1.4
@@ -972,8 +983,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
                 const enemies = ships.filter(e => e.alive && e.team !== s.team)
                 if (enemies.length) for (let k = 0; k < s.weapons; k++) fireBolt(s, enemies[(Math.random() * enemies.length) | 0], true)
                 s.fireCd = 0.7 + Math.random() * 0.9
-              } else if (target) {
-                fireBolt(s, target)
+              } else if (target && s.pos.distanceToSquared(target.pos) < FIGHTER_RANGE * FIGHTER_RANGE) {
+                fireBolt(s, target)   // fighters hold fire until the target is within range
                 s.fireCd = 1.2 + Math.random() * 2.8
               }
             }
@@ -1136,24 +1147,19 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             if (sent) audioRef.current?.playJump()
           }
         }
-        // A team reduced to bombers alone (flagship + every fighter gone) breaks and
-        // retreats: broadcast the order, then warp its bombers out 3s later — which,
-        // by emptying the team, ends the engagement.
+        // A fleet whose remaining power falls below the threshold (but isn't already
+        // wiped) breaks and retreats: broadcast the order, then warp ALL its surviving
+        // ships out 3s later — which, by emptying the team, ends the engagement.
         if (!gameOver && !retreatTeam) {
           for (const tm of ['blue', 'red']) {
-            let cap = false, fighters = false, bombers = false
-            for (const s of ships) {
-              if (s.team !== tm || !s.alive) continue
-              if (s.isCapital) cap = true; else if (s.isBomber) bombers = true; else fighters = true
-            }
-            if (bombers && !fighters && !cap && reserveLeft[tm] === 0) { retreatTeam = tm; retreatTime = t; showComms(tm, 'Fleet integrity lost! Retreat!'); break }
+            if (strength[tm] > 0 && strength[tm] < RETREAT_STRENGTH) { retreatTeam = tm; retreatTime = t; showComms(tm, 'Fleet integrity lost! Retreat!'); break }
           }
         }
         if (retreatTeam && !retreatWarped && t - retreatTime >= 3) {
           retreatWarped = true
           audioRef.current?.playJump()
-          for (const b of ships) if (b.isBomber && b.team === retreatTeam && b.alive) {
-            b.warpOut = true; b.warpT = 0
+          for (const b of ships) if (b.team === retreatTeam && b.alive) {
+            b.warpOut = true; b.warpT = 0; b.warpDur = 0.8
             b.warpFrom = b.pos.clone()
             b.warpTo = b.pos.clone().addScaledVector(jumpAxis[retreatTeam], 95)
           }

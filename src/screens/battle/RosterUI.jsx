@@ -57,7 +57,7 @@ function CountAdjust({ count, cost, free, onAdjust }) {
 // ── Pre-battle ship info tooltips ────────────────────────────────────────────
 const SHIP_INFO = {
   capital: { hp: CAP_HP,    dmg: `${CAP_WEAPONS} × 1`, speed: CAP_SPEED,    armor: ARMOR_FLAGSHIP, notes: [] },
-  bomber:  { hp: BOMBER_HP, dmg: BOMB_DMG,             speed: BOMBER_SPEED, armor: ARMOR_BOMBER,   notes: ['Can only target capital ships'] },
+  bomber:  { hp: BOMBER_HP, dmg: `${BOMB_DMG} / 1`,    speed: BOMBER_SPEED, armor: ARMOR_BOMBER,   notes: ['Bomb only targets capital ships', 'Point defence laser targets fighters'] },
   fighter: { hp: SHIP_HP,   dmg: 1,                    speed: MAX_SPEED,    armor: ARMOR_FIGHTER,  notes: [] },
 }
 const shipClass = (kind, team) =>

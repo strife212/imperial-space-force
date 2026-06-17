@@ -9,6 +9,7 @@ const BOMBER_SCALE = 1.43    // slightly larger than fighters
 const BOMB_DMG     = 5       // 5× a regular fighter bolt
 const BOMB_RANGE   = 30      // bombers must close to this range before bombing
 const BOMB_LIFE    = 1.0     // bombs are short-ranged — expire sooner than bolts
+const PD_RANGE     = 30      // bomber point-defence laser only engages fighters within this range
 const CAP_HP      = 60       // capital ship — tanky flagship
 const CAP_SPEED   = 1.25     // capital ships lumber (very slow & ponderous)
 const CAP_WEAPONS = 4        // bolts per capital volley
@@ -20,15 +21,16 @@ const MIN_SPEED   = 2.6
 const SEP_RADIUS  = 3.0
 const BOUND_R     = 34       // ships steer back inside this radius
 const STANDOFF    = 14       // preferred engagement range — keeps a frontline gap
+const FIGHTER_RANGE = 50     // fighters hold fire past this (≈1.5× the BOUND_R arena radius)
 const TURN_RATE   = 7        // orientation slerp responsiveness
-const FIELD_FIGHTER_CAP = 30 // max fighters a team can have on the field at once
+const FIELD_FIGHTER_CAP = 25 // max fighters a team can have on the field at once
 const REINFORCE_INTERVAL = 10 // seconds between reinforcement waves from the reserve
 // Armour: % chance an incoming hit that connects is deflected to zero damage.
 // Only fighter bolts are mitigated — capital-ship attacks and bomber bombs
 // always land in full.
 const ARMOR_FIGHTER  = 0
-const ARMOR_BOMBER   = 8
-const ARMOR_FLAGSHIP = 12
+const ARMOR_BOMBER   = 10
+const ARMOR_FLAGSHIP = 15
 
 // Fleet "strength" valuation, balanced so the standard fleet (1 flagship +
 // 5 bombers + 25 fighters) totals exactly 1000. Started from HP × DPS, then
@@ -39,6 +41,7 @@ const PTS_FIGHTER  = 10
 const PTS_BOMBER   = 40
 const PTS_FLAGSHIP = 550
 const FLEET_BUDGET = 1000
+const RETREAT_STRENGTH = 100 // a fleet that drops below this remaining power breaks and warps out
 const compStrength = (c) => c.fighters * PTS_FIGHTER + c.bombers * PTS_BOMBER + PTS_FLAGSHIP
 const TEAMS = {
   blue: { color: 0x3a93ff, bolt: 0x8fc6ff },
@@ -98,10 +101,10 @@ const VICTORY_SEGMENTS = {
 
 export {
   FLEET_SIZE, SHIP_HP, BOMBER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
-  BOMB_DMG, BOMB_RANGE, BOMB_LIFE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
-  BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, TURN_RATE,
+  BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
+  BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
-  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, FLEET_BUDGET, compStrength, TEAMS, SOUND_FILES,
+  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, FLEET_BUDGET, RETREAT_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, BLUE_CAP_NAMES, CAP_PREFIX, randomBlueCapName, splitCapName, COMMS_PORTRAIT,
   VICTORY_SEGMENTS,
 }
