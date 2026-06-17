@@ -119,11 +119,12 @@ const STANDOFF    = 14       // preferred engagement range — keeps a frontline
 const TURN_RATE   = 7        // orientation slerp responsiveness
 const FIELD_FIGHTER_CAP = 30 // max fighters a team can have on the field at once
 const REINFORCE_INTERVAL = 10 // seconds between reinforcement waves from the reserve
-// Armour: % chance an incoming bolt that connects is deflected to zero damage.
-// Applies to laser bolts only — bomber bombs always land in full.
+// Armour: % chance an incoming hit that connects is deflected to zero damage.
+// Only fighter bolts are mitigated — capital-ship attacks and bomber bombs
+// always land in full.
 const ARMOR_FIGHTER  = 0
-const ARMOR_BOMBER   = 5
-const ARMOR_FLAGSHIP = 10
+const ARMOR_BOMBER   = 8
+const ARMOR_FLAGSHIP = 12
 
 // Fleet "strength" valuation, balanced so the standard fleet (1 flagship +
 // 5 bombers + 25 fighters) totals exactly 1000. Started from HP × DPS, then
@@ -1202,7 +1203,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       }
 
       const damage = (ship, killer, amount = 1, bomb = false) => {
-        if (!bomb && Math.random() * 100 < ship.armor) return   // armour deflects the bolt — no damage
+        if (!bomb && !killer?.isCapital && Math.random() * 100 < ship.armor) return   // armour deflects fighter bolts only — capital fire & bombs ignore it
         ship.hp -= amount
         ship.flash = 0.12
         // capital crosses 25% shield → critical-damage broadcast (once per ship)
@@ -1801,7 +1802,6 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         )}
 
         <div className="sb-cap-label sb-cap-label--blue" ref={blueCapRef}>
-          <div className="sb-cap-prefix">{CAP_PREFIX}</div>
           <div className="sb-cap-name">{splitCapName(blueCapName).name}</div>
           <div className="sb-cap-shield">SHIELD <span ref={blueShieldRef}>100</span>%</div>
           <div className="sb-cap-reserve" ref={blueReserveRef} style={{ display: 'none' }}></div>
