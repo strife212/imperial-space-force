@@ -1459,6 +1459,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   }, [runId, started])
 
   const startBattle = () => { setWinner(null); setKills([]); setStats(null); setStarted(true); setRunId(k => k + 1) }
+  // restart the engagement immediately (fresh jump-in) without returning to the briefing
+  const restartCombat = () => { setWinner(null); setStats(null); setRunId(k => k + 1) }
   // order the blue bomber wing to warp in (one-way; the loop picks up the ref)
   const callBombers = () => { callBombersRef.current = true; setBombersCalled(true) }
 
@@ -1596,6 +1598,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             </div>
           </div>
         </div>
+
+        <button className="sb-restart-top" onClick={restartCombat}>⟳ RESTART COMBAT</button>
 
         <button className={`sb-sound${muted ? ' sb-sound--off' : ''}`} onClick={() => setMuted(m => !m)}>
           {muted ? '♪ SOUND OFF' : '♪ SOUND ON'}
