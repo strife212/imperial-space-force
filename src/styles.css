@@ -6655,6 +6655,52 @@ body {
   box-shadow: 0 0 24px rgba(80, 140, 220, 0.6);
 }
 
+/* tracked-ship readout — name + live hull, below screen centre (clear of the ship) */
+.sb-track-readout {
+  position: absolute;
+  top: 66%; left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  text-align: center;
+}
+.sb-track-name {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sb-track-hpbar {
+  width: 180px;
+  height: 5px;
+  background: rgba(120, 150, 200, 0.16);
+  border: 1px solid var(--c-line-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.sb-track-hpfill {
+  height: 100%;
+  width: 100%;
+  transition: width 0.18s ease;
+}
+.sb-track-hp {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--c-ash-dim);
+}
+.sb-track-readout--blue .sb-track-name { color: var(--c-rose);  text-shadow: 0 0 10px rgba(26, 128, 255, 0.45); }
+.sb-track-readout--blue .sb-track-hpfill { background: linear-gradient(90deg, var(--c-scarlet), var(--c-rose)); }
+.sb-track-readout--blue .sb-track-hp b { color: var(--c-rose); }
+.sb-track-readout--red  .sb-track-name { color: #ff7a5a; text-shadow: 0 0 10px rgba(255, 36, 0, 0.4); }
+.sb-track-readout--red  .sb-track-hpfill { background: linear-gradient(90deg, var(--c-bad), #ff7a5a); }
+.sb-track-readout--red  .sb-track-hp b { color: #ff7a5a; }
+
 /* kill feed — bottom-right */
 .sb-killfeed {
   position: absolute;

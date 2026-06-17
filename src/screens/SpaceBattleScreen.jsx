@@ -61,7 +61,10 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const commsQueue = useRef([])                 // pending broadcasts waiting their turn
   const commsBusy  = useRef(false)              // a broadcast is currently on screen
   const [followName, setFollowName] = useState(null)  // tracked ship name (third-person view active)
+  const [followTeam, setFollowTeam] = useState(null)  // tracked ship's team (colours the readout)
   const followRef    = useRef(null)             // the ship the camera is following (or null)
+  const followHpRef  = useRef(null)             // live "remaining / max" hull text for the tracked ship
+  const followBarRef = useRef(null)             // live hull bar fill for the tracked ship
   const exitFollowRef = useRef(null)            // revert-to-tactical fn, wired up inside the scene
   const killSeq = useRef(0)
   const audioRef = useRef(null)
@@ -310,7 +313,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
     const disposables = []
     setKills([])   // fresh kill feed each battle
     setComms(null); commsQueue.current = []; commsBusy.current = false   // clear any lingering broadcasts
-    followRef.current = null; setFollowName(null)                        // start in tactical view
+    followRef.current = null; setFollowName(null); setFollowTeam(null)   // start in tactical view
     callBombersRef.current = false; setBombersCalled(false); setBlueBomberAlive(Array(compRef.current.blue.bombers).fill(true))  // bomber wing in reserve
     simSpeedRef.current = 1; setSimSpeed(1)                               // every battle starts running at 1×
     pipRef.current = null; setPipCaption(null)                           // no event highlight yet
@@ -733,6 +736,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const revertToTactical = () => {
         followRef.current = null
         setFollowName(null)
+        setFollowTeam(null)
         camera.position.copy(TAC_POS)
         controls.target.set(0, 0, 0)
         controls.enabled = true
@@ -755,7 +759,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         let o = hits[0].object
         while (o && !m2s.has(o)) o = o.parent
         const ship = o && m2s.get(o)
-        if (ship && ship.alive) { followRef.current = ship; setFollowName(ship.name); controls.enabled = false }
+        if (ship && ship.alive) { followRef.current = ship; setFollowName(ship.name); setFollowTeam(ship.team); controls.enabled = false }
       }
       renderer.domElement.addEventListener('pointerdown', onDown)
       renderer.domElement.addEventListener('pointerup', onUp)
@@ -1211,6 +1215,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           camera.position.lerp(_camGoal, 1 - Math.exp(-5 * realDt))   // realDt so it tracks even when paused
           _lookAt.copy(follow.pos).addScaledVector(_fwd, follow.isCapital ? 12 : 4)
           camera.lookAt(_lookAt)
+          // live hull readout under screen-centre for the tracked ship
+          const maxHp = follow.isCapital ? CAP_HP : follow.isBomber ? BOMBER_HP : SHIP_HP
+          const hp = Math.max(0, follow.hp)
+          if (followHpRef.current) followHpRef.current.textContent = `${Math.ceil(hp)} / ${maxHp}`
+          if (followBarRef.current) followBarRef.current.style.width = (hp / maxHp * 100) + '%'
         } else {
           controls.update()
         }
@@ -1460,6 +1469,14 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             <button className="sb-follow-exit" onClick={() => exitFollowRef.current && exitFollowRef.current()}>
               ↩ RETURN TO TACTICAL VIEW
             </button>
+          </div>
+        )}
+
+        {followName && (
+          <div className={`sb-track-readout sb-track-readout--${followTeam || 'blue'}`}>
+            <div className="sb-track-name">{followName}</div>
+            <div className="sb-track-hpbar"><div className="sb-track-hpfill" ref={followBarRef} /></div>
+            <div className="sb-track-hp">HULL <b ref={followHpRef} /></div>
           </div>
         )}
 
