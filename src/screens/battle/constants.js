@@ -3,7 +3,7 @@ const FLEET_SIZE  = 25
 const SHIP_HP     = 6
 const BOMBER_COUNT = 5       // heavy bombers per side
 const BOMBER_HP    = 10      // tankier than a fighter
-const BOMBER_SPEED = 4.05    // slower than fighters (MAX_SPEED 7.5)
+const BOMBER_SPEED = 4.5     // slower than fighters (MAX_SPEED 7.5)
 const BOMBER_MIN   = 1.62
 const BOMBER_SCALE = 1.43    // slightly larger than fighters
 const BOMB_DMG     = 5       // 5× a regular fighter bolt
@@ -30,7 +30,7 @@ const REINFORCE_INTERVAL = 10 // seconds between reinforcement waves from the re
 // always land in full.
 const ARMOR_FIGHTER  = 0
 const ARMOR_BOMBER   = 10
-const ARMOR_FLAGSHIP = 15
+const ARMOR_FLAGSHIP = 20
 
 // Fleet "strength" valuation, balanced so the standard fleet (1 flagship +
 // 5 bombers + 25 fighters) totals exactly 1000. Started from HP × DPS, then
@@ -42,6 +42,7 @@ const PTS_BOMBER   = 40
 const PTS_FLAGSHIP = 550
 const FLEET_BUDGET = 1000
 const RETREAT_STRENGTH = 100 // a fleet that drops below this remaining power breaks and warps out
+const MORALE_BROKEN_STRENGTH = 150 // higher rout threshold once a fleet's flagship is destroyed
 const compStrength = (c) => c.fighters * PTS_FIGHTER + c.bombers * PTS_BOMBER + PTS_FLAGSHIP
 const TEAMS = {
   blue: { color: 0x3a93ff, bolt: 0x8fc6ff },
@@ -104,7 +105,7 @@ export {
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
-  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, FLEET_BUDGET, RETREAT_STRENGTH, compStrength, TEAMS, SOUND_FILES,
+  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, BLUE_CAP_NAMES, CAP_PREFIX, randomBlueCapName, splitCapName, COMMS_PORTRAIT,
   VICTORY_SEGMENTS,
 }

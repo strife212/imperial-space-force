@@ -5847,6 +5847,17 @@ body {
   box-shadow: 0 0 7px rgba(26, 128, 255, 0.75);
   transition: width 0.25s ease;
 }
+/* "Flagship lost — morale broken" flag for the team that lost its capital,
+   anchored under the banner on that team's side (left = blue, right = red). */
+.sb-morale {
+  position: absolute;
+  top: calc(100% + 4px);
+  width: 150px;
+  font-size: 9px; font-weight: 700; line-height: 1.3;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.sb-morale--blue { left: 0;  text-align: left;  color: var(--c-scarlet); text-shadow: 0 0 8px rgba(26, 128, 255, 0.5); }
+.sb-morale--red  { right: 0; text-align: right; color: var(--c-bad);     text-shadow: 0 0 8px rgba(255, 36, 0, 0.45); }
 .sb-score {
   font-size: 13px;
   letter-spacing: 0.2em;

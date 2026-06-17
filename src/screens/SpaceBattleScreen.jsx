@@ -11,7 +11,7 @@ import {
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
-  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, FLEET_BUDGET, RETREAT_STRENGTH, compStrength, TEAMS, SOUND_FILES,
+  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
 import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, makeBackdrop } from './battle/geometry'
@@ -24,6 +24,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const blueStrengthRef = useRef(null)
   const redStrengthRef  = useRef(null)
   const powerBarRef     = useRef(null)
+  const blueMoraleRef   = useRef(null)
+  const redMoraleRef    = useRef(null)
   const timerRef     = useRef(null)             // battle clock DOM node (sim-time elapsed)
   const [simSpeed, setSimSpeed] = useState(1)   // 0 (paused) | 0.5 | 1
   const simSpeedRef = useRef(1)
@@ -1126,6 +1128,14 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           const tot = strength.blue + strength.red
           powerBarRef.current.style.width = (tot > 0 ? strength.blue / tot * 100 : 50) + '%'
         }
+        // Flagship-loss morale: a fleet that has lost its capital breaks at a higher
+        // strength threshold, flagged by a "morale broken" banner beside the scoreboard.
+        const flagshipDead = {
+          blue: !ships.some(s => s.isCapital && s.team === 'blue' && s.alive),
+          red:  !ships.some(s => s.isCapital && s.team === 'red'  && s.alive),
+        }
+        if (blueMoraleRef.current) blueMoraleRef.current.style.display = flagshipDead.blue ? '' : 'none'
+        if (redMoraleRef.current)  redMoraleRef.current.style.display  = flagshipDead.red  ? '' : 'none'
         // Reinforcements: on a fixed cadence, top each team's on-field fighters back up
         // to the cap from its reserve stockpile, warping the fresh wave in from the flank.
         if (!gameOver && t >= reinforceAt) {
@@ -1152,7 +1162,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         // ships out 3s later — which, by emptying the team, ends the engagement.
         if (!gameOver && !retreatTeam) {
           for (const tm of ['blue', 'red']) {
-            if (strength[tm] > 0 && strength[tm] < RETREAT_STRENGTH) { retreatTeam = tm; retreatTime = t; showComms(tm, 'Fleet integrity lost! Retreat!'); break }
+            const threshold = flagshipDead[tm] ? MORALE_BROKEN_STRENGTH : RETREAT_STRENGTH
+            if (strength[tm] > 0 && strength[tm] < threshold) { retreatTeam = tm; retreatTime = t; showComms(tm, 'Fleet integrity lost! Retreat!'); break }
           }
         }
         if (retreatTeam && !retreatWarped && t - retreatTime >= 3) {
@@ -1306,6 +1317,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         </div>
 
         <div className="sb-scoreboard">
+          <div className="sb-morale sb-morale--blue" ref={blueMoraleRef} style={{ display: 'none' }}>Flagship Lost<br />Morale Broken</div>
+          <div className="sb-morale sb-morale--red" ref={redMoraleRef} style={{ display: 'none' }}>Flagship Lost<br />Morale Broken</div>
           <div className="sb-score-row">
             <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.blue.fighters) + 1}</span></span>
             <span className="sb-vs">⚔ ENGAGED ⚔</span>
