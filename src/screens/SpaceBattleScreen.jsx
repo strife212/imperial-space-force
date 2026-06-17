@@ -282,9 +282,17 @@ function makeBackdrop(scene, disposables, lightDir, camera) {
   const ndcX = Math.random() * 1.5 - 0.75    // -0.75 .. 0.75 (horizontal)
   const ndcY = Math.random() * 1.05 - 0.30   // -0.30 .. 0.75 (biased upward)
   const ray = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(camera).sub(camera.position).normalize()
-  const dist = 120 + Math.random() * 45
-  const pos = camera.position.clone().addScaledVector(ray, dist)
   const pick = Math.floor(Math.random() * 3)
+  const bodyR = pick === 0 ? 40 : pick === 1 ? 26 : 12   // solid radius of the chosen body
+  // keep the body's nearest surface well outside the capital patrol (~43) so ships
+  // never fly inside it; push it further down the view ray if a near spot was rolled
+  const CLEARANCE = 55
+  let dist = 120 + Math.random() * 45
+  const pos = camera.position.clone().addScaledVector(ray, dist)
+  while (pos.length() - bodyR < CLEARANCE && dist < 400) {
+    dist += 12
+    pos.copy(camera.position).addScaledVector(ray, dist)
+  }
   if (pick === 0) return makeGasGiant(scene, disposables, pos, lightDir)
   if (pick === 1) return makeRingedPlanet(scene, disposables, pos, lightDir)
   return makeBlackHole(scene, disposables, pos)
