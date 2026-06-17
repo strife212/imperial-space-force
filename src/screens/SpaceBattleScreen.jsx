@@ -540,6 +540,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const mountRef     = useRef(null)
   const blueCountRef = useRef(null)
   const redCountRef  = useRef(null)
+  const blueStrengthRef = useRef(null)
+  const redStrengthRef  = useRef(null)
   const timerRef     = useRef(null)             // realtime battle clock DOM node
   const [simSpeed, setSimSpeed] = useState(1)   // 0 (paused) | 0.5 | 1
   const simSpeedRef = useRef(1)
@@ -1213,6 +1215,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         }
         if (ship.hp <= 0 && ship.alive) {
           ship.alive = false
+          ship.lost = true              // destroyed — drops the team's fleet strength
           if (killer) addKill(killer, ship)
           // grey out the destroyed bomber in the blue bomber roster
           if (ship.isBomber && ship.team === 'blue') setBlueBomberAlive(prev => prev.map((a, i) => i === ship.bIndex ? false : a))
@@ -1291,9 +1294,10 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
 
         // warp in a bomber wave: set them live + animating, with one jump cue
         const launchBombers = (team) => {
-          audioRef.current?.playJump()
           const wave = []
           for (const b of ships) if (b.isBomber && b.team === team) { b.warping = true; b.alive = true; b.mesh.visible = true; b.warpT = 0; wave.push(b) }
+          if (!wave.length) return   // this fleet has no bombers in its composition — nothing to warp in
+          audioRef.current?.playJump()
           // highlight the warp-in in the PiP camera (tracks the wave's centroid)
           const c = new THREE.Vector3(), snap = new THREE.Vector3()
           const getCentroid = () => {
@@ -1324,7 +1328,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             s.mesh.position.copy(s.pos)
             orient(s.mesh, _dir.subVectors(s.warpTo, s.warpFrom))
             s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale * (1 + e * 14))
-            if (p >= 1) { s.alive = false; s.mesh.visible = false }
+            if (p >= 1) { s.alive = false; s.lost = true; s.mesh.visible = false }   // warped out — drops fleet strength
             continue
           }
           // hyperspace jump-in: streak from the staging point into formation
@@ -1619,6 +1623,12 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         const c = counts()
         if (blueCountRef.current) blueCountRef.current.textContent = c.blue
         if (redCountRef.current)  redCountRef.current.textContent  = c.red
+        // Fleet strength /1000: every ship that isn't destroyed or warped out still
+        // counts (reserves and unarrived bombers included), so it only falls on real losses.
+        const strength = { blue: 0, red: 0 }
+        for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? PTS_FLAGSHIP : s.isBomber ? PTS_BOMBER : PTS_FIGHTER
+        if (blueStrengthRef.current) blueStrengthRef.current.textContent = strength.blue
+        if (redStrengthRef.current)  redStrengthRef.current.textContent  = strength.red
         // Reinforcements: on a fixed cadence, top each team's on-field fighters back up
         // to the cap from its reserve stockpile, warping the fresh wave in from the flank.
         if (!gameOver && t >= reinforceAt) {
@@ -1813,9 +1823,15 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         </div>
 
         <div className="sb-scoreboard">
-          <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.blue.fighters) + 1}</span></span>
-          <span className="sb-vs">⚔ ENGAGED ⚔</span>
-          <span className="sb-score sb-score--red"><span ref={redCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.red.fighters) + 1}</span> RED FLEET</span>
+          <div className="sb-score-row">
+            <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.blue.fighters) + 1}</span></span>
+            <span className="sb-vs">⚔ ENGAGED ⚔</span>
+            <span className="sb-score sb-score--red"><span ref={redCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.red.fighters) + 1}</span> RED FLEET</span>
+          </div>
+          <div className="sb-strength-row">
+            <span className="sb-strength sb-strength--blue">STRENGTH <span ref={blueStrengthRef}>{compStrength(comp.blue)}</span>/{FLEET_BUDGET}</span>
+            <span className="sb-strength sb-strength--red"><span ref={redStrengthRef}>{compStrength(comp.red)}</span>/{FLEET_BUDGET} STRENGTH</span>
+          </div>
         </div>
 
         {/* sim speed selector + realtime battle clock (top-right) */}
