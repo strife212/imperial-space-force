@@ -311,7 +311,17 @@ const SOUND_FILES = {
   victory:      'sfx/victory.wav',        // engagement resolved
 }
 
-const CAP_NAME = { blue: 'HMSS Limitless Light', red: 'Rebel Capital Ship' }
+const RED_CAP_NAME = 'Rebel Capital Ship'
+// Blue flagship names (always prefixed "HMSS "); rolled at random, re-rollable on the briefing
+const BLUE_CAP_NAMES = [
+  'Limitless Light', "Saint Berenike's Lance", 'The Long Patience of the Throne',
+  'And This Too Was Foreseen', 'Everything In Its Set Place', 'All Things Toward the Throne',
+  'And Then She Heard It', 'The Empress Has Considered Your Position', 'The Lance of Saint Concordia',
+  "Saint Astraia's Promise", 'The Empress Remembers Saint Polyhymnia', 'Saint Concordia Heard First',
+  "Stelladrach's Reach", "Mirelne's Descant", 'She Hears', 'Lumen Concordiae',
+  'Empress of the Stars', 'Princess of Midnight',
+]
+const randomBlueCapName = () => 'HMSS ' + BLUE_CAP_NAMES[Math.floor(Math.random() * BLUE_CAP_NAMES.length)]
 // Comms-broadcast portraits: player portrait for blue, the Discord image for red
 const COMMS_PORTRAIT = {
   blue: `${import.meta.env.BASE_URL}portrait.png`,
@@ -371,7 +381,7 @@ function ShipSprite({ team, kind }) {
     </svg>
   )
 }
-function TeamRoster({ team }) {
+function TeamRoster({ team, capName, onCycleName }) {
   return (
     <div className={`sb-brief-team sb-brief-team--${team}`}>
       <div className="sb-brief-team-title">{team === 'blue' ? 'BLUE FLEET' : 'RED FLEET'}</div>
@@ -379,7 +389,12 @@ function TeamRoster({ team }) {
         <img className="sb-brief-portrait" src={COMMS_PORTRAIT[team]} alt="" />
         <ShipSprite team={team} kind="capital" />
         <div className="sb-brief-cap-info">
-          <div className="sb-brief-cap-name">{CAP_NAME[team]}</div>
+          <div className="sb-brief-cap-name">
+            {capName}
+            {onCycleName && (
+              <button className="sb-cap-cycle" onClick={onCycleName} title="Randomise name" aria-label="Randomise name">↻</button>
+            )}
+          </div>
           <div className="sb-brief-cap-class">CAPITAL SHIP</div>
         </div>
       </div>
@@ -403,6 +418,12 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [simSpeed, setSimSpeed] = useState(1)   // 0 (paused) | 0.5 | 1
   const simSpeedRef = useRef(1)
   useEffect(() => { simSpeedRef.current = simSpeed }, [simSpeed])
+  const [pipCaption, setPipCaption] = useState(null)  // { team, text } — picture-in-picture event highlight
+  const pipRef = useRef(null)                         // active PiP 3D state for the render loop
+  const [blueCapName, setBlueCapName] = useState(randomBlueCapName)  // blue flagship name (re-rollable on the briefing)
+  const blueCapNameRef = useRef(blueCapName)
+  useEffect(() => { blueCapNameRef.current = blueCapName }, [blueCapName])
+  const cycleBlueName = () => setBlueCapName(randomBlueCapName())
   const [winner, setWinner] = useState(null)   // null | 'BLUE' | 'RED' | 'DRAW'
   const [runId,  setRunId]  = useState(0)
   const [kills,  setKills]  = useState([])      // recent kill-feed entries
@@ -667,10 +688,12 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
     followRef.current = null; setFollowName(null)                        // start in tactical view
     callBombersRef.current = false; setBombersCalled(false); setBlueBomberAlive(Array(BOMBER_COUNT).fill(true))  // bomber wing in reserve
     simSpeedRef.current = 1; setSimSpeed(1)                               // every battle starts running at 1×
+    pipRef.current = null; setPipCaption(null)                           // no event highlight yet
 
     // surface a capital broadcast (queued, typewriter + chirp), driven by battle events
     const showComms = (team, text, persist = false) => {
-      enqueueComms({ id: ++commsSeq.current, team, name: CAP_NAME[team], portrait: COMMS_PORTRAIT[team], text, segments: [{ text }], persist })
+      const name = team === 'blue' ? blueCapNameRef.current : RED_CAP_NAME
+      enqueueComms({ id: ++commsSeq.current, team, name, portrait: COMMS_PORTRAIT[team], text, segments: [{ text }], persist })
     }
 
     try {
@@ -679,6 +702,10 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const scene = new THREE.Scene()
       const camera = new THREE.PerspectiveCamera(52, w / h, 0.1, 600)
       camera.position.set(0, 25, 60)   // ~30% further back
+
+      // picture-in-picture camera (centre-right box) for highlighting key events
+      const PIP_W = 300, PIP_H = 190, PIP_RIGHT = 24   // css px
+      const pipCam = new THREE.PerspectiveCamera(34, PIP_W / PIP_H, 0.1, 600)
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
       renderer.setSize(w, h)
@@ -874,7 +901,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         scene.add(mesh)
         ships.push({
           mesh, mat, team, hp: CAP_HP, alive: true, pos, vel,
-          name: CAP_NAME[team],
+          name: team === 'blue' ? blueCapNameRef.current : RED_CAP_NAME,
           labelEl:  team === 'blue' ? blueCapRef.current   : redCapRef.current,
           shieldEl: team === 'blue' ? blueShieldRef.current : redShieldRef.current,
           fireCd: 0.5 + Math.random(), flash: 0,
@@ -1025,6 +1052,12 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         }].slice(-7))
       }
 
+      // open the picture-in-picture event camera: track getTarget() from an offset
+      const showPip = (team, text, getTarget, camDir, dist, height, max = 4) => {
+        pipRef.current = { life: 0, max, getTarget, camDir: camDir.clone().normalize(), dist, height }
+        setPipCaption({ team, text })
+      }
+
       const damage = (ship, killer, amount = 1) => {
         ship.hp -= amount
         ship.flash = 0.12
@@ -1042,6 +1075,9 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             // begin the drawn-out death; the hull stays as drifting wreckage
             ship.driftVel = _tmp.set(0, 0, 1).applyQuaternion(ship.mesh.quaternion).multiplyScalar(0.9).clone()
             wrecks.push({ ship, t: 0, blastCd: 0, final: false })
+            // highlight the kill in the PiP camera
+            showPip(ship.team, `${ship.team === 'blue' ? 'BLUE' : 'RED'} CAPITAL SHIP DESTROYED`,
+              () => ship.pos, new THREE.Vector3(0.7, 0.32, 0.62), 24, 7, 4.2)
           } else {
             spawnBlast(ship.pos, false)
             scene.remove(ship.mesh)
@@ -1109,7 +1145,18 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         // warp in a bomber wave: set them live + animating, with one jump cue
         const launchBombers = (team) => {
           audioRef.current?.playJump()
-          for (const b of ships) if (b.isBomber && b.team === team) { b.warping = true; b.alive = true; b.mesh.visible = true; b.warpT = 0 }
+          const wave = []
+          for (const b of ships) if (b.isBomber && b.team === team) { b.warping = true; b.alive = true; b.mesh.visible = true; b.warpT = 0; wave.push(b) }
+          // highlight the warp-in in the PiP camera (tracks the wave's centroid)
+          const c = new THREE.Vector3(), snap = new THREE.Vector3()
+          const getCentroid = () => {
+            let n = 0; c.set(0, 0, 0)
+            for (const b of wave) if (b.alive) { c.add(b.pos); n++ }
+            if (!n) return snap
+            return snap.copy(c.multiplyScalar(1 / n))
+          }
+          showPip(team, `${team === 'blue' ? 'BLUE' : 'RED'} FLEET BOMBERS WARPING IN`,
+            getCentroid, new THREE.Vector3(0.4, 0.26, 0.9), 26, 9, 3.6)
         }
         // blue bombers wait for the player's order; red bombers arrive at a random time
         if (!gameOver) {
@@ -1407,7 +1454,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           // clear any pending battle chatter and broadcast the victor's line (persists until restart)
           const wTeam = c.blue > 0 ? 'blue' : c.red > 0 ? 'red' : null
           commsQueue.current = []; commsBusy.current = true
-          if (wTeam) { const segs = VICTORY_SEGMENTS[wTeam]; setComms({ id: ++commsSeq.current, team: wTeam, name: CAP_NAME[wTeam], portrait: COMMS_PORTRAIT[wTeam], text: segs.map(s => s.text).join(''), segments: segs, persist: true }) }
+          if (wTeam) { const segs = VICTORY_SEGMENTS[wTeam]; const wName = wTeam === 'blue' ? blueCapNameRef.current : RED_CAP_NAME; setComms({ id: ++commsSeq.current, team: wTeam, name: wName, portrait: COMMS_PORTRAIT[wTeam], text: segs.map(s => s.text).join(''), segments: segs, persist: true }) }
           else setComms(null)
           const sumKills = team => ships.filter(s => s.team === team).reduce((a, s) => a + (s.kills || 0), 0)
           const cap = team => { const k = ships.find(s => s.isCapital && s.team === team); return { name: k.name, kills: k.kills || 0, alive: k.alive } }
@@ -1435,6 +1482,30 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           controls.update()
         }
         composer.render()
+
+        // picture-in-picture: render the highlighted event into a centre-right box
+        const pip = pipRef.current
+        if (pip) {
+          pip.life += dt
+          if (pip.life >= pip.max) { pipRef.current = null; setPipCaption(null) }
+          else {
+            const tp = pip.getTarget()
+            if (tp) {
+              pipCam.position.copy(tp).addScaledVector(pip.camDir, pip.dist); pipCam.position.y += pip.height
+              pipCam.lookAt(tp)
+              const vx = cw - PIP_RIGHT - PIP_W, vy = (ch - PIP_H) / 2
+              renderer.setRenderTarget(null)
+              renderer.setScissorTest(true)
+              renderer.setViewport(vx, vy, PIP_W, PIP_H)
+              renderer.setScissor(vx, vy, PIP_W, PIP_H)
+              renderer.autoClear = true
+              renderer.render(scene, pipCam)
+              renderer.setScissorTest(false)
+              renderer.setViewport(0, 0, cw, ch)
+              renderer.setScissor(0, 0, cw, ch)
+            }
+          }
+        }
         raf = requestAnimationFrame(frame)
       }
 
@@ -1507,18 +1578,18 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
               <button className="sb-brief-start" onClick={startBattle}>▶ START BATTLE</button>
             </div>
             <div className="sb-brief-teams">
-              <TeamRoster team="blue" />
-              <TeamRoster team="red" />
+              <TeamRoster team="blue" capName={blueCapName} onCycleName={cycleBlueName} />
+              <TeamRoster team="red" capName={RED_CAP_NAME} />
             </div>
           </div>
         )}
 
         <div className="sb-cap-label sb-cap-label--blue" ref={blueCapRef}>
-          <div className="sb-cap-name">{CAP_NAME.blue}</div>
+          <div className="sb-cap-name">{blueCapName}</div>
           <div className="sb-cap-shield">SHIELD <span ref={blueShieldRef}>100</span>%</div>
         </div>
         <div className="sb-cap-label sb-cap-label--red" ref={redCapRef}>
-          <div className="sb-cap-name">{CAP_NAME.red}</div>
+          <div className="sb-cap-name">{RED_CAP_NAME}</div>
           <div className="sb-cap-shield">SHIELD <span ref={redShieldRef}>100</span>%</div>
         </div>
 
@@ -1542,6 +1613,14 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           </div>
           <div className="sb-timer">BATTLE<span className="sb-timer-clock" ref={timerRef}>0:00</span></div>
         </div>
+
+        {/* picture-in-picture event camera frame + caption (centre-right) */}
+        {pipCaption && (
+          <div className={`sb-pip sb-pip--${pipCaption.team}`}>
+            <div className="sb-pip-tag">◉ LIVE FEED</div>
+            <div className="sb-pip-caption">{pipCaption.text}</div>
+          </div>
+        )}
 
         {winner && (
           <div className="sb-victory">
