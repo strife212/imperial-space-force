@@ -5839,7 +5839,7 @@ body {
   top: 50%; right: 24px;
   transform: translateY(-50%);
   width: 300px; height: 190px;
-  z-index: 3;
+  z-index: 12;
   border: 2px solid var(--c-line-2);
   border-radius: 2px;
   box-shadow: 0 0 22px rgba(0, 20, 60, 0.5);
@@ -6156,13 +6156,24 @@ body {
 }
 .sb-brief-team--blue .sb-brief-portrait { border: 1px solid rgba(26, 128, 255, 0.6); box-shadow: 0 0 10px rgba(26, 128, 255, 0.35); }
 .sb-brief-team--red  .sb-brief-portrait { border: 1px solid rgba(255, 36, 0, 0.55);  box-shadow: 0 0 10px rgba(255, 36, 0, 0.3); }
+.sb-brief-cap-info {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.sb-cap-prefix {
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--c-scarlet);
+  text-shadow: 0 0 8px rgba(26, 128, 255, 0.4);
+}
+.sb-brief-cap-info .sb-cap-prefix { font-size: 9px; margin-bottom: 3px; opacity: 0.85; }
 .sb-brief-cap-name {
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  display: flex;
-  align-items: center;
-  gap: 7px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 .sb-brief-team--blue .sb-brief-cap-name { color: var(--c-scarlet); text-shadow: 0 0 8px rgba(26, 128, 255, 0.45); }
 .sb-brief-team--red  .sb-brief-cap-name { color: var(--c-bad);     text-shadow: 0 0 8px rgba(255, 36, 0, 0.4); }
@@ -6224,7 +6235,7 @@ body {
 .sb-brief-bombers .sb-sprite--red  { filter: drop-shadow(0 0 4px rgba(255, 36, 0, 0.5)); }
 .sb-brief-fighters .sb-sprite--blue { filter: drop-shadow(0 0 3px rgba(26, 128, 255, 0.5)); }
 .sb-brief-fighters .sb-sprite--red  { filter: drop-shadow(0 0 3px rgba(255, 36, 0, 0.4)); }
-.sb-sprite--cap { height: 84px; width: auto; }
+.sb-sprite--cap { height: 84px; width: auto; flex-shrink: 0; }
 .sb-brief-team--blue .sb-sprite--cap { filter: drop-shadow(0 0 7px rgba(26, 128, 255, 0.6)); }
 .sb-brief-team--red  .sb-sprite--cap { filter: drop-shadow(0 0 7px rgba(255, 36, 0, 0.5)); }
 
@@ -6370,6 +6381,7 @@ body {
 }
 .sb-cap-label--blue { border-bottom: 2px solid var(--c-scarlet); }
 .sb-cap-label--red  { border-bottom: 2px solid var(--c-bad); }
+.sb-cap-label .sb-cap-prefix { font-size: 7.5px; letter-spacing: 0.28em; margin-bottom: 1px; opacity: 0.85; }
 .sb-cap-name {
   font-size: 12px;
   font-weight: 700;

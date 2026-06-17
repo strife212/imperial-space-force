@@ -321,7 +321,12 @@ const BLUE_CAP_NAMES = [
   "Stelladrach's Reach", "Mirelne's Descant", 'She Hears', 'Lumen Concordiae',
   'Empress of the Stars', 'Princess of Midnight',
 ]
-const randomBlueCapName = () => 'HMSS ' + BLUE_CAP_NAMES[Math.floor(Math.random() * BLUE_CAP_NAMES.length)]
+const CAP_PREFIX = 'HMSS'
+const randomBlueCapName = () => CAP_PREFIX + ' ' + BLUE_CAP_NAMES[Math.floor(Math.random() * BLUE_CAP_NAMES.length)]
+// Peel the "HMSS" prefix off a full name so it can be shown as a small supertitle above the name
+const splitCapName = (full) => full.startsWith(CAP_PREFIX + ' ')
+  ? { prefix: CAP_PREFIX, name: full.slice(CAP_PREFIX.length + 1) }
+  : { prefix: null, name: full }
 // Comms-broadcast portraits: player portrait for blue, the Discord image for red
 const COMMS_PORTRAIT = {
   blue: `${import.meta.env.BASE_URL}portrait.png`,
@@ -382,6 +387,7 @@ function ShipSprite({ team, kind }) {
   )
 }
 function TeamRoster({ team, capName, onCycleName }) {
+  const { prefix, name } = splitCapName(capName)
   return (
     <div className={`sb-brief-team sb-brief-team--${team}`}>
       <div className="sb-brief-team-title">{team === 'blue' ? 'BLUE FLEET' : 'RED FLEET'}</div>
@@ -389,14 +395,13 @@ function TeamRoster({ team, capName, onCycleName }) {
         <img className="sb-brief-portrait" src={COMMS_PORTRAIT[team]} alt="" />
         <ShipSprite team={team} kind="capital" />
         <div className="sb-brief-cap-info">
-          <div className="sb-brief-cap-name">
-            {capName}
-            {onCycleName && (
-              <button className="sb-cap-cycle" onClick={onCycleName} title="Randomise name" aria-label="Randomise name">↻</button>
-            )}
-          </div>
+          {prefix && <div className="sb-cap-prefix">{prefix}</div>}
+          <div className="sb-brief-cap-name">{name}</div>
           <div className="sb-brief-cap-class">CAPITAL SHIP</div>
         </div>
+        {onCycleName && (
+          <button className="sb-cap-cycle" onClick={onCycleName} title="Randomise name" aria-label="Randomise name">↻</button>
+        )}
       </div>
       <div className="sb-brief-fighters-label">BOMBERS <span className="sb-brief-fighters-count">×{BOMBER_COUNT}</span></div>
       <div className="sb-brief-fighters sb-brief-bombers">
@@ -1429,6 +1434,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         }
 
         // ── Capital ship labels (name + shield %), projected above each hull ────
+        // The PiP renders an opaque 3D feed over its rectangle; a label can't be drawn
+        // on top of that scissored region, so hide any label that sits behind the panel.
+        const pipBox = pipRef.current
+          ? { l: cw - PIP_RIGHT - PIP_W, r: cw - PIP_RIGHT, t: (ch - PIP_H) / 2, b: (ch - PIP_H) / 2 + PIP_H }
+          : null
         for (const s of ships) {
           if (!s.labelEl) continue
           if (!s.alive || intro) { s.labelEl.style.opacity = '0'; continue }
@@ -1437,6 +1447,10 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           if (_proj.z > 1) { s.labelEl.style.opacity = '0'; continue }
           const lx = (_proj.x * 0.5 + 0.5) * cw
           const ly = (-_proj.y * 0.5 + 0.5) * ch
+          // label is anchored bottom-centre at (lx, ly); suppress if its box overlaps the PiP
+          if (pipBox && lx + 140 > pipBox.l && lx - 140 < pipBox.r && ly > pipBox.t && ly - 56 < pipBox.b) {
+            s.labelEl.style.opacity = '0'; continue
+          }
           s.labelEl.style.opacity = '1'
           s.labelEl.style.transform = `translate(-50%, -100%) translate(${lx}px, ${ly}px)`
           if (s.shieldEl) s.shieldEl.textContent = Math.max(0, Math.round(s.hp / CAP_HP * 100))
@@ -1585,7 +1599,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         )}
 
         <div className="sb-cap-label sb-cap-label--blue" ref={blueCapRef}>
-          <div className="sb-cap-name">{blueCapName}</div>
+          <div className="sb-cap-prefix">{CAP_PREFIX}</div>
+          <div className="sb-cap-name">{splitCapName(blueCapName).name}</div>
           <div className="sb-cap-shield">SHIELD <span ref={blueShieldRef}>100</span>%</div>
         </div>
         <div className="sb-cap-label sb-cap-label--red" ref={redCapRef}>
