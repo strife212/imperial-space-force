@@ -116,6 +116,14 @@ const SEP_RADIUS  = 3.0
 const BOUND_R     = 34       // ships steer back inside this radius
 const STANDOFF    = 14       // preferred engagement range — keeps a frontline gap
 const TURN_RATE   = 7        // orientation slerp responsiveness
+
+// Fleet "strength" valuation: each hull's worth ≈ HP × DPS, normalised so the
+// standard fleet (1 flagship + 5 bombers + 25 fighters) totals exactly 1000.
+const PTS_FIGHTER  = 6
+const PTS_BOMBER   = 58
+const PTS_FLAGSHIP = 560
+const FLEET_BUDGET = 1000
+const fleetStrength = () => FLEET_SIZE * PTS_FIGHTER + BOMBER_COUNT * PTS_BOMBER + PTS_FLAGSHIP
 const TEAMS = {
   blue: { color: 0x3a93ff, bolt: 0x8fc6ff },
   red:  { color: 0xff3322, bolt: 0xff7a5a },
@@ -410,6 +418,10 @@ function TeamRoster({ team, capName, onCycleName }) {
       <div className="sb-brief-fighters-label">FIGHTERS <span className="sb-brief-fighters-count">×{FLEET_SIZE}</span></div>
       <div className="sb-brief-fighters">
         {Array.from({ length: FLEET_SIZE }, (_, i) => <ShipSprite key={i} team={team} kind="fighter" />)}
+      </div>
+      <div className="sb-brief-strength">
+        <span className="sb-brief-strength-label">FLEET STRENGTH</span>
+        <span className="sb-brief-strength-val">{fleetStrength()}<span className="sb-brief-strength-max">/{FLEET_BUDGET}</span></span>
       </div>
     </div>
   )

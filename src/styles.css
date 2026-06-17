@@ -6224,6 +6224,29 @@ body {
   grid-template-columns: repeat(auto-fill, 32px);
   gap: 9px 10px;
 }
+.sb-brief-strength {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 2px;
+  padding-top: 12px;
+  border-top: 1px solid var(--c-line-2);
+}
+.sb-brief-strength-label {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--c-ash-dim);
+  text-transform: uppercase;
+}
+.sb-brief-strength-val {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.sb-brief-strength-max { font-size: 12px; font-weight: 400; color: var(--c-ash-dim); text-shadow: none; }
+.sb-brief-team--blue .sb-brief-strength-val { color: var(--c-scarlet); text-shadow: 0 0 8px rgba(26, 128, 255, 0.45); }
+.sb-brief-team--red  .sb-brief-strength-val { color: var(--c-bad);     text-shadow: 0 0 8px rgba(255, 36, 0, 0.4); }
 
 /* 2D ship sprites */
 .sb-sprite { display: block; }
