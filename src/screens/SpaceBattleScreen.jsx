@@ -24,7 +24,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const blueStrengthRef = useRef(null)
   const redStrengthRef  = useRef(null)
   const powerBarRef     = useRef(null)
-  const timerRef     = useRef(null)             // realtime battle clock DOM node
+  const timerRef     = useRef(null)             // battle clock DOM node (sim-time elapsed)
   const [simSpeed, setSimSpeed] = useState(1)   // 0 (paused) | 0.5 | 1
   const simSpeedRef = useRef(1)
   useEffect(() => { simSpeedRef.current = simSpeed }, [simSpeed])
@@ -761,16 +761,16 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
 
       // ── Frame loop ───────────────────────────────────────────────────────────
       const clock = new THREE.Clock()
-      let simT = 0, battleRealT = 0
+      let simT = 0, battleSimT = 0
       const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
       const frame = () => {
-        const realDt = Math.min(clock.getDelta(), 0.05)   // true wall-clock step (camera, timer)
+        const realDt = Math.min(clock.getDelta(), 0.05)   // true wall-clock step (camera follow works while paused)
         const dt = realDt * simSpeedRef.current            // scaled sim step — 0 when paused
         simT += dt
         const t  = simT
         // realtime battle clock — ticks while the fight is live and not paused
-        if (simSpeedRef.current > 0 && !gameOver) battleRealT += realDt
-        if (timerRef.current) timerRef.current.textContent = fmtTime(battleRealT)
+        if (!gameOver) battleSimT += dt   // sim-time elapsed (dt is 0 when paused), so the clock matches time-based events
+        if (timerRef.current) timerRef.current.textContent = fmtTime(battleSimT)
         introT += dt
         const intro = introT < INTRO_TOTAL
 
