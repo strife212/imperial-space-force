@@ -6206,6 +6206,9 @@ body {
   margin-top: 4px;
 }
 .sb-brief-fighters-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 10px;
   letter-spacing: 0.24em;
   color: var(--c-ash-dim);
@@ -6213,6 +6216,26 @@ body {
   margin-bottom: 12px;
 }
 .sb-brief-fighters-count { color: var(--c-ash); }
+.sb-brief-adj { display: inline-flex; gap: 5px; letter-spacing: normal; }
+.sb-brief-adj-btn {
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0;
+  background: rgba(120, 160, 220, 0.08);
+  border: 1px solid var(--c-line-2);
+  border-radius: 3px;
+  color: var(--c-ash);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, opacity 0.12s;
+}
+.sb-brief-adj-btn:hover:not(:disabled) {
+  background: rgba(120, 160, 220, 0.22);
+  border-color: rgba(150, 190, 250, 0.6);
+  color: #fff;
+}
+.sb-brief-adj-btn:disabled { opacity: 0.28; cursor: not-allowed; }
 .sb-brief-fighters {
   display: grid;
   grid-template-columns: repeat(auto-fill, 24px);

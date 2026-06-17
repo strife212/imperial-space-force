@@ -110,6 +110,7 @@ const CAP_SPEED   = 1.25     // capital ships lumber (very slow & ponderous)
 const CAP_WEAPONS = 4        // bolts per capital volley
 const BOLT_SPEED  = 46       // world units / second
 const MISS_CHANCE = 0.28
+const BOMB_MISS_CHANCE = 0.1   // bombers are deadly accurate (90% hit) — devastating if they get through
 const MAX_SPEED   = 7.5
 const MIN_SPEED   = 2.6
 const SEP_RADIUS  = 3.0
@@ -117,13 +118,16 @@ const BOUND_R     = 34       // ships steer back inside this radius
 const STANDOFF    = 14       // preferred engagement range — keeps a frontline gap
 const TURN_RATE   = 7        // orientation slerp responsiveness
 
-// Fleet "strength" valuation: each hull's worth ≈ HP × DPS, normalised so the
-// standard fleet (1 flagship + 5 bombers + 25 fighters) totals exactly 1000.
-const PTS_FIGHTER  = 6
-const PTS_BOMBER   = 58
-const PTS_FLAGSHIP = 560
+// Fleet "strength" valuation, balanced so the standard fleet (1 flagship +
+// 5 bombers + 25 fighters) totals exactly 1000. Started from HP × DPS, then
+// adjusted for role: fighters are dearer than raw stats suggest (they engage
+// everything and mass compounds), while bombers are cheaper (strong but purely
+// anti-flagship — they sit out the fighter brawl that decides most battles).
+const PTS_FIGHTER  = 10
+const PTS_BOMBER   = 40
+const PTS_FLAGSHIP = 550
 const FLEET_BUDGET = 1000
-const fleetStrength = () => FLEET_SIZE * PTS_FIGHTER + BOMBER_COUNT * PTS_BOMBER + PTS_FLAGSHIP
+const compStrength = (c) => c.fighters * PTS_FIGHTER + c.bombers * PTS_BOMBER + PTS_FLAGSHIP
 const TEAMS = {
   blue: { color: 0x3a93ff, bolt: 0x8fc6ff },
   red:  { color: 0xff3322, bolt: 0xff7a5a },
@@ -394,8 +398,18 @@ function ShipSprite({ team, kind }) {
     </svg>
   )
 }
-function TeamRoster({ team, capName, onCycleName }) {
+function CountAdjust({ count, cost, free, onAdjust }) {
+  return (
+    <span className="sb-brief-adj">
+      <button className="sb-brief-adj-btn" onClick={() => onAdjust(-1)} disabled={count <= 0} aria-label="Remove">−</button>
+      <button className="sb-brief-adj-btn" onClick={() => onAdjust(1)} disabled={free < cost} aria-label="Add">+</button>
+    </span>
+  )
+}
+function TeamRoster({ team, capName, onCycleName, comp, onAdjust }) {
   const { prefix, name } = splitCapName(capName)
+  const strength = compStrength(comp)
+  const free = FLEET_BUDGET - strength
   return (
     <div className={`sb-brief-team sb-brief-team--${team}`}>
       <div className="sb-brief-team-title">{team === 'blue' ? 'BLUE FLEET' : 'RED FLEET'}</div>
@@ -411,17 +425,23 @@ function TeamRoster({ team, capName, onCycleName }) {
           <button className="sb-cap-cycle" onClick={onCycleName} title="Randomise name" aria-label="Randomise name">↻</button>
         )}
       </div>
-      <div className="sb-brief-fighters-label">BOMBERS <span className="sb-brief-fighters-count">×{BOMBER_COUNT}</span></div>
-      <div className="sb-brief-fighters sb-brief-bombers">
-        {Array.from({ length: BOMBER_COUNT }, (_, i) => <ShipSprite key={i} team={team} kind="bomber" />)}
+      <div className="sb-brief-fighters-label">
+        <span>BOMBERS <span className="sb-brief-fighters-count">×{comp.bombers}</span></span>
+        <CountAdjust count={comp.bombers} cost={PTS_BOMBER} free={free} onAdjust={(d) => onAdjust('bombers', d)} />
       </div>
-      <div className="sb-brief-fighters-label">FIGHTERS <span className="sb-brief-fighters-count">×{FLEET_SIZE}</span></div>
+      <div className="sb-brief-fighters sb-brief-bombers">
+        {Array.from({ length: comp.bombers }, (_, i) => <ShipSprite key={i} team={team} kind="bomber" />)}
+      </div>
+      <div className="sb-brief-fighters-label">
+        <span>FIGHTERS <span className="sb-brief-fighters-count">×{comp.fighters}</span></span>
+        <CountAdjust count={comp.fighters} cost={PTS_FIGHTER} free={free} onAdjust={(d) => onAdjust('fighters', d)} />
+      </div>
       <div className="sb-brief-fighters">
-        {Array.from({ length: FLEET_SIZE }, (_, i) => <ShipSprite key={i} team={team} kind="fighter" />)}
+        {Array.from({ length: comp.fighters }, (_, i) => <ShipSprite key={i} team={team} kind="fighter" />)}
       </div>
       <div className="sb-brief-strength">
         <span className="sb-brief-strength-label">FLEET STRENGTH</span>
-        <span className="sb-brief-strength-val">{fleetStrength()}<span className="sb-brief-strength-max">/{FLEET_BUDGET}</span></span>
+        <span className="sb-brief-strength-val">{strength}<span className="sb-brief-strength-max">/{FLEET_BUDGET}</span></span>
       </div>
     </div>
   )
@@ -447,6 +467,19 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [stats,  setStats]  = useState(null)    // post-battle breakdown
   const [muted,  setMuted]  = useState(true)    // sound off by default
   const [started, setStarted] = useState(false) // pre-battle briefing until START
+  // per-team fleet composition, customisable on the briefing within the 1000-point budget
+  const [comp, setComp] = useState({
+    blue: { fighters: FLEET_SIZE, bombers: BOMBER_COUNT },
+    red:  { fighters: FLEET_SIZE, bombers: BOMBER_COUNT },
+  })
+  const compRef = useRef(comp)
+  useEffect(() => { compRef.current = comp }, [comp])
+  const adjustComp = (team, kind, delta) => setComp(c => {
+    const next = { ...c[team], [kind]: c[team][kind] + delta }
+    if (next[kind] < 0) return c                                   // can't go below zero
+    if (delta > 0 && compStrength(next) > FLEET_BUDGET) return c    // no free points to spend
+    return { ...c, [team]: next }
+  })
   const [comms, setComms]   = useState(null)    // active capital broadcast { id, team, name, portrait, text, persist }
   const [commsText, setCommsText] = useState('')// progressively-typed body
   const commsSeq   = useRef(0)
@@ -703,7 +736,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
     setKills([])   // fresh kill feed each battle
     setComms(null); commsQueue.current = []; commsBusy.current = false   // clear any lingering broadcasts
     followRef.current = null; setFollowName(null)                        // start in tactical view
-    callBombersRef.current = false; setBombersCalled(false); setBlueBomberAlive(Array(BOMBER_COUNT).fill(true))  // bomber wing in reserve
+    callBombersRef.current = false; setBombersCalled(false); setBlueBomberAlive(Array(compRef.current.blue.bombers).fill(true))  // bomber wing in reserve
     simSpeedRef.current = 1; setSimSpeed(1)                               // every battle starts running at 1×
     pipRef.current = null; setPipCaption(null)                           // no event highlight yet
 
@@ -837,7 +870,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       // ── Spawn the two fleets (loose cloud on each flank, charging inward) ─────
       const ships = []
       const spawnFleet = (team, sx, vdir) => {
-        for (let i = 0; i < FLEET_SIZE; i++) {
+        for (let i = 0; i < compRef.current[team].fighters; i++) {
           const row = i % 5, col = Math.floor(i / 5)
           const mat = new THREE.MeshStandardMaterial({
             color: TEAMS[team].color, emissive: TEAMS[team].color,
@@ -937,7 +970,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const spawnBombers = (team) => {
         const sx = team === 'blue' ? -28 : 28
         const axis = new THREE.Vector3(team === 'blue' ? -1 : 1, 0.05, -0.3).normalize()
-        for (let i = 0; i < BOMBER_COUNT; i++) {
+        for (let i = 0; i < compRef.current[team].bombers; i++) {
           const mat = new THREE.MeshStandardMaterial({
             color: TEAMS[team].color, emissive: TEAMS[team].color,
             emissiveIntensity: 0.4, metalness: 0.6, roughness: 0.4,
@@ -1029,7 +1062,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       }
 
       const fireBolt = (shooter, target, big = false) => {
-        const willHit = Math.random() > MISS_CHANCE
+        const willHit = Math.random() > (shooter.isBomber ? BOMB_MISS_CHANCE : MISS_CHANCE)
         _tmp.set(0, 0, 1).applyQuaternion(shooter.mesh.quaternion)        // muzzle direction
         const start = shooter.pos.clone().addScaledVector(_tmp, big ? 2.6 : 1.0)
         if (big) start.add(new THREE.Vector3((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 3))  // spread across hardpoints
@@ -1092,8 +1125,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             // begin the drawn-out death; the hull stays as drifting wreckage
             ship.driftVel = _tmp.set(0, 0, 1).applyQuaternion(ship.mesh.quaternion).multiplyScalar(0.9).clone()
             wrecks.push({ ship, t: 0, blastCd: 0, final: false })
-            // highlight the kill in the PiP camera
-            showPip(ship.team, `${ship.team === 'blue' ? 'BLUE' : 'RED'} CAPITAL SHIP DESTROYED`,
+            // highlight the kill in the PiP camera (skip once the match is already resolved)
+            if (!gameOver) showPip(ship.team, `${ship.team === 'blue' ? 'BLUE' : 'RED'} CAPITAL SHIP DESTROYED`,
               () => ship.pos, new THREE.Vector3(0.7, 0.32, 0.62), 24, 7, 4.2)
           } else {
             spawnBlast(ship.pos, false)
@@ -1474,6 +1507,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         if (redCountRef.current)  redCountRef.current.textContent  = c.red
         if (!gameOver && (c.blue === 0 || c.red === 0)) {
           gameOver = true
+          pipRef.current = null; setPipCaption(null)   // drop any in-progress event cam the instant the match resolves
           if (followRef.current) revertToTactical()   // present the result in tactical view
           setWinner(c.blue > 0 ? 'BLUE' : c.red > 0 ? 'RED' : 'DRAW')
           audioRef.current?.playVictory(c.blue > 0 ? 'BLUE' : 'RED')
@@ -1604,8 +1638,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
               <button className="sb-brief-start" onClick={startBattle}>▶ START BATTLE</button>
             </div>
             <div className="sb-brief-teams">
-              <TeamRoster team="blue" capName={blueCapName} onCycleName={cycleBlueName} />
-              <TeamRoster team="red" capName={RED_CAP_NAME} />
+              <TeamRoster team="blue" capName={blueCapName} onCycleName={cycleBlueName} comp={comp.blue} onAdjust={(kind, d) => adjustComp('blue', kind, d)} />
+              <TeamRoster team="red" capName={RED_CAP_NAME} comp={comp.red} onAdjust={(kind, d) => adjustComp('red', kind, d)} />
             </div>
           </div>
         )}
@@ -1621,9 +1655,9 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         </div>
 
         <div className="sb-scoreboard">
-          <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{FLEET_SIZE + 1}</span></span>
+          <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{comp.blue.fighters + 1}</span></span>
           <span className="sb-vs">⚔ ENGAGED ⚔</span>
-          <span className="sb-score sb-score--red"><span ref={redCountRef} className="sb-count">{FLEET_SIZE + 1}</span> RED FLEET</span>
+          <span className="sb-score sb-score--red"><span ref={redCountRef} className="sb-count">{comp.red.fighters + 1}</span> RED FLEET</span>
         </div>
 
         {/* sim speed selector + realtime battle clock (top-right) */}
