@@ -411,20 +411,16 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const redCapRef  = useRef(null), redShieldRef  = useRef(null)
 
   // ── Player tactics (blue fleet only) ──────────────────────────────────────
-  const [capTactic,     setCapTactic]     = useState('hold')   // 'hold' | 'engage'
-  const [fighterTactic, setFighterTactic] = useState('all')    // 'all' | 'fighters' | 'capital'
-  const [fighterManoeuvre, setFighterManoeuvre] = useState('free')  // 'free' | 'screen'
+  const [capTactic,     setCapTactic]     = useState('hold')      // 'hold' | 'engage'
+  // single blue-fighter posture: each mode sets both movement and target priority
+  const [fighterControl, setFighterControl] = useState('default')  // 'default' | 'screen' | 'pursue' | 'capital'
   const [bombersCalled, setBombersCalled] = useState(false)              // player has called the blue bomber wing
   const [blueBomberAlive, setBlueBomberAlive] = useState(() => Array(BOMBER_COUNT).fill(true))  // per-bomber status for the roster
   const callBombersRef = useRef(false)
-  const capTacticRef        = useRef(capTactic)
-  const fighterTacticRef    = useRef(fighterTactic)
-  const fighterManoeuvreRef = useRef(fighterManoeuvre)
+  const capTacticRef      = useRef(capTactic)
+  const fighterControlRef = useRef(fighterControl)
   useEffect(() => { capTacticRef.current = capTactic }, [capTactic])
-  useEffect(() => { fighterTacticRef.current = fighterTactic }, [fighterTactic])
-  useEffect(() => { fighterManoeuvreRef.current = fighterManoeuvre }, [fighterManoeuvre])
-  // focusing the enemy flagship means charging it — auto-select free manoeuvre
-  useEffect(() => { if (fighterTactic === 'capital') setFighterManoeuvre('free') }, [fighterTactic])
+  useEffect(() => { fighterControlRef.current = fighterControl }, [fighterControl])
 
   // Enqueue a broadcast; show it now if the box is free, otherwise queue it so
   // simultaneous lines play one after another rather than overlapping.
@@ -1140,14 +1136,16 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             if (e.isBomber) { if (d < nbd) { nbd = d; nearestBomber = e } }
             else if (!e.isCapital && d < nfd) { nfd = d; nearestFighter = e }
           }
-          // blue fighters obey the player's targeting tactic; everyone else hits nearest.
-          // a nearby enemy bomber is a priority kill for any fighter
-          const tac = (s.team === 'blue' && !s.isCapital && !s.isBomber) ? fighterTacticRef.current : 'all'
+          // pick a firing target. Blue fighters follow the player's FIGHTER CONTROL
+          // mode; red fighters always use the AI 'default' behaviour
           let target = nearest
           if (!s.isCapital && !s.isBomber) {
-            if (tac === 'capital') target = (redCapital && redCapital.alive) ? redCapital : nearest
-            else if (nearestBomber && nbd < 22 * 22) target = nearestBomber
-            else if (tac === 'fighters') target = nearestFighter || nearest
+            const enemyCap = (redCapital && redCapital.alive) ? redCapital : null
+            const ctl = s.team === 'blue' ? fighterControlRef.current : 'default'
+            if (ctl === 'capital')      target = enemyCap || nearest                                    // focus the flagship
+            else if (ctl === 'pursue')  target = nearestBomber || nearest                               // hunt bombers, else engage
+            else if (ctl === 'screen')  target = nearestBomber || nearestFighter || enemyCap || nearest  // bombers → fighters → capital
+            else                        target = (nearestBomber && nbd < 22 * 22) ? nearestBomber : nearest  // 'default': nearest, nearby bomber priority
           }
 
           if (s.route) {
@@ -1170,8 +1168,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           } else {
             _acc.set(0, 0, 0)
             const enemyCap = s.team === 'blue' ? redCapital : blueCapital
-            // blue fighters (not bombers) can be ordered to screen their flagship
-            const screening = s.team === 'blue' && !s.isBomber && fighterManoeuvreRef.current === 'screen' && blueCapital && blueCapital.alive
+            // blue fighters set to "screen carrier" hold station around the flagship
+            const screening = s.team === 'blue' && !s.isBomber && fighterControlRef.current === 'screen' && blueCapital && blueCapital.alive
             if (s.isBomber && enemyCap && enemyCap.alive) {
               // run to the enemy flagship and orbit it, dropping bombs
               _tmp.subVectors(s.pos, enemyCap.pos)            // outward radial
@@ -1574,18 +1572,12 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             </div>
           </div>
           <div className="sb-tac-group">
-            <div className="sb-tac-label">FIGHTER TARGETING</div>
+            <div className="sb-tac-label">FIGHTER CONTROL</div>
             <div className="sb-tac-btns">
-              <button className={`sb-tac-btn${fighterTactic === 'all' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterTactic('all')}>ATTACK ALL</button>
-              <button className={`sb-tac-btn${fighterTactic === 'fighters' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterTactic('fighters')}>ENEMY FIGHTERS</button>
-              <button className={`sb-tac-btn${fighterTactic === 'capital' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterTactic('capital')}>ENEMY CAPITAL SHIP</button>
-            </div>
-          </div>
-          <div className="sb-tac-group">
-            <div className="sb-tac-label">FIGHTER MANOEUVRE</div>
-            <div className="sb-tac-btns">
-              <button className={`sb-tac-btn${fighterManoeuvre === 'free' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterManoeuvre('free')}>FREE MANOEUVRE</button>
-              <button className={`sb-tac-btn${fighterManoeuvre === 'screen' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterManoeuvre('screen')}>SCREEN CAPITAL SHIP</button>
+              <button className={`sb-tac-btn${fighterControl === 'default' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('default')}>DEFAULT</button>
+              <button className={`sb-tac-btn${fighterControl === 'screen' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('screen')}>SCREEN CARRIER</button>
+              <button className={`sb-tac-btn${fighterControl === 'pursue' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('pursue')}>PURSUE BOMBERS</button>
+              <button className={`sb-tac-btn${fighterControl === 'capital' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('capital')}>ATTACK CAPITAL SHIP</button>
             </div>
           </div>
           <div className="sb-tac-group">
