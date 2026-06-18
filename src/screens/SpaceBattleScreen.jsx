@@ -12,7 +12,7 @@ import {
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER,
   CRUISER_HP, CRUISER_SPEED, CRUISER_MIN, CRUISER_SCALE, CRUISER_STANDOFF,
-  MISSILE_DMG, MISSILE_SPEED, MISSILE_LIFE, MISSILE_RANGE, MISSILE_MISS_CHANCE, MISSILE_HOMING, MISSILE_CD_MIN, MISSILE_CD_RND,
+  MISSILE_DMG, MISSILE_SALVO, MISSILE_SPEED, MISSILE_LIFE, MISSILE_RANGE, MISSILE_MISS_CHANCE, MISSILE_HOMING, MISSILE_CD_MIN, MISSILE_CD_RND,
   PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
@@ -738,19 +738,24 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         audioRef.current?.playLaser(shooter.team)
       }
 
-      // Cruiser ordnance: a guided missile that homes hard onto its target and
-      // lays a smoke trail. Subject to armour like a normal hit (not a bomb).
+      // Cruiser ordnance: a guided missile that first drops from the launcher's
+      // belly (facing forward, no thrust), then ignites and homes onto its target,
+      // laying a smoke trail. Subject to armour like a normal hit (not a bomb).
       const fireMissile = (shooter, target) => {
         const willHit = Math.random() > MISSILE_MISS_CHANCE
-        _tmp.set(0, 0, 1).applyQuaternion(shooter.mesh.quaternion)
-        const start = shooter.pos.clone().addScaledVector(_tmp, 1.6)
-        const dir = target.pos.clone().sub(start).normalize()
+        const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(shooter.mesh.quaternion).normalize()
+        const down = new THREE.Vector3(0, -1, 0).applyQuaternion(shooter.mesh.quaternion).normalize()
+        const start = shooter.pos.clone().addScaledVector(down, 0.5).addScaledVector(fwd, 0.3)
         const mesh = new THREE.Mesh(missileGeo, missileMat)
         mesh.position.copy(start)
-        mesh.quaternion.setFromUnitVectors(yAxis, dir)
+        mesh.quaternion.setFromUnitVectors(yAxis, fwd)   // held facing forward through the drop
         scene.add(mesh)
-        bolts.push({ mesh, dir, target, willHit, life: 0, shooter, dmg: MISSILE_DMG, bomb: false, missile: true, homing: MISSILE_HOMING, speed: MISSILE_SPEED, maxLife: MISSILE_LIFE, smokeCd: 0 })
-        audioRef.current?.playLaser(shooter.team)
+        bolts.push({
+          mesh, dir: fwd.clone(), target, willHit, life: 0, shooter,
+          dmg: MISSILE_DMG, bomb: false, missile: true, homing: MISSILE_HOMING,
+          speed: MISSILE_SPEED, maxLife: MISSILE_LIFE, smokeCd: 0,
+          phase: 'drop', dropT: 0, dropDur: 0.32, dropDist: 1.7, dropDir: down, dropStart: start.clone(), fwd,
+        })
       }
 
       const spawnBlast = (pos, big = false) => {
@@ -1115,9 +1120,13 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
                 if (enemies.length) for (let k = 0; k < s.weapons; k++) fireBolt(s, enemies[(Math.random() * enemies.length) | 0], true)
                 s.fireCd = 0.7 + Math.random() * 0.9
               } else if (s.isCruiser) {
-                // cruiser: lob a homing missile at the nearest enemy ship in range
+                // cruiser: launch a salvo of homing missiles, spread across the nearest enemies in range
                 if (nearest && s.pos.distanceToSquared(nearest.pos) < MISSILE_RANGE * MISSILE_RANGE) {
-                  fireMissile(s, nearest); s.fireCd = MISSILE_CD_MIN + Math.random() * MISSILE_CD_RND
+                  const rngSq = MISSILE_RANGE * MISSILE_RANGE
+                  const inRange = ships.filter(e => e.alive && e.team !== s.team && s.pos.distanceToSquared(e.pos) < rngSq)
+                    .sort((a, b) => s.pos.distanceToSquared(a.pos) - s.pos.distanceToSquared(b.pos))
+                  for (let k = 0; k < MISSILE_SALVO; k++) fireMissile(s, inRange[Math.min(k, inRange.length - 1)])
+                  s.fireCd = MISSILE_CD_MIN + Math.random() * MISSILE_CD_RND
                 }
               } else if (target && s.pos.distanceToSquared(target.pos) < FIGHTER_RANGE * FIGHTER_RANGE) {
                 fireBolt(s, target)   // fighters hold fire until the target is within range
@@ -1131,6 +1140,21 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         for (let i = bolts.length - 1; i >= 0; i--) {
           const b = bolts[i]
           b.life += dt
+          // missile launch: drop clear of the launcher facing forward, then ignite
+          if (b.missile && b.phase === 'drop') {
+            b.dropT += dt
+            const p = Math.min(1, b.dropT / b.dropDur)
+            const e = 1 - Math.pow(1 - p, 2)                 // ease-out — pops out then settles
+            b.mesh.position.copy(b.dropStart).addScaledVector(b.dropDir, b.dropDist * e)
+            if (p >= 1) {                                    // ignite → aim, thrust, smoke
+              const aim = (b.target && b.target.alive) ? b.target.pos : _tmp.copy(b.mesh.position).addScaledVector(b.fwd, 10)
+              b.dir.copy(aim).sub(b.mesh.position).normalize()
+              b.mesh.quaternion.setFromUnitVectors(yAxis, b.dir)
+              b.phase = 'fly'; b.life = 0                    // maxLife governs flight only
+              audioRef.current?.playLaser(b.shooter.team)
+            }
+            continue
+          }
           let done = false
           if (b.willHit && b.target.alive) {
             _tmp.subVectors(b.target.pos, b.mesh.position)

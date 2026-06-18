@@ -4,7 +4,7 @@ import {
   TEAMS, CAP_HP, CAP_WEAPONS, CAP_SPEED, ARMOR_FLAGSHIP, BOMBER_HP, BOMB_DMG, BOMBER_SPEED,
   ARMOR_BOMBER, SHIP_HP, MAX_SPEED, ARMOR_FIGHTER, splitCapName, compStrength, FLEET_BUDGET,
   COMMS_PORTRAIT, PTS_BOMBER, PTS_FIGHTER, PTS_CRUISER, PTS_FLAGSHIP, RED_CAP_NAME,
-  CRUISER_HP, CRUISER_SPEED, ARMOR_CRUISER, MISSILE_DMG, MISSILE_RANGE,
+  CRUISER_HP, CRUISER_SPEED, ARMOR_CRUISER, MISSILE_DMG, MISSILE_SALVO, MISSILE_RANGE,
   RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, FIELD_FIGHTER_CAP, REINFORCE_INTERVAL,
 } from './constants'
 import { buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser } from './geometry'
@@ -62,7 +62,7 @@ function CountAdjust({ count, cost, free, onAdjust }) {
 const SHIP_INFO = {
   capital: { hp: CAP_HP,    dmg: `${CAP_WEAPONS} × 1`, speed: CAP_SPEED,    armor: ARMOR_FLAGSHIP, notes: [] },
   bomber:  { hp: BOMBER_HP, dmg: `${BOMB_DMG} / 1`,    speed: BOMBER_SPEED, armor: ARMOR_BOMBER,   notes: ['Bomb only targets capital ships', 'Point defence laser targets fighters'] },
-  cruiser: { hp: CRUISER_HP, dmg: MISSILE_DMG,         speed: CRUISER_SPEED, armor: ARMOR_CRUISER, notes: ['Homing missiles seek the nearest enemy', `Long range (${MISSILE_RANGE}) — holds back and bombards`] },
+  cruiser: { hp: CRUISER_HP, dmg: `${MISSILE_SALVO} × ${MISSILE_DMG}`, speed: CRUISER_SPEED, armor: ARMOR_CRUISER, notes: [`Fires a ${MISSILE_SALVO}-missile salvo`, 'Homing missiles seek the nearest enemies', `Long range (${MISSILE_RANGE}) — holds back and bombards`] },
   fighter: { hp: SHIP_HP,   dmg: 1,                    speed: MAX_SPEED,    armor: ARMOR_FIGHTER,  notes: [] },
 }
 const shipClass = (kind, team) =>
@@ -246,9 +246,9 @@ function InstructionsModal({ onClose }) {
               </ManualShip>
               <ManualShip kind="cruiser" name="Missile Cruiser" cost={PTS_CRUISER}>
                 {CRUISER_HP} HP, {ARMOR_CRUISER}% armour. A ranged support ship that hangs back at the edge of
-                the fight and lobs <b>homing missiles</b> ({MISSILE_DMG} damage) that seek the nearest enemy —
-                fighter, bomber or flagship alike — out to a long {MISSILE_RANGE}-unit reach. Soft if the brawl
-                reaches it, deadly while it can stand off and bombard.
+                the fight and fires <b>{MISSILE_SALVO}-missile salvos</b> ({MISSILE_DMG} damage each) of homing
+                ordnance that seek the nearest enemies — fighter, bomber or flagship alike — out to a long
+                {MISSILE_RANGE}-unit reach. Soft if the brawl reaches it, deadly while it can stand off and bombard.
               </ManualShip>
               <ManualShip kind="fighter" name="Fighter — Interceptor" cost={PTS_FIGHTER}>
                 {SHIP_HP} HP, no armour, fast and cheap. The all-rounder that engages anything. Only
