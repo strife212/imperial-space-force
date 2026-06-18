@@ -195,35 +195,33 @@ function buildRedBomber() {
   return mergeGeometries(parts, false)
 }
 
-// Missile cruisers — ranged support ships bristling with missile pods/racks.
-// Blue: sleek twin-pod cruiser.  Red: blocky hull with side missile racks.
+// Missile cruisers — boxy, rectangular missile platforms (no wings or pods).
+// Blue: slim brick with a dorsal missile deck.  Red: heavier slab with flush
+// side missile banks. Built entirely from boxes for a blunt, angular silhouette.
 function buildBlueCruiser() {
   const parts = []
-  let g = new THREE.ConeGeometry(0.34, 1.3, 6); g.rotateX(Math.PI / 2); g.translate(0, 0, 1.1); parts.push(g)   // sharp nose
-  g = new THREE.BoxGeometry(0.6, 0.42, 2.4); g.translate(0, 0, 0); parts.push(g)                                 // central fuselage
-  g = new THREE.BoxGeometry(0.34, 0.5, 1.0); g.translate(0, 0.42, -0.4); parts.push(g)                           // dorsal sensor spine
-  for (const sx of [0.78, -0.78]) {
-    g = new THREE.BoxGeometry(0.7, 0.06, 0.5); g.translate(sx * 0.55, 0, 0.1); parts.push(g)                     // outrigger pylon
-    g = new THREE.BoxGeometry(0.34, 0.34, 1.5); g.translate(sx, 0, 0.1); parts.push(g)                           // missile pod
-    g = new THREE.ConeGeometry(0.17, 0.5, 5); g.rotateX(Math.PI / 2); g.translate(sx, 0, 1.0); parts.push(g)     // pod nose cap
+  let g = new THREE.BoxGeometry(0.8, 0.6, 3.0); parts.push(g)                                  // main rectangular hull
+  g = new THREE.BoxGeometry(0.72, 0.5, 0.6); g.translate(0, 0, 1.75); parts.push(g)            // blunt prow block
+  g = new THREE.BoxGeometry(0.44, 0.3, 0.9); g.translate(0, 0.44, -0.4); parts.push(g)         // low bridge box
+  g = new THREE.BoxGeometry(0.78, 0.16, 1.6); g.translate(0, 0.36, 0.45); parts.push(g)        // dorsal missile deck
+  for (const sx of [0.22, -0.22]) {                                                            // recessed missile tubes (flush, no wings)
+    g = new THREE.BoxGeometry(0.16, 0.16, 1.4); g.translate(sx, 0.5, 0.55); parts.push(g)
   }
-  g = new THREE.BoxGeometry(0.05, 0.5, 0.6); g.translate(0, 0.28, -1.2); parts.push(g)                           // tail fin
-  g = new THREE.BoxGeometry(0.5, 0.4, 0.55); g.translate(0, 0, -1.45); parts.push(g)                             // engine block
+  g = new THREE.BoxGeometry(0.66, 0.5, 0.5); g.translate(0, 0, -1.75); parts.push(g)           // engine block
   return mergeGeometries(parts, false)
 }
 function buildRedCruiser() {
   const parts = []
-  let g = new THREE.BoxGeometry(1.1, 0.7, 2.8); parts.push(g)                                                    // slab hull
-  g = new THREE.BoxGeometry(0.5, 0.5, 0.9); g.translate(0, 0, 1.7); parts.push(g)                                // blunt prow
-  for (const sx of [0.82, -0.82]) {
-    g = new THREE.BoxGeometry(0.52, 0.6, 2.2); g.translate(sx, 0, -0.1); parts.push(g)                           // side missile rack housing
-    for (const sz of [0.7, 0.1, -0.5, -1.1]) {                                                                   // exposed missile tubes
-      g = new THREE.BoxGeometry(0.16, 0.16, 0.5); g.translate(sx, 0.18, sz + 0.4); parts.push(g)
+  let g = new THREE.BoxGeometry(1.2, 0.82, 3.0); parts.push(g)                                 // heavy slab hull
+  g = new THREE.BoxGeometry(1.1, 0.7, 0.6); g.translate(0, 0, 1.75); parts.push(g)             // blunt ram prow
+  for (const sx of [0.78, -0.78]) {                                                            // flush rectangular side missile banks
+    g = new THREE.BoxGeometry(0.36, 0.66, 2.4); g.translate(sx, 0, -0.1); parts.push(g)
+    for (const sz of [0.7, 0.0, -0.7]) {                                                        // tube mouths
+      g = new THREE.BoxGeometry(0.18, 0.18, 0.5); g.translate(sx, 0.12, sz); parts.push(g)
     }
   }
-  g = new THREE.BoxGeometry(0.5, 0.5, 0.7); g.translate(0, 0.55, 0.2); parts.push(g)                             // command tower
-  g = new THREE.BoxGeometry(0.5, 0.5, 0.85); g.translate(0.34, 0, -1.55); parts.push(g)                          // engine R
-  g = new THREE.BoxGeometry(0.5, 0.5, 0.85); g.translate(-0.34, 0, -1.55); parts.push(g)                         // engine L
+  g = new THREE.BoxGeometry(0.56, 0.42, 0.9); g.translate(0, 0.6, -0.1); parts.push(g)          // command box
+  g = new THREE.BoxGeometry(1.0, 0.6, 0.6); g.translate(0, 0, -1.75); parts.push(g)             // engine block
   return mergeGeometries(parts, false)
 }
 

@@ -29,8 +29,8 @@ const REINFORCE_INTERVAL = 10 // seconds between reinforcement waves from the re
 const BOMBER_AUTO_DISPATCH = 15 // sim-seconds before the blue bomber wing auto-launches if the player hasn't
 // Missile cruiser — a ranged support ship that holds back and lobs homing missiles
 const CRUISER_HP    = 16
-const CRUISER_SPEED = 5.0
-const CRUISER_MIN   = 2.0
+const CRUISER_SPEED = 2.0    // slow, ponderous missile platform
+const CRUISER_MIN   = 0.8
 const CRUISER_SCALE = 1.7    // larger than a bomber
 const CRUISER_STANDOFF = 30  // keeps its distance and bombards from range
 const MISSILE_DMG   = 3

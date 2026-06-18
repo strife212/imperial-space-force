@@ -1429,7 +1429,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           _lookAt.copy(follow.pos).addScaledVector(_fwd, follow.isCapital ? 12 : 4)
           camera.lookAt(_lookAt)
           // live hull readout under screen-centre for the tracked ship
-          const maxHp = follow.isCapital ? CAP_HP : follow.isBomber ? BOMBER_HP : SHIP_HP
+          const maxHp = follow.isCapital ? CAP_HP : follow.isBomber ? BOMBER_HP : follow.isCruiser ? CRUISER_HP : SHIP_HP
           const hp = Math.max(0, follow.hp)
           if (followHpRef.current) followHpRef.current.textContent = `${Math.ceil(hp)} / ${maxHp}`
           if (followBarRef.current) followBarRef.current.style.width = (hp / maxHp * 100) + '%'
