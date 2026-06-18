@@ -1,6 +1,6 @@
 // ── Battle parameters ──────────────────────────────────────────────────────────
 const FLEET_SIZE  = 25
-const SHIP_HP     = 6
+const SHIP_HP     = 5
 const BOMBER_COUNT = 5       // heavy bombers per side
 const BOMBER_HP    = 10      // tankier than a fighter
 const BOMBER_SPEED = 4.5     // slower than fighters (MAX_SPEED 7.5)
