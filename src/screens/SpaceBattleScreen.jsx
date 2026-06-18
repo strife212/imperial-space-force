@@ -14,7 +14,7 @@ import {
   PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
-import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, makeBackdrop } from './battle/geometry'
+import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, makeShield, makeBackdrop } from './battle/geometry'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
 
 export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpen }) {
@@ -524,6 +524,17 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           fires.push({ mesh: fm, mat: fMat })
           disposables.push(fMat)
         }
+        // energy shield bubble — invisible until armour deflects a fighter bolt,
+        // then it flashes. Sized (in local space, before the 3.2 hull scale) as an
+        // ellipsoid hugging each hull silhouette.
+        const shield = makeShield(TEAMS[team].bolt)
+        const ss = team === 'blue'
+          ? { x: 2.2, y: 2.0, z: 4.8, z0: 1.2 }
+          : { x: 3.0, y: 2.4, z: 4.6, z0: 0.5 }
+        shield.mesh.scale.set(ss.x, ss.y, ss.z)
+        shield.mesh.position.set(0, 0, ss.z0)
+        mesh.add(shield.mesh)
+        disposables.push(shield.geo, shield.mat)
         mesh.scale.setScalar(3.2)                   // huge flagship
         const route = { R: orbit.R, y: orbit.y, omega: orbit.omega, angle: startAngle }
         const pos = new THREE.Vector3(Math.cos(startAngle) * route.R, route.y, Math.sin(startAngle) * route.R)
@@ -540,6 +551,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           reserveEl: team === 'blue' ? blueReserveRef.current : redReserveRef.current,
           fireCd: 0.5 + Math.random(), flash: 0,
           isCapital: true, kills: 0, weapons: CAP_WEAPONS, armor: ARMOR_FLAGSHIP, radius: 16, route, glows, fires, emitCd: 0,
+          shieldMesh: shield.mesh, shieldMat: shield.mat, shieldFlash: 0,
         })
       }
       spawnCapital('blue', Math.PI)   // start on the left
@@ -691,8 +703,13 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         setPipCaption({ team, text })
       }
 
+      const SHIELD_FLASH_TIME = 0.45   // seconds the flagship shield stays lit after catching a bolt
       const damage = (ship, killer, amount = 1, bomb = false) => {
-        if (!bomb && !killer?.isCapital && Math.random() * 100 < ship.armor) return   // armour deflects fighter bolts only — capital fire & bombs ignore it
+        if (!bomb && !killer?.isCapital && Math.random() * 100 < ship.armor) {
+          // armour deflects fighter bolts only — capital fire & bombs ignore it.
+          if (ship.isCapital) ship.shieldFlash = SHIELD_FLASH_TIME   // shield catches the deflected bolt → flash
+          return
+        }
         ship.hp -= amount
         ship.flash = 0.12
         // capital crosses 25% shield → critical-damage broadcast (once per ship)
@@ -707,6 +724,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           // grey out the destroyed bomber in the blue bomber roster
           if (ship.isBomber && ship.team === 'blue') setBlueBomberAlive(prev => prev.map((a, i) => i === ship.bIndex ? false : a))
           if (ship.isCapital) {
+            if (ship.shieldMesh) ship.shieldMesh.visible = false   // shield collapses with the hull
             // begin the drawn-out death; the hull stays as drifting wreckage
             ship.driftVel = _tmp.set(0, 0, 1).applyQuaternion(ship.mesh.quaternion).multiplyScalar(0.9).clone()
             wrecks.push({ ship, t: 0, blastCd: 0, final: false })
@@ -957,6 +975,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           }
           // capital damage states: reveal hull fires and spit embers as HP falls
           if (s.isCapital) {
+            // energy shield: invisible at rest, fades out after catching a bolt
+            if (s.shieldMat) {
+              if (s.shieldFlash > 0) s.shieldFlash = Math.max(0, s.shieldFlash - dt)
+              s.shieldMat.uniforms.uIntensity.value = s.shieldFlash > 0 ? Math.pow(s.shieldFlash / SHIELD_FLASH_TIME, 0.7) : 0
+            }
             const dmg = 1 - s.hp / CAP_HP
             const nf = Math.floor(dmg * s.fires.length)
             for (let i = 0; i < s.fires.length; i++) {

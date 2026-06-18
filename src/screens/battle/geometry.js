@@ -132,6 +132,40 @@ function buildRedCapital() {
   return mergeGeometries(parts, false)
 }
 
+// ── Capital energy shield ──────────────────────────────────────────────────────
+// A fresnel bubble that hugs the flagship silhouette. Invisible at rest
+// (uIntensity 0); pulsed bright for a moment when armour deflects an incoming
+// bolt, so the deflection reads as the shield catching the shot.
+const SHIELD_FRAG = /* glsl */`
+  precision highp float;
+  uniform vec3 uColor;
+  uniform float uPower;
+  uniform float uIntensity;
+  varying vec3 vN;
+  varying vec3 vView;
+  void main() {
+    float f = pow(1.0 - max(dot(vN, vView), 0.0), uPower);   // bright toward the grazing silhouette
+    float fill = f * 0.85 + 0.10;                            // rim glow + faint full-bubble fill
+    gl_FragColor = vec4(uColor * fill, fill) * uIntensity;   // uIntensity 0 → fully invisible
+  }
+`
+function makeShield(color) {
+  const geo = new THREE.SphereGeometry(1, 32, 24)
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: RIM_VERT, fragmentShader: SHIELD_FRAG,
+    uniforms: {
+      uColor:     { value: new THREE.Color(color) },
+      uPower:     { value: 2.4 },
+      uIntensity: { value: 0 },
+    },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide,
+  })
+  const mesh = new THREE.Mesh(geo, mat)
+  mesh.renderOrder = 3
+  mesh.raycast = () => {}   // never intercept ship-selection clicks
+  return { mesh, geo, mat }
+}
+
 // Bombers — heavier than fighters, same team aesthetic. Blue: broad sleek delta
 // with a bomb bay + twin pods.  Red: bulky forked hull with a ventral bomb pod.
 function buildBlueBomber() {
@@ -272,5 +306,5 @@ function makeBackdrop(scene, disposables, lightDir, camera) {
 export {
   NEBULA_VERT, NEBULA_FRAG,
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber,
-  makeBackdrop,
+  makeShield, makeBackdrop,
 }
