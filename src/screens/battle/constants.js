@@ -2,7 +2,7 @@
 const FLEET_SIZE  = 25
 const SHIP_HP     = 5
 const BOMBER_COUNT = 5       // heavy bombers per side
-const BOMBER_HP    = 10      // tankier than a fighter
+const BOMBER_HP    = 12      // tankier than a fighter
 const BOMBER_SPEED = 4.5     // slower than fighters (MAX_SPEED 7.5)
 const BOMBER_MIN   = 1.62
 const BOMBER_SCALE = 1.43    // slightly larger than fighters
