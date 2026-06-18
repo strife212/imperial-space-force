@@ -6905,19 +6905,32 @@ body {
   display: flex;
   align-items: center;
   gap: 7px;
-  flex-wrap: wrap;
-  max-width: 132px;        /* wrap to a second row past ~4 sprites, beside the button */
+  flex-wrap: nowrap;       /* keep the whole bomber roster on one line beside the button */
 }
-.sb-dispatch-bomber { display: block; line-height: 0; }
+.sb-dispatch-bomber { position: relative; display: block; line-height: 0; }
 .sb-dispatch-bomber .sb-sprite { width: 26px; height: 26px; }
-.sb-dispatch-bomber .sb-sprite--blue path { fill: var(--c-scarlet); }
-.sb-dispatch-bomber .sb-sprite { filter: drop-shadow(0 0 4px rgba(26, 128, 255, 0.55)); }
-.sb-dispatch-bomber--dead .sb-sprite path { fill: var(--c-ash-dim); }
-.sb-dispatch-bomber--dead .sb-sprite { opacity: 0.35; filter: none; }
-/* trackable bomber: clickable, with a hover lift + glow */
+/* default — not yet dispatched: grey, no glow */
+.sb-dispatch-bomber .sb-sprite path { fill: var(--c-ash-dim); }
+.sb-dispatch-bomber .sb-sprite { filter: none; }
+/* dispatched + alive: blue, glowing, clickable (scarlet token is blue in this palette) */
 .sb-dispatch-bomber--live { pointer-events: auto; cursor: pointer; transition: transform 0.1s ease; }
+.sb-dispatch-bomber--live .sb-sprite path { fill: var(--c-scarlet); }
+.sb-dispatch-bomber--live .sb-sprite { filter: drop-shadow(0 0 4px rgba(26, 128, 255, 0.55)); }
 .sb-dispatch-bomber--live:hover { transform: scale(1.2); }
 .sb-dispatch-bomber--live:hover .sb-sprite { filter: drop-shadow(0 0 6px rgba(140, 200, 255, 0.95)); }
+/* dispatched + destroyed: grey with a red strike-through */
+.sb-dispatch-bomber--dead .sb-sprite path { fill: var(--c-ash-dim); }
+.sb-dispatch-bomber--dead .sb-sprite { opacity: 0.5; filter: none; }
+.sb-dispatch-bomber--dead::after {
+  content: '';
+  position: absolute;
+  left: -2px; right: -2px; top: 50%;
+  height: 2px;
+  background: var(--c-bad);
+  box-shadow: 0 0 4px rgba(255, 36, 0, 0.85);
+  transform: translateY(-50%) rotate(-20deg);
+  pointer-events: none;
+}
 .sb-dispatch-countdown {
   font-size: 10px;
   letter-spacing: 0.1em;
