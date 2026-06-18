@@ -82,10 +82,13 @@ const randomBlueCapName = () => CAP_PREFIX + ' ' + BLUE_CAP_NAMES[Math.floor(Mat
 const splitCapName = (full) => full.startsWith(CAP_PREFIX + ' ')
   ? { prefix: CAP_PREFIX, name: full.slice(CAP_PREFIX.length + 1) }
   : { prefix: null, name: full }
-// Comms-broadcast portraits: player portrait for blue, the Discord image for red
+// Comms-broadcast portraits: player portrait for blue, the Discord image for red.
+// BASE_URL is guarded so this module also loads under plain Node (e.g. the battle
+// sim harness), where import.meta.env is undefined.
+const BASE_URL = import.meta.env?.BASE_URL ?? '/'
 const COMMS_PORTRAIT = {
-  blue: `${import.meta.env.BASE_URL}portrait.png`,
-  red:  `${import.meta.env.BASE_URL}darkness.webp`,
+  blue: `${BASE_URL}portrait.png`,
+  red:  `${BASE_URL}darkness.webp`,
 }
 // Persistent end-of-battle broadcast from the victor. Rich segments so the
 // typewriter can break after the first sentence and colour the key phrase.

@@ -1,0 +1,356 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Headless battle simulator for the space-battle set-piece.
+//
+//   npm run sim                       # 10 runs, default fleets, default timings
+//   npm run sim -- --runs 50          # 50 runs
+//   npm run sim -- --blue-bombers 7   # force blue to launch its bombers at t=7s
+//   npm run sim -- --red-bombers 7    # force red's launch time too (else random 5–15s)
+//   npm run sim -- --blue-fighters 30 --red-fighters 20 --blue-bombers-count 3
+//   npm run sim -- --verbose          # per-run table (on by default for ≤20 runs)
+//
+// All COMBAT VALUES (HP, damage, armour, speeds, ranges, point costs, morale
+// thresholds, …) are imported live from src/screens/battle/constants.js, so this
+// harness always reflects the game's current tuning — change a number there and
+// re-run, no edits here.
+//
+// The COMBAT LOGIC below is a faithful port of the per-frame simulation loop in
+// src/screens/SpaceBattleScreen.jsx (steering, firing, bombs, armour, morale /
+// retreat, victory) with all three.js rendering, audio, camera and UI stripped.
+// It uses three.js only for vector maths. If you change the simulation rules in
+// SpaceBattleScreen.jsx, mirror the change here to keep results representative.
+// ─────────────────────────────────────────────────────────────────────────────
+import * as THREE from 'three'
+import {
+  FLEET_SIZE, SHIP_HP, BOMBER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN,
+  BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED,
+  MISS_CHANCE, BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF,
+  FIGHTER_RANGE, TURN_RATE, FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH,
+  ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP,
+  PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH,
+} from '../src/screens/battle/constants.js'
+
+// ── CLI args ──────────────────────────────────────────────────────────────────
+const argv = process.argv.slice(2)
+const argVal = (name, def) => { const i = argv.indexOf(`--${name}`); return i >= 0 && argv[i + 1] ? argv[i + 1] : def }
+const hasFlag = (name) => argv.includes(`--${name}`)
+const num = (name, def) => { const v = argVal(name, null); return v == null ? def : Number(v) }
+
+const RUNS          = num('runs', 10)
+const BLUE_FIGHTERS = num('blue-fighters', FLEET_SIZE)
+const RED_FIGHTERS  = num('red-fighters', FLEET_SIZE)
+const BLUE_BCOUNT   = num('blue-bombers-count', BOMBER_COUNT)
+const RED_BCOUNT    = num('red-bombers-count', BOMBER_COUNT)
+// Bomber launch time. Default mirrors the game: blue auto-dispatches at
+// BOMBER_AUTO_DISPATCH, red rolls a random 5–15s. Override with a fixed number.
+const BLUE_LAUNCH   = argVal('blue-bombers', null)   // null → BOMBER_AUTO_DISPATCH
+const RED_LAUNCH    = argVal('red-bombers', null)    // null → random 5–15s
+const VERBOSE       = hasFlag('verbose') || (!hasFlag('quiet') && RUNS <= 20)
+
+const DT = 1 / 60
+const MAX_T = 300
+const INTRO_TOTAL = 0.6 + 0.5 + 0.85 + 0.1   // hyperspace jump-in: no combat before this
+
+const UP = new THREE.Vector3(0, 1, 0)
+const ORIGIN = new THREE.Vector3(0, 0, 0)
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion()
+const _dir = new THREE.Vector3(), _tmp = new THREE.Vector3(), _acc = new THREE.Vector3(), _tan = new THREE.Vector3()
+const clamp = THREE.MathUtils.clamp
+
+const orient = (q, dir, smooth) => {
+  if (dir.lengthSq() < 1e-6) return
+  _m.lookAt(dir, ORIGIN, UP); _q.setFromRotationMatrix(_m)
+  if (smooth == null) q.copy(_q); else q.slerp(_q, smooth)
+}
+
+function runBattle(cfg) {
+  const ships = []
+  const TEAMS = ['blue', 'red']
+
+  const spawnFleet = (team, count, sx, vdir) => {
+    for (let i = 0; i < count; i++) {
+      const reserve = i >= FIELD_FIGHTER_CAP
+      const row = i % 5, col = Math.floor(i / 5)
+      const pos = new THREE.Vector3(
+        sx + (Math.random() - 0.5) * 5,
+        (row - 2) * 2.6 + (Math.random() - 0.5) * 2,
+        (col - 2) * 2.8 + (Math.random() - 0.5) * 2,
+      )
+      const vel = new THREE.Vector3(vdir * (2 + Math.random() * 2), (Math.random() - 0.5), (Math.random() - 0.5))
+      ships.push({
+        team, hp: SHIP_HP, alive: !reserve, reserve, lost: false, pos, vel, quat: new THREE.Quaternion(),
+        fireCd: 0.5 + Math.random() * 2.5, isCapital: false, isBomber: false, kills: 0,
+        weapons: 1, armor: ARMOR_FIGHTER, maxSpeed: MAX_SPEED, minSpeed: MIN_SPEED, radius: 0,
+        turn: TURN_RATE, standoff: STANDOFF, bound: BOUND_R,
+      })
+    }
+    return Math.max(0, count - FIELD_FIGHTER_CAP)
+  }
+  const reserveLeft = { blue: spawnFleet('blue', cfg.blueFighters, -31, 1), red: spawnFleet('red', cfg.redFighters, 31, -1) }
+
+  const orbitR = 38 + Math.random() * 5
+  const orbit = { R: orbitR, y: (Math.random() - 0.5) * 6, omega: (CAP_SPEED / orbitR) * (Math.random() < 0.5 ? 1 : -1) }
+  const spawnCapital = (team, startAngle) => {
+    const route = { R: orbit.R, y: orbit.y, omega: orbit.omega, angle: startAngle }
+    const pos = new THREE.Vector3(Math.cos(startAngle) * route.R, route.y, Math.sin(startAngle) * route.R)
+    const sgn = route.omega >= 0 ? 1 : -1
+    const vel = new THREE.Vector3(-Math.sin(startAngle) * sgn, 0, Math.cos(startAngle) * sgn)
+    const q = new THREE.Quaternion(); orient(q, vel)
+    ships.push({
+      team, hp: CAP_HP, alive: true, lost: false, pos, vel, quat: q,
+      fireCd: 0.5 + Math.random(), isCapital: true, isBomber: false, kills: 0,
+      weapons: CAP_WEAPONS, armor: ARMOR_FLAGSHIP, radius: 16, route,
+    })
+  }
+  spawnCapital('blue', Math.PI)
+  spawnCapital('red', 0)
+  const blueCap = ships.find(s => s.isCapital && s.team === 'blue')
+  const redCap = ships.find(s => s.isCapital && s.team === 'red')
+
+  const spawnBombers = (team, count) => {
+    const sx = team === 'blue' ? -28 : 28
+    for (let i = 0; i < count; i++) {
+      const home = new THREE.Vector3(sx + (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, -16 + i * 8)
+      ships.push({
+        team, hp: BOMBER_HP, alive: false, lost: false, pos: home.clone(), vel: new THREE.Vector3(), quat: new THREE.Quaternion(),
+        fireCd: 1 + Math.random() * 1.5, pdCd: 0.5 + Math.random() * 1.5, isCapital: false, isBomber: true, kills: 0,
+        weapons: 1, armor: ARMOR_BOMBER, maxSpeed: BOMBER_SPEED, minSpeed: BOMBER_MIN, radius: 1.2,
+        turn: TURN_RATE * 0.7, standoff: STANDOFF, bound: BOUND_R, home,
+      })
+    }
+  }
+  spawnBombers('blue', cfg.blueBombers)
+  spawnBombers('red', cfg.redBombers)
+  let blueBombersLaunched = cfg.blueBombers === 0, redBombersLaunched = cfg.redBombers === 0
+  const blueEntry = cfg.blueLaunch == null ? BOMBER_AUTO_DISPATCH : cfg.blueLaunch
+  const redEntry  = cfg.redLaunch  == null ? 5 + Math.random() * 10 : cfg.redLaunch
+
+  const bolts = []
+  const fireBolt = (shooter, target, big = false, bomb = !!shooter.isBomber) => {
+    const willHit = Math.random() > (bomb ? BOMB_MISS_CHANCE : MISS_CHANCE)
+    _tmp.set(0, 0, 1).applyQuaternion(shooter.quat)
+    const start = shooter.pos.clone().addScaledVector(_tmp, big ? 2.6 : 1.0)
+    const dir = target.pos.clone().sub(start).normalize()
+    bolts.push({ pos: start, dir, target, willHit, life: 0, shooter, dmg: bomb ? BOMB_DMG : 1, bomb, maxLife: bomb ? BOMB_LIFE : 2.2 })
+  }
+  const damage = (ship, killer, amount = 1, bomb = false) => {
+    if (!bomb && !killer?.isCapital && Math.random() * 100 < ship.armor) return
+    ship.hp -= amount
+    if (ship.hp <= 0 && ship.alive) { ship.alive = false; ship.lost = true; if (killer) killer.kills = (killer.kills || 0) + 1 }
+  }
+
+  let gameOver = false, retreatTeam = null, retreatTime = 0, retreatWarped = false
+  let reinforceAt = REINFORCE_INTERVAL
+  let t = 0, winner = null
+  const counts = () => ({ blue: ships.filter(s => s.team === 'blue' && s.alive).length, red: ships.filter(s => s.team === 'red' && s.alive).length })
+  const launch = (team) => { for (const b of ships) if (b.isBomber && b.team === team) { b.alive = true; b.pos.copy(b.home) } }
+
+  while (t < MAX_T && !gameOver) {
+    t += DT
+    const intro = t < INTRO_TOTAL
+    if (!blueBombersLaunched && t >= blueEntry) { blueBombersLaunched = true; launch('blue') }
+    if (!redBombersLaunched && t >= redEntry) { redBombersLaunched = true; launch('red') }
+
+    for (const s of ships) {
+      if (!s.alive) continue
+      if (s.warpOut) { s.warpT += DT; if (s.warpT >= 0.8) { s.alive = false; s.lost = true } continue }
+      if (intro) continue
+
+      let nearest = null, nd = Infinity, nearestFighter = null, nfd = Infinity, nearestBomber = null, nbd = Infinity
+      for (const e of ships) {
+        if (!e.alive || e.team === s.team) continue
+        const d = s.pos.distanceToSquared(e.pos)
+        if (d < nd) { nd = d; nearest = e }
+        if (e.isBomber) { if (d < nbd) { nbd = d; nearestBomber = e } }
+        else if (!e.isCapital && d < nfd) { nfd = d; nearestFighter = e }
+      }
+      let target = nearest
+      if (!s.isCapital && !s.isBomber) target = (nearestBomber && nbd < 22 * 22) ? nearestBomber : nearest
+
+      if (s.route) {
+        const rt = s.route; rt.angle += rt.omega * DT
+        const tx = Math.cos(rt.angle) * rt.R, ty = rt.y, tz = Math.sin(rt.angle) * rt.R
+        const dx = tx - s.pos.x, dy = ty - s.pos.y, dz = tz - s.pos.z
+        const dist = Math.hypot(dx, dy, dz), step = CAP_SPEED * DT
+        if (dist > 1e-4) { const f = Math.min(step, dist) / dist; s.pos.x += dx * f; s.pos.y += dy * f; s.pos.z += dz * f; orient(s.quat, _dir.set(dx, dy, dz), 1 - Math.exp(-1.5 * DT)) }
+      } else {
+        _acc.set(0, 0, 0)
+        const enemyCap = s.team === 'blue' ? redCap : blueCap
+        if (s.isBomber && enemyCap && enemyCap.alive) {
+          _tmp.subVectors(s.pos, enemyCap.pos); const dist = _tmp.length() || 1; _tmp.divideScalar(dist)
+          _acc.addScaledVector(_tmp, clamp((enemyCap.radius + 6 - dist) * 0.7, -6, 6))
+          _tan.crossVectors(UP, _tmp).normalize(); _acc.addScaledVector(_tan, 5)
+        } else if (target) {
+          _tmp.subVectors(target.pos, s.pos); const dist = _tmp.length() || 1; _tmp.divideScalar(dist)
+          _acc.addScaledVector(_tmp, clamp((dist - s.standoff) * 0.8, -5, 9))
+        }
+        for (const o of ships) {
+          if (o === s || !o.alive) continue
+          const d = s.pos.distanceTo(o.pos), sepR = SEP_RADIUS + s.radius + o.radius
+          if (d > 0 && d < sepR) { const w = (o.isCapital && !s.isCapital) ? 65 : 16; _tmp.subVectors(s.pos, o.pos).multiplyScalar((sepR - d) / (d * sepR)); _acc.addScaledVector(_tmp, w) }
+        }
+        const wj = s.isBomber ? 1.5 : 5
+        _acc.x += (Math.random() - 0.5) * wj
+        _acc.y += (Math.random() - 0.5) * (s.isBomber ? 1.2 : 4)
+        _acc.z += (Math.random() - 0.5) * wj
+        const r = s.pos.length(); if (r > s.bound) _acc.addScaledVector(_tmp.copy(s.pos).normalize(), -(r - s.bound) * 2.2)
+        s.vel.addScaledVector(_acc, DT)
+        let sp = s.vel.length()
+        if (sp > s.maxSpeed) s.vel.multiplyScalar(s.maxSpeed / sp)
+        else if (sp < s.minSpeed && sp > 0) s.vel.multiplyScalar(s.minSpeed / sp)
+        s.pos.addScaledVector(s.vel, DT)
+        orient(s.quat, _dir.copy(s.vel), 1 - Math.exp(-s.turn * DT))
+      }
+
+      if (s.team !== retreatTeam) {
+        if (s.isBomber) {
+          s.pdCd -= DT
+          if (s.pdCd <= 0) {
+            const pdSq = PD_RANGE * PD_RANGE
+            const pdTarget = (nearestFighter && nfd < pdSq) ? nearestFighter : (nearestBomber && nbd < pdSq) ? nearestBomber : null
+            if (pdTarget) { fireBolt(s, pdTarget, false, false); s.pdCd = 1.2 + Math.random() * 2.8 }
+          }
+        }
+        s.fireCd -= DT
+        if (s.fireCd <= 0) {
+          if (s.isBomber) {
+            const enemyCap = s.team === 'blue' ? redCap : blueCap
+            if (enemyCap && enemyCap.alive && s.pos.distanceTo(enemyCap.pos) < BOMB_RANGE) { fireBolt(s, enemyCap); s.fireCd = 1.6 + Math.random() * 1.4 }
+          } else if (s.weapons > 1) {
+            const enemies = ships.filter(e => e.alive && e.team !== s.team)
+            if (enemies.length) for (let k = 0; k < s.weapons; k++) fireBolt(s, enemies[(Math.random() * enemies.length) | 0], true)
+            s.fireCd = 0.7 + Math.random() * 0.9
+          } else if (target && s.pos.distanceToSquared(target.pos) < FIGHTER_RANGE * FIGHTER_RANGE) {
+            fireBolt(s, target); s.fireCd = 1.2 + Math.random() * 2.8
+          }
+        }
+      }
+    }
+
+    for (let i = bolts.length - 1; i >= 0; i--) {
+      const b = bolts[i]; b.life += DT; let done = false
+      if (b.willHit && b.target.alive) {
+        _tmp.subVectors(b.target.pos, b.pos); const d = _tmp.length()
+        if (d < 1.3) { damage(b.target, b.shooter, b.dmg, b.bomb); done = true }
+        else b.dir.lerp(_tmp.normalize(), 0.12).normalize()
+      }
+      if (!done) { b.pos.addScaledVector(b.dir, BOLT_SPEED * DT); if (b.life > b.maxLife) done = true }
+      if (done) bolts.splice(i, 1)
+    }
+
+    const c = counts()
+    const strength = { blue: 0, red: 0 }
+    for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? Math.max(PTS_FLAGSHIP_MIN, PTS_FLAGSHIP * Math.max(0, s.hp) / CAP_HP) : s.isBomber ? PTS_BOMBER : PTS_FIGHTER
+    const flagshipDead = { blue: !ships.some(s => s.isCapital && s.team === 'blue' && s.alive), red: !ships.some(s => s.isCapital && s.team === 'red' && s.alive) }
+
+    // reinforcements: top each team's on-field fighters back to the cap from reserve
+    if (t >= reinforceAt) {
+      reinforceAt += REINFORCE_INTERVAL
+      for (const tm of TEAMS) {
+        if (reserveLeft[tm] <= 0) continue
+        let onField = 0
+        for (const s of ships) if (s.team === tm && s.alive && !s.isCapital && !s.isBomber) onField++
+        let need = Math.min(FIELD_FIGHTER_CAP - onField, reserveLeft[tm])
+        for (const s of ships) { if (need <= 0) break; if (s.team !== tm || !s.reserve) continue; s.reserve = false; s.alive = true; reserveLeft[tm]--; need-- }
+      }
+    }
+
+    if (!retreatTeam) {
+      for (const tm of TEAMS) {
+        const threshold = flagshipDead[tm] ? MORALE_BROKEN_STRENGTH : RETREAT_STRENGTH
+        if (strength[tm] > 0 && strength[tm] < threshold) { retreatTeam = tm; retreatTime = t; break }
+      }
+    }
+    if (retreatTeam && !retreatWarped && t - retreatTime >= 3) {
+      retreatWarped = true
+      for (const b of ships) if (b.team === retreatTeam && b.alive) { b.warpOut = true; b.warpT = 0 }
+    }
+
+    if (c.blue === 0 || c.red === 0) { gameOver = true; winner = c.blue > 0 ? 'BLUE' : c.red > 0 ? 'RED' : 'DRAW' }
+  }
+
+  if (!winner) { const c = counts(); winner = c.blue > c.red ? 'BLUE' : c.red > c.blue ? 'RED' : 'DRAW' }
+  const aliveOf = (team, pred) => ships.filter(s => s.team === team && s.alive && pred(s)).length
+  const capAlive = (team) => ships.some(s => s.isCapital && s.team === team && s.alive)
+  const kills = (team) => ships.filter(s => s.team === team).reduce((a, s) => a + (s.kills || 0), 0)
+  return {
+    winner, t: Math.round(t * 10) / 10,
+    blue: { fighters: aliveOf('blue', s => !s.isCapital && !s.isBomber), bombers: aliveOf('blue', s => s.isBomber), cap: capAlive('blue'), kills: kills('blue') },
+    red: { fighters: aliveOf('red', s => !s.isCapital && !s.isBomber), bombers: aliveOf('red', s => s.isBomber), cap: capAlive('red'), kills: kills('red') },
+  }
+}
+
+// Spend a blue wing budget on B bombers, then pour every leftover point into
+// fighters (F = floor(remaining / fighter-cost)). Used by --sweep.
+const wingFor = (bombers) => {
+  const remaining = FLEET_BUDGET - PTS_FLAGSHIP - PTS_BOMBER * bombers
+  return { bombers, fighters: Math.max(0, Math.floor(remaining / PTS_FIGHTER)) }
+}
+
+if (hasFlag('sweep')) {
+  // ── Sweep mode ──────────────────────────────────────────────────────────────
+  // Walk an even ladder of bomber counts from 0 → max-affordable, filling the rest
+  // of blue's budget with fighters. Red stays default; blue bombers launch at the
+  // given time (default 10s for the sweep). 10 builds × RUNS runs each.
+  const runsEach = hasFlag('runs') ? RUNS : 10
+  const maxB = Math.floor((FLEET_BUDGET - PTS_FLAGSHIP) / PTS_BOMBER)
+  const STEPS = 10
+  const bomberCounts = [...new Set(Array.from({ length: STEPS }, (_, i) => Math.round(i * maxB / (STEPS - 1))))]
+  const blueLaunch = BLUE_LAUNCH == null ? 10 : Number(BLUE_LAUNCH)
+
+  console.log(`\nBuild sweep — ${bomberCounts.length} builds × ${runsEach} runs (${bomberCounts.length * runsEach} sims)`)
+  console.log(`Red: default ${RED_FIGHTERS}F/${RED_BCOUNT}B (random launch).  Blue bombers launch ${blueLaunch}s, leftover points → fighters.`)
+  console.log('\n  Blue build   | Blue W | Red W | Draw | Avg t | Blue surv | Red surv | Blue cap')
+  console.log('  -------------+--------+-------+------+-------+-----------+----------+---------')
+
+  const rows = []
+  for (const B of bomberCounts) {
+    const wing = wingFor(B)
+    const cfg = {
+      blueFighters: wing.fighters, redFighters: RED_FIGHTERS,
+      blueBombers: wing.bombers, redBombers: RED_BCOUNT,
+      blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH),
+    }
+    const res = []
+    for (let i = 0; i < runsEach; i++) res.push(runBattle(cfg))
+    const w = (t) => res.filter(r => r.winner === t).length
+    const avg = (f) => res.reduce((a, r) => a + f(r), 0) / runsEach
+    const label = `${String(wing.fighters).padStart(2)}F /${String(wing.bombers).padStart(2)}B`
+    rows.push({ B, wing, blueW: w('BLUE'), redW: w('RED'), draw: w('DRAW'), avgT: avg(r => r.t), blueSurv: avg(r => r.blue.fighters + r.blue.bombers), redSurv: avg(r => r.red.fighters + r.red.bombers), blueCap: res.filter(r => r.blue.cap).length })
+    const r = rows[rows.length - 1]
+    console.log(`  ${label.padEnd(12)} | ${String(r.blueW).padStart(2)}/${runsEach} | ${String(r.redW).padStart(2)}/${runsEach} | ${String(r.draw).padStart(2)}/${runsEach} | ${r.avgT.toFixed(1).padStart(5)} | ${r.blueSurv.toFixed(1).padStart(6)}    | ${r.redSurv.toFixed(1).padStart(5)}    | ${String(r.blueCap).padStart(2)}/${runsEach}`)
+  }
+  const best = rows.reduce((a, b) => b.blueW > a.blueW ? b : a)
+  console.log(`\nBest blue build: ${best.wing.fighters}F / ${best.wing.bombers}B — ${best.blueW}/${runsEach} wins`)
+} else {
+  // ── Single-config mode ────────────────────────────────────────────────────────
+  const cfg = {
+    blueFighters: BLUE_FIGHTERS, redFighters: RED_FIGHTERS,
+    blueBombers: BLUE_BCOUNT, redBombers: RED_BCOUNT,
+    blueLaunch: BLUE_LAUNCH == null ? null : Number(BLUE_LAUNCH),
+    redLaunch:  RED_LAUNCH  == null ? null : Number(RED_LAUNCH),
+  }
+  console.log(`\nBattle sim — ${RUNS} run(s)`)
+  console.log(`Blue: ${cfg.blueFighters} fighters, ${cfg.blueBombers} bombers, launch ${cfg.blueLaunch == null ? `auto(${BOMBER_AUTO_DISPATCH}s)` : cfg.blueLaunch + 's'}`)
+  console.log(`Red:  ${cfg.redFighters} fighters, ${cfg.redBombers} bombers, launch ${cfg.redLaunch == null ? 'random(5–15s)' : cfg.redLaunch + 's'}`)
+
+  const results = []
+  for (let i = 0; i < RUNS; i++) results.push(runBattle(cfg))
+
+  if (VERBOSE) {
+    console.log('\nRun | Winner | Time  | Blue surv (F/B/Cap) | Red surv (F/B/Cap)  | Kills B/R')
+    console.log('----+--------+-------+---------------------+---------------------+----------')
+    results.forEach((r, i) => {
+      const bs = `${r.blue.fighters}F ${r.blue.bombers}B ${r.blue.cap ? 'Cap✓' : 'Cap✗'}`
+      const rs = `${r.red.fighters}F ${r.red.bombers}B ${r.red.cap ? 'Cap✓' : 'Cap✗'}`
+      console.log(`${String(i + 1).padStart(3)} | ${r.winner.padEnd(6)} | ${String(r.t).padStart(5)} | ${bs.padEnd(19)} | ${rs.padEnd(19)} | ${r.blue.kills}/${r.red.kills}`)
+    })
+  }
+
+  const tally = results.reduce((a, r) => (a[r.winner] = (a[r.winner] || 0) + 1, a), {})
+  const avg = (f) => (results.reduce((a, r) => a + f(r), 0) / RUNS).toFixed(1)
+  console.log('\n── Summary ──')
+  console.log(`Blue wins: ${tally.BLUE || 0}/${RUNS}   Red wins: ${tally.RED || 0}/${RUNS}   Draws: ${tally.DRAW || 0}/${RUNS}`)
+  console.log(`Avg duration: ${avg(r => r.t)}s`)
+  console.log(`Avg survivors — Blue: ${avg(r => r.blue.fighters + r.blue.bombers)} craft (cap survived ${results.filter(r => r.blue.cap).length}/${RUNS})`)
+  console.log(`Avg survivors — Red:  ${avg(r => r.red.fighters + r.red.bombers)} craft (cap survived ${results.filter(r => r.red.cap).length}/${RUNS})`)
+}
