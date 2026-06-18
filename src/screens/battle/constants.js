@@ -31,7 +31,7 @@ const BOMBER_AUTO_DISPATCH = 15 // sim-seconds before the blue bomber wing auto-
 // always land in full.
 const ARMOR_FIGHTER  = 0
 const ARMOR_BOMBER   = 10
-const ARMOR_FLAGSHIP = 20
+const ARMOR_FLAGSHIP = 25
 
 // Fleet "strength" valuation, balanced so the standard fleet (1 flagship +
 // 5 bombers + 25 fighters) totals exactly 1000. Started from HP × DPS, then
