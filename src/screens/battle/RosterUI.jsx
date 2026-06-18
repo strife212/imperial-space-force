@@ -5,6 +5,7 @@ import {
   ARMOR_BOMBER, SHIP_HP, MAX_SPEED, ARMOR_FIGHTER, splitCapName, compStrength, FLEET_BUDGET,
   COMMS_PORTRAIT, PTS_BOMBER, PTS_FIGHTER, PTS_CRUISER, PTS_FLAGSHIP, RED_CAP_NAME,
   CRUISER_HP, CRUISER_SPEED, ARMOR_CRUISER, MISSILE_DMG, MISSILE_SALVO, MISSILE_RANGE,
+  FLARES_BOMBER, FLARES_FLAGSHIP,
   RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, FIELD_FIGHTER_CAP, REINFORCE_INTERVAL,
 } from './constants'
 import { buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser } from './geometry'
@@ -60,8 +61,8 @@ function CountAdjust({ count, cost, free, onAdjust }) {
 
 // ── Pre-battle ship info tooltips ────────────────────────────────────────────
 const SHIP_INFO = {
-  capital: { hp: CAP_HP,    dmg: `${CAP_WEAPONS} × 1`, speed: CAP_SPEED,    armor: ARMOR_FLAGSHIP, notes: [] },
-  bomber:  { hp: BOMBER_HP, dmg: `${BOMB_DMG} / 1`,    speed: BOMBER_SPEED, armor: ARMOR_BOMBER,   notes: ['Bomb only targets capital ships', 'Point defence laser targets fighters'] },
+  capital: { hp: CAP_HP,    dmg: `${CAP_WEAPONS} × 1`, speed: CAP_SPEED,    armor: ARMOR_FLAGSHIP, notes: [`${FLARES_FLAGSHIP} flares decoy incoming missiles`] },
+  bomber:  { hp: BOMBER_HP, dmg: `${BOMB_DMG} / 1`,    speed: BOMBER_SPEED, armor: ARMOR_BOMBER,   notes: ['Bomb only targets capital ships', 'Point defence laser targets fighters', `${FLARES_BOMBER} flares decoy incoming missiles`] },
   cruiser: { hp: CRUISER_HP, dmg: `${MISSILE_SALVO} × ${MISSILE_DMG}`, speed: CRUISER_SPEED, armor: ARMOR_CRUISER, notes: [`Fires a ${MISSILE_SALVO}-missile salvo`, 'Homing missiles seek the nearest enemies', `Long range (${MISSILE_RANGE}) — holds back and bombards`] },
   fighter: { hp: SHIP_HP,   dmg: 1,                    speed: MAX_SPEED,    armor: ARMOR_FIGHTER,  notes: [] },
 }

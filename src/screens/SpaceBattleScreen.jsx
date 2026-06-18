@@ -11,6 +11,7 @@ import {
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER,
+  FLARES_BOMBER, FLARES_FLAGSHIP,
   CRUISER_HP, CRUISER_SPEED, CRUISER_MIN, CRUISER_SCALE, CRUISER_STANDOFF,
   MISSILE_DMG, MISSILE_SALVO, MISSILE_SPEED, MISSILE_LIFE, MISSILE_RANGE, MISSILE_MISS_CHANCE, MISSILE_HOMING, MISSILE_TURN, MISSILE_ACCEL, MISSILE_LAUNCH_SPEED, MISSILE_CD_MIN, MISSILE_CD_RND,
   PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
@@ -589,7 +590,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           reserveEl: team === 'blue' ? blueReserveRef.current : redReserveRef.current,
           fireCd: 0.5 + Math.random(), flash: 0,
           isCapital: true, kills: 0, weapons: CAP_WEAPONS, armor: ARMOR_FLAGSHIP, radius: 16, route, glows, fires, emitCd: 0,
-          shieldMesh: shield.mesh, shieldMat: shield.mat, shieldFlash: 0,
+          shieldMesh: shield.mesh, shieldMat: shield.mat, shieldFlash: 0, flares: FLARES_FLAGSHIP,
         })
       }
       spawnCapital('blue', Math.PI)   // start on the left
@@ -626,7 +627,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             fireCd: 1 + Math.random() * 1.5, pdCd: 0.5 + Math.random() * 1.5, flash: 0,
             isCapital: false, isBomber: true, kills: 0, weapons: 1, armor: ARMOR_BOMBER,
             maxSpeed: BOMBER_SPEED, minSpeed: BOMBER_MIN, radius: 1.2, turn: TURN_RATE * 0.7,
-            standoff: STANDOFF, bound: BOUND_R, baseScale: BOMBER_SCALE,
+            standoff: STANDOFF, bound: BOUND_R, baseScale: BOMBER_SCALE, flares: FLARES_BOMBER,
             home, jumpFrom, warpDur: 0.85, warping: false, entered: false, warpT: 0,
           })
         }
@@ -1159,7 +1160,15 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           if (b.willHit && b.target.alive) {
             _tmp.subVectors(b.target.pos, b.mesh.position)
             const d = _tmp.length()
-            if (d < 1.3) { damage(b.target, b.shooter, b.dmg, b.bomb); done = true }
+            if (d < 1.3) {
+              if (b.missile && b.target.flares > 0) {   // a flare decoys the missile — no damage
+                b.target.flares--
+                spawnEmber(b.mesh.position, 0xffe070); spawnEmber(b.mesh.position, 0xfff0a0)
+              } else {
+                damage(b.target, b.shooter, b.dmg, b.bomb)
+              }
+              done = true
+            }
             else {
               _tmp.normalize()
               if (b.missile) {

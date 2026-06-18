@@ -42,8 +42,8 @@ const MISSILE_HOMING = 0.22   // per-step turn toward target (vs 0.12 for fighte
 const MISSILE_TURN = 3.2      // rad/s steering limit after ignition → a finite turning radius (no snap-to-target)
 const MISSILE_ACCEL = 40      // units/s² — ramps from the launch speed up to cruise
 const MISSILE_LAUNCH_SPEED = 6 // speed the instant it ignites, before accelerating
-const MISSILE_CD_MIN = 2.2
-const MISSILE_CD_RND = 2.0
+const MISSILE_CD_MIN = 2.64   // +20% salvo cooldown (was 2.2)
+const MISSILE_CD_RND = 2.4    // +20% (was 2.0)
 // Armour: % chance an incoming hit that connects is deflected to zero damage.
 // Only fighter bolts are mitigated — capital-ship attacks and bomber bombs
 // always land in full.
@@ -51,6 +51,10 @@ const ARMOR_FIGHTER  = 0
 const ARMOR_BOMBER   = 10
 const ARMOR_FLAGSHIP = 25
 const ARMOR_CRUISER  = 10
+// Flares: limited missile countermeasures. Each incoming missile that would
+// connect is decoyed (fails) at the cost of one flare, until the pool runs dry.
+const FLARES_BOMBER   = 2
+const FLARES_FLAGSHIP = 10
 
 // Fleet "strength" valuation, balanced so the standard fleet (1 flagship +
 // 5 bombers + 25 fighters) totals exactly 1000. Started from HP × DPS, then
@@ -132,6 +136,7 @@ export {
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER,
+  FLARES_BOMBER, FLARES_FLAGSHIP,
   CRUISER_HP, CRUISER_SPEED, CRUISER_MIN, CRUISER_SCALE, CRUISER_STANDOFF,
   MISSILE_DMG, MISSILE_SALVO, MISSILE_SPEED, MISSILE_LIFE, MISSILE_RANGE, MISSILE_MISS_CHANCE, MISSILE_HOMING, MISSILE_TURN, MISSILE_ACCEL, MISSILE_LAUNCH_SPEED, MISSILE_CD_MIN, MISSILE_CD_RND,
   PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,

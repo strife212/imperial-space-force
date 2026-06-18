@@ -25,8 +25,11 @@ import {
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED,
   MISS_CHANCE, BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF,
   FIGHTER_RANGE, TURN_RATE, FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH,
-  ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP,
+  ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER, FLARES_BOMBER, FLARES_FLAGSHIP, PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP,
   PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH,
+  CRUISER_HP, CRUISER_SPEED, CRUISER_MIN, CRUISER_STANDOFF,
+  MISSILE_DMG, MISSILE_SALVO, MISSILE_SPEED, MISSILE_LIFE, MISSILE_RANGE, MISSILE_MISS_CHANCE,
+  MISSILE_TURN, MISSILE_ACCEL, MISSILE_LAUNCH_SPEED, MISSILE_CD_MIN, MISSILE_CD_RND,
 } from '../src/screens/battle/constants.js'
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
@@ -40,6 +43,8 @@ const BLUE_FIGHTERS = num('blue-fighters', FLEET_SIZE)
 const RED_FIGHTERS  = num('red-fighters', FLEET_SIZE)
 const BLUE_BCOUNT   = num('blue-bombers-count', BOMBER_COUNT)
 const RED_BCOUNT    = num('red-bombers-count', BOMBER_COUNT)
+const BLUE_CCOUNT   = num('blue-cruisers-count', 0)
+const RED_CCOUNT    = num('red-cruisers-count', 0)
 // Bomber launch time. Default mirrors the game: blue auto-dispatches at
 // BOMBER_AUTO_DISPATCH, red rolls a random 5–15s. Override with a fixed number.
 const BLUE_LAUNCH   = argVal('blue-bombers', null)   // null → BOMBER_AUTO_DISPATCH
@@ -98,7 +103,7 @@ function runBattle(cfg) {
     ships.push({
       team, hp: CAP_HP, alive: true, lost: false, pos, vel, quat: q,
       fireCd: 0.5 + Math.random(), isCapital: true, isBomber: false, kills: 0,
-      weapons: CAP_WEAPONS, armor: ARMOR_FLAGSHIP, radius: 16, route,
+      weapons: CAP_WEAPONS, armor: ARMOR_FLAGSHIP, radius: 16, route, flares: FLARES_FLAGSHIP,
     })
   }
   spawnCapital('blue', Math.PI)
@@ -114,12 +119,30 @@ function runBattle(cfg) {
         team, hp: BOMBER_HP, alive: false, lost: false, pos: home.clone(), vel: new THREE.Vector3(), quat: new THREE.Quaternion(),
         fireCd: 1 + Math.random() * 1.5, pdCd: 0.5 + Math.random() * 1.5, isCapital: false, isBomber: true, kills: 0,
         weapons: 1, armor: ARMOR_BOMBER, maxSpeed: BOMBER_SPEED, minSpeed: BOMBER_MIN, radius: 1.2,
-        turn: TURN_RATE * 0.7, standoff: STANDOFF, bound: BOUND_R, home,
+        turn: TURN_RATE * 0.7, standoff: STANDOFF, bound: BOUND_R, flares: FLARES_BOMBER, home,
       })
     }
   }
   spawnBombers('blue', cfg.blueBombers)
   spawnBombers('red', cfg.redBombers)
+
+  // missile cruisers — ranged support, deploy on-field with the fleet
+  const spawnCruisers = (team, count, sx, vdir) => {
+    for (let i = 0; i < count; i++) {
+      const pos = new THREE.Vector3(sx + (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 12)
+      const vel = new THREE.Vector3(vdir * (2 + Math.random() * 2), (Math.random() - 0.5), (Math.random() - 0.5))
+      const q = new THREE.Quaternion(); orient(q, vel)
+      ships.push({
+        team, hp: CRUISER_HP, alive: true, lost: false, pos, vel, quat: q,
+        fireCd: 1 + Math.random() * 2, isCapital: false, isBomber: false, isCruiser: true, kills: 0,
+        weapons: 1, armor: ARMOR_CRUISER, maxSpeed: CRUISER_SPEED, minSpeed: CRUISER_MIN, radius: 1.4,
+        turn: TURN_RATE * 0.8, standoff: CRUISER_STANDOFF, bound: BOUND_R,
+      })
+    }
+  }
+  spawnCruisers('blue', cfg.blueCruisers || 0, -27, 1)
+  spawnCruisers('red', cfg.redCruisers || 0, 27, -1)
+
   let blueBombersLaunched = cfg.blueBombers === 0, redBombersLaunched = cfg.redBombers === 0
   const blueEntry = cfg.blueLaunch == null ? BOMBER_AUTO_DISPATCH : cfg.blueLaunch
   const redEntry  = cfg.redLaunch  == null ? 5 + Math.random() * 10 : cfg.redLaunch
@@ -131,6 +154,19 @@ function runBattle(cfg) {
     const start = shooter.pos.clone().addScaledVector(_tmp, big ? 2.6 : 1.0)
     const dir = target.pos.clone().sub(start).normalize()
     bolts.push({ pos: start, dir, target, willHit, life: 0, shooter, dmg: bomb ? BOMB_DMG : 1, bomb, maxLife: bomb ? BOMB_LIFE : 2.2 })
+  }
+  // guided missile: drops from the belly facing forward, then ignites and steers
+  // toward its target at a capped turn rate, accelerating from a low launch speed
+  const fireMissile = (shooter, target) => {
+    const willHit = Math.random() > MISSILE_MISS_CHANCE
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(shooter.quat).normalize()
+    const down = new THREE.Vector3(0, -1, 0).applyQuaternion(shooter.quat).normalize()
+    const start = shooter.pos.clone().addScaledVector(down, 0.5).addScaledVector(fwd, 0.3)
+    bolts.push({
+      pos: start, dir: fwd.clone(), target, willHit, life: 0, shooter,
+      dmg: MISSILE_DMG, bomb: false, missile: true, speed: MISSILE_SPEED, maxLife: MISSILE_LIFE,
+      phase: 'drop', dropT: 0, dropDur: 0.32, dropDist: 1.7, dropDir: down, dropStart: start.clone(), fwd,
+    })
   }
   const damage = (ship, killer, amount = 1, bomb = false) => {
     if (!bomb && !killer?.isCapital && Math.random() * 100 < ship.armor) return
@@ -164,7 +200,7 @@ function runBattle(cfg) {
         else if (!e.isCapital && d < nfd) { nfd = d; nearestFighter = e }
       }
       let target = nearest
-      if (!s.isCapital && !s.isBomber) target = (nearestBomber && nbd < 22 * 22) ? nearestBomber : nearest
+      if (!s.isCapital && !s.isBomber && !s.isCruiser) target = (nearestBomber && nbd < 22 * 22) ? nearestBomber : nearest
 
       if (s.route) {
         const rt = s.route; rt.angle += rt.omega * DT
@@ -219,6 +255,14 @@ function runBattle(cfg) {
             const enemies = ships.filter(e => e.alive && e.team !== s.team)
             if (enemies.length) for (let k = 0; k < s.weapons; k++) fireBolt(s, enemies[(Math.random() * enemies.length) | 0], true)
             s.fireCd = 0.7 + Math.random() * 0.9
+          } else if (s.isCruiser) {
+            if (nearest && s.pos.distanceToSquared(nearest.pos) < MISSILE_RANGE * MISSILE_RANGE) {
+              const rngSq = MISSILE_RANGE * MISSILE_RANGE
+              const inRange = ships.filter(e => e.alive && e.team !== s.team && s.pos.distanceToSquared(e.pos) < rngSq)
+                .sort((a, b) => s.pos.distanceToSquared(a.pos) - s.pos.distanceToSquared(b.pos))
+              for (let k = 0; k < MISSILE_SALVO; k++) fireMissile(s, inRange[Math.min(k, inRange.length - 1)])
+              s.fireCd = MISSILE_CD_MIN + Math.random() * MISSILE_CD_RND
+            }
           } else if (target && s.pos.distanceToSquared(target.pos) < FIGHTER_RANGE * FIGHTER_RANGE) {
             fireBolt(s, target); s.fireCd = 1.2 + Math.random() * 2.8
           }
@@ -227,19 +271,45 @@ function runBattle(cfg) {
     }
 
     for (let i = bolts.length - 1; i >= 0; i--) {
-      const b = bolts[i]; b.life += DT; let done = false
+      const b = bolts[i]; b.life += DT
+      // missile launch: drop clear of the launcher facing forward, then ignite
+      if (b.missile && b.phase === 'drop') {
+        b.dropT += DT
+        const p = Math.min(1, b.dropT / b.dropDur)
+        const e = 1 - Math.pow(1 - p, 2)
+        b.pos.copy(b.dropStart).addScaledVector(b.dropDir, b.dropDist * e)
+        if (p >= 1) { b.dir.copy(b.fwd); b.phase = 'fly'; b.life = 0; b.curSpeed = MISSILE_LAUNCH_SPEED }
+        continue
+      }
+      let done = false
       if (b.willHit && b.target.alive) {
         _tmp.subVectors(b.target.pos, b.pos); const d = _tmp.length()
-        if (d < 1.3) { damage(b.target, b.shooter, b.dmg, b.bomb); done = true }
-        else b.dir.lerp(_tmp.normalize(), 0.12).normalize()
+        if (d < 1.3) {
+          if (b.missile && b.target.flares > 0) b.target.flares--   // flare decoys the missile
+          else damage(b.target, b.shooter, b.dmg, b.bomb)
+          done = true
+        }
+        else {
+          _tmp.normalize()
+          if (b.missile) {
+            const ang = b.dir.angleTo(_tmp), step = MISSILE_TURN * DT
+            if (ang <= step || ang < 1e-4) b.dir.copy(_tmp)
+            else { _tan.crossVectors(b.dir, _tmp).normalize(); if (_tan.lengthSq() > 1e-6) b.dir.applyAxisAngle(_tan, step).normalize() }
+          } else b.dir.lerp(_tmp, 0.12).normalize()
+        }
       }
-      if (!done) { b.pos.addScaledVector(b.dir, BOLT_SPEED * DT); if (b.life > b.maxLife) done = true }
+      if (!done) {
+        let spd = b.speed ?? BOLT_SPEED
+        if (b.missile) { b.curSpeed = Math.min(b.speed, (b.curSpeed ?? MISSILE_LAUNCH_SPEED) + MISSILE_ACCEL * DT); spd = b.curSpeed }
+        b.pos.addScaledVector(b.dir, spd * DT)
+        if (b.life > b.maxLife) done = true
+      }
       if (done) bolts.splice(i, 1)
     }
 
     const c = counts()
     const strength = { blue: 0, red: 0 }
-    for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? Math.max(PTS_FLAGSHIP_MIN, PTS_FLAGSHIP * Math.max(0, s.hp) / CAP_HP) : s.isBomber ? PTS_BOMBER : PTS_FIGHTER
+    for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? Math.max(PTS_FLAGSHIP_MIN, PTS_FLAGSHIP * Math.max(0, s.hp) / CAP_HP) : s.isBomber ? PTS_BOMBER : s.isCruiser ? PTS_CRUISER : PTS_FIGHTER
     const flagshipDead = { blue: !ships.some(s => s.isCapital && s.team === 'blue' && s.alive), red: !ships.some(s => s.isCapital && s.team === 'red' && s.alive) }
 
     // reinforcements: top each team's on-field fighters back to the cap from reserve
@@ -248,7 +318,7 @@ function runBattle(cfg) {
       for (const tm of TEAMS) {
         if (reserveLeft[tm] <= 0) continue
         let onField = 0
-        for (const s of ships) if (s.team === tm && s.alive && !s.isCapital && !s.isBomber) onField++
+        for (const s of ships) if (s.team === tm && s.alive && !s.isCapital && !s.isBomber && !s.isCruiser) onField++
         let need = Math.min(FIELD_FIGHTER_CAP - onField, reserveLeft[tm])
         for (const s of ships) { if (need <= 0) break; if (s.team !== tm || !s.reserve) continue; s.reserve = false; s.alive = true; reserveLeft[tm]--; need-- }
       }
@@ -272,10 +342,11 @@ function runBattle(cfg) {
   const aliveOf = (team, pred) => ships.filter(s => s.team === team && s.alive && pred(s)).length
   const capAlive = (team) => ships.some(s => s.isCapital && s.team === team && s.alive)
   const kills = (team) => ships.filter(s => s.team === team).reduce((a, s) => a + (s.kills || 0), 0)
+  const isFighter = s => !s.isCapital && !s.isBomber && !s.isCruiser
   return {
     winner, t: Math.round(t * 10) / 10,
-    blue: { fighters: aliveOf('blue', s => !s.isCapital && !s.isBomber), bombers: aliveOf('blue', s => s.isBomber), cap: capAlive('blue'), kills: kills('blue') },
-    red: { fighters: aliveOf('red', s => !s.isCapital && !s.isBomber), bombers: aliveOf('red', s => s.isBomber), cap: capAlive('red'), kills: kills('red') },
+    blue: { fighters: aliveOf('blue', isFighter), bombers: aliveOf('blue', s => s.isBomber), cruisers: aliveOf('blue', s => s.isCruiser), cap: capAlive('blue'), kills: kills('blue') },
+    red: { fighters: aliveOf('red', isFighter), bombers: aliveOf('red', s => s.isBomber), cruisers: aliveOf('red', s => s.isCruiser), cap: capAlive('red'), kills: kills('red') },
   }
 }
 
@@ -286,7 +357,57 @@ const wingFor = (bombers) => {
   return { bombers, fighters: Math.max(0, Math.floor(remaining / PTS_FIGHTER)) }
 }
 
-if (hasFlag('sweep')) {
+if (hasFlag('sweep3')) {
+  // ── Three-type sweep ──────────────────────────────────────────────────────────
+  // 25 curated blue builds spanning fighters / bombers / cruisers, each spending the
+  // full 1000-pt budget (fighters fill the leftover after C cruisers + B bombers).
+  // Red stays default; blue bombers launch at the given time (default 10s).
+  const runsEach = hasFlag('runs') ? RUNS : 100
+  const blueLaunch = BLUE_LAUNCH == null ? 10 : Number(BLUE_LAUNCH)
+  const BUILDS = [ // [cruisers, bombers]
+    [0, 0], [0, 3], [0, 6], [0, 9], [0, 11],
+    [1, 0], [1, 4], [1, 8],
+    [2, 0], [2, 3], [2, 6],
+    [3, 0], [3, 3], [3, 6],
+    [4, 0], [4, 3], [4, 5],
+    [5, 0], [5, 2], [5, 4],
+    [6, 0], [6, 3],
+    [7, 0], [8, 0], [9, 0],
+  ]
+  const wingFor3 = (c, b) => ({ cruisers: c, bombers: b, fighters: Math.max(0, Math.floor((FLEET_BUDGET - PTS_FLAGSHIP - PTS_CRUISER * c - PTS_BOMBER * b) / PTS_FIGHTER)) })
+
+  console.log(`\nThree-type build sweep — ${BUILDS.length} builds × ${runsEach} runs (${BUILDS.length * runsEach} sims)`)
+  console.log(`Red: default ${RED_FIGHTERS}F/${RED_BCOUNT}B/0C (random launch).  Blue bombers launch ${blueLaunch}s, leftover points → fighters.`)
+  console.log('\n  Blue build (F/B/C) | Blue W | Red W | Avg t | Blue surv | Red surv | Blue cap')
+  console.log('  -------------------+--------+-------+-------+-----------+----------+---------')
+
+  const rows = []
+  for (const [c, b] of BUILDS) {
+    const wing = wingFor3(c, b)
+    const cfg = {
+      blueFighters: wing.fighters, redFighters: RED_FIGHTERS,
+      blueBombers: wing.bombers, redBombers: RED_BCOUNT,
+      blueCruisers: wing.cruisers, redCruisers: 0,
+      blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH),
+    }
+    const res = []
+    for (let i = 0; i < runsEach; i++) res.push(runBattle(cfg))
+    const w = (t) => res.filter(r => r.winner === t).length
+    const avg = (f) => res.reduce((a, r) => a + f(r), 0) / runsEach
+    const r = {
+      wing, blueW: w('BLUE'), redW: w('RED'), avgT: avg(x => x.t),
+      blueSurv: avg(x => x.blue.fighters + x.blue.bombers + x.blue.cruisers),
+      redSurv: avg(x => x.red.fighters + x.red.bombers + x.red.cruisers),
+      blueCap: res.filter(x => x.blue.cap).length,
+    }
+    rows.push(r)
+    const label = `${String(wing.fighters).padStart(2)}F ${String(wing.bombers).padStart(2)}B ${String(wing.cruisers).padStart(2)}C`
+    console.log(`  ${label.padEnd(18)} | ${String(r.blueW).padStart(3)}/${runsEach} | ${String(r.redW).padStart(3)}/${runsEach} | ${r.avgT.toFixed(1).padStart(5)} | ${r.blueSurv.toFixed(1).padStart(6)}    | ${r.redSurv.toFixed(1).padStart(5)}    | ${String(r.blueCap).padStart(3)}/${runsEach}`)
+  }
+  const sorted = [...rows].sort((a, b) => b.blueW - a.blueW)
+  console.log('\nTop blue builds by win-rate:')
+  for (const r of sorted.slice(0, 5)) console.log(`  ${r.wing.fighters}F / ${r.wing.bombers}B / ${r.wing.cruisers}C — ${r.blueW}/${runsEach}`)
+} else if (hasFlag('sweep')) {
   // ── Sweep mode ──────────────────────────────────────────────────────────────
   // Walk an even ladder of bomber counts from 0 → max-affordable, filling the rest
   // of blue's budget with fighters. Red stays default; blue bombers launch at the
@@ -308,6 +429,7 @@ if (hasFlag('sweep')) {
     const cfg = {
       blueFighters: wing.fighters, redFighters: RED_FIGHTERS,
       blueBombers: wing.bombers, redBombers: RED_BCOUNT,
+      blueCruisers: 0, redCruisers: 0,
       blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH),
     }
     const res = []
@@ -326,12 +448,13 @@ if (hasFlag('sweep')) {
   const cfg = {
     blueFighters: BLUE_FIGHTERS, redFighters: RED_FIGHTERS,
     blueBombers: BLUE_BCOUNT, redBombers: RED_BCOUNT,
+    blueCruisers: BLUE_CCOUNT, redCruisers: RED_CCOUNT,
     blueLaunch: BLUE_LAUNCH == null ? null : Number(BLUE_LAUNCH),
     redLaunch:  RED_LAUNCH  == null ? null : Number(RED_LAUNCH),
   }
   console.log(`\nBattle sim — ${RUNS} run(s)`)
-  console.log(`Blue: ${cfg.blueFighters} fighters, ${cfg.blueBombers} bombers, launch ${cfg.blueLaunch == null ? `auto(${BOMBER_AUTO_DISPATCH}s)` : cfg.blueLaunch + 's'}`)
-  console.log(`Red:  ${cfg.redFighters} fighters, ${cfg.redBombers} bombers, launch ${cfg.redLaunch == null ? 'random(5–15s)' : cfg.redLaunch + 's'}`)
+  console.log(`Blue: ${cfg.blueFighters} fighters, ${cfg.blueBombers} bombers, ${cfg.blueCruisers} cruisers, launch ${cfg.blueLaunch == null ? `auto(${BOMBER_AUTO_DISPATCH}s)` : cfg.blueLaunch + 's'}`)
+  console.log(`Red:  ${cfg.redFighters} fighters, ${cfg.redBombers} bombers, ${cfg.redCruisers} cruisers, launch ${cfg.redLaunch == null ? 'random(5–15s)' : cfg.redLaunch + 's'}`)
 
   const results = []
   for (let i = 0; i < RUNS; i++) results.push(runBattle(cfg))
@@ -351,6 +474,6 @@ if (hasFlag('sweep')) {
   console.log('\n── Summary ──')
   console.log(`Blue wins: ${tally.BLUE || 0}/${RUNS}   Red wins: ${tally.RED || 0}/${RUNS}   Draws: ${tally.DRAW || 0}/${RUNS}`)
   console.log(`Avg duration: ${avg(r => r.t)}s`)
-  console.log(`Avg survivors — Blue: ${avg(r => r.blue.fighters + r.blue.bombers)} craft (cap survived ${results.filter(r => r.blue.cap).length}/${RUNS})`)
-  console.log(`Avg survivors — Red:  ${avg(r => r.red.fighters + r.red.bombers)} craft (cap survived ${results.filter(r => r.red.cap).length}/${RUNS})`)
+  console.log(`Avg survivors — Blue: ${avg(r => r.blue.fighters + r.blue.bombers + r.blue.cruisers)} craft (cap survived ${results.filter(r => r.blue.cap).length}/${RUNS})`)
+  console.log(`Avg survivors — Red:  ${avg(r => r.red.fighters + r.red.bombers + r.red.cruisers)} craft (cap survived ${results.filter(r => r.red.cap).length}/${RUNS})`)
 }
