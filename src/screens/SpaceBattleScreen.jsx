@@ -415,7 +415,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const boltGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.7, 6)
       const blastGeo = new THREE.SphereGeometry(1, 12, 12)
       const ringGeo = new THREE.RingGeometry(0.62, 1.0, 32)
-      disposables.push(teamGeo.blue, teamGeo.red, capGeo.blue, capGeo.red, bomberGeo.blue, bomberGeo.red, boltGeo, blastGeo, ringGeo)
+      const trailGeo = new THREE.CylinderGeometry(1, 1, 1, 6)   // unit streak (Y axis); scaled per warp segment
+      disposables.push(teamGeo.blue, teamGeo.red, capGeo.blue, capGeo.red, bomberGeo.blue, bomberGeo.red, boltGeo, blastGeo, ringGeo, trailGeo)
       const boltMat = {
         blue: new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
         red:  new THREE.MeshBasicMaterial({ color: TEAMS.red.bolt,  transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -647,6 +648,32 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         embers.push({ mesh: m, mat, vel: new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5 + 0.4, (Math.random() - 0.5) * 2.5), life: 0, max: 0.6 + Math.random() * 0.5 })
       }
 
+      // ── Warp light-trails: glowing streaks left along a warping ship's path,
+      // which linger briefly and fade in place after the ship has gone ──────────
+      const trails = []
+      const TRAIL_GAP = 6           // world units between segments (throttles count)
+      const _td = new THREE.Vector3(), _tn = new THREE.Vector3()
+      const spawnTrail = (from, to, team, width) => {
+        _td.subVectors(to, from)
+        const len = _td.length()
+        if (len < 1e-3) return
+        const mat = new THREE.MeshBasicMaterial({ color: TEAMS[team].bolt, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })
+        const m = new THREE.Mesh(trailGeo, mat)
+        m.position.copy(from).addScaledVector(_td, 0.5)               // segment midpoint
+        m.quaternion.setFromUnitVectors(yAxis, _tn.copy(_td).multiplyScalar(1 / len))
+        m.scale.set(width, len, width)
+        scene.add(m)
+        trails.push({ mesh: m, mat, life: 0, max: 0.5 })
+      }
+      // emit a trail segment whenever a warping ship has moved far enough since the last
+      const emitTrail = (s) => {
+        if (!s.trailPrev) { s.trailPrev = s.pos.clone(); return }
+        if (s.pos.distanceTo(s.trailPrev) >= TRAIL_GAP) {
+          spawnTrail(s.trailPrev, s.pos, s.team, s.isCapital ? 0.6 : s.isBomber ? 0.3 : 0.2)
+          s.trailPrev.copy(s.pos)
+        }
+      }
+
       // grey smoke puffs that trail behind a bomb and expand/fade
       const puffs = []
       const spawnSmoke = (pos) => {
@@ -853,6 +880,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             s.mesh.position.copy(s.pos)
             orient(s.mesh, _dir.subVectors(s.warpTo, s.warpFrom))
             s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale * (1 + e * 14))
+            emitTrail(s)
             if (p >= 1) { s.alive = false; s.lost = true; s.mesh.visible = false }   // warped out — drops fleet strength
             continue
           }
@@ -865,6 +893,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             orient(s.mesh, _dir.subVectors(s.home, s.jumpFrom))    // face travel direction
             const stretch = 1 + Math.pow(1 - p, 3) * (s.isCapital ? 4 : 14)
             s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale * stretch)
+            if (p > 0) emitTrail(s)
             continue
           }
           // bombers and reinforcement fighters streak in on their own delayed warp
@@ -877,10 +906,12 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             orient(s.mesh, _dir.subVectors(s.home, s.jumpFrom))
             const stretch = 1 + Math.pow(1 - p, 3) * 12
             s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale * stretch)
-            if (p >= 1) { s.entered = true; s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale) }
+            emitTrail(s)
+            if (p >= 1) { s.entered = true; s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale); s.trailPrev = null }
             continue
           }
           if (s.mesh.scale.z !== s.baseScale) s.mesh.scale.set(s.baseScale, s.baseScale, s.baseScale)
+          s.trailPrev = null   // not warping → reset so the next warp starts a fresh trail
 
           // find nearest living enemy (plus nearest enemy fighter / bomber)
           let nearest = null, nd = Infinity, nearestFighter = null, nfd = Infinity, nearestBomber = null, nbd = Infinity
@@ -1124,6 +1155,14 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           if (em.life >= em.max) { scene.remove(em.mesh); em.mat.dispose(); embers.splice(i, 1) }
         }
 
+        // ── Warp light-trails: fade in place, then clear ────────────────────────
+        for (let i = trails.length - 1; i >= 0; i--) {
+          const tr = trails[i]
+          tr.life += dt
+          tr.mat.opacity = Math.max(0, 0.55 * (1 - tr.life / tr.max))
+          if (tr.life >= tr.max) { scene.remove(tr.mesh); tr.mat.dispose(); trails.splice(i, 1) }
+        }
+
         // ── Bomb smoke trail: expand + fade ─────────────────────────────────────
         for (let i = puffs.length - 1; i >= 0; i--) {
           const p = puffs[i]
@@ -1326,6 +1365,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
         embers.forEach(e => e.mat.dispose())
         puffs.forEach(p => p.mat.dispose())
+        trails.forEach(tr => tr.mat.dispose())
         composer.dispose && composer.dispose()
         renderer.dispose()
         if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement)
