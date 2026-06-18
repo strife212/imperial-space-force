@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { useScreenScale } from '../hooks/useScreenScale'
 
-export default function StartScreen({ onSkirmish, onDebug }) {
+export default function StartScreen({ onCampaign, onSkirmish, onDebug }) {
   const clickSfx = useRef(null)
   const innerRef = useScreenScale()
   const [visible, setVisible] = useState(false)
@@ -36,12 +36,7 @@ export default function StartScreen({ onSkirmish, onDebug }) {
 
         <div className={`menu-content${visible ? ' menu-content--visible' : ''}`}>
           <div className="menu-buttons">
-            <button
-              className="menu-btn menu-btn--primary menu-btn--disabled"
-              aria-disabled="true"
-              title="Not yet implemented."
-              onClick={(e) => e.preventDefault()}
-            >
+            <button className="menu-btn menu-btn--primary" onClick={playClick(onCampaign)}>
               CAMPAIGN
             </button>
             <button className="menu-btn menu-btn--primary" onClick={playClick(onSkirmish)}>

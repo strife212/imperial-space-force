@@ -28,6 +28,7 @@ const SCREENS_COL2 = [
   { key: 'blackhole',       label: 'Black Hole Visualisation'  },
   { key: 'battle',          label: 'Space Battle Simulation'   },
   { key: 'vistest',         label: 'Combat Visual Test'        },
+  { key: 'cutscene',        label: 'Cutscene — Supply Run'     },
 ]
 
 const FLAG_LABELS = {
