@@ -1,7 +1,8 @@
 // ── Battle parameters ──────────────────────────────────────────────────────────
-const FLEET_SIZE  = 25
+const FLEET_SIZE  = 24
 const SHIP_HP     = 6
-const BOMBER_COUNT = 5       // heavy bombers per side
+const BOMBER_COUNT = 4       // heavy bombers per side (default fleet)
+const CRUISER_COUNT = 1     // missile cruisers per side (default fleet)
 const BOMBER_HP    = 12      // tankier than a fighter
 const BOMBER_SPEED = 4.5     // slower than fighters (MAX_SPEED 7.5)
 const BOMBER_MIN   = 1.62
@@ -132,7 +133,7 @@ const VICTORY_SEGMENTS = {
 }
 
 export {
-  FLEET_SIZE, SHIP_HP, BOMBER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
+  FLEET_SIZE, SHIP_HP, BOMBER_COUNT, CRUISER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER,

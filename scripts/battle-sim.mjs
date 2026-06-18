@@ -21,7 +21,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import * as THREE from 'three'
 import {
-  FLEET_SIZE, SHIP_HP, BOMBER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN,
+  FLEET_SIZE, SHIP_HP, BOMBER_COUNT, CRUISER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN,
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED,
   MISS_CHANCE, BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF,
   FIGHTER_RANGE, TURN_RATE, FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH,
@@ -43,8 +43,8 @@ const BLUE_FIGHTERS = num('blue-fighters', FLEET_SIZE)
 const RED_FIGHTERS  = num('red-fighters', FLEET_SIZE)
 const BLUE_BCOUNT   = num('blue-bombers-count', BOMBER_COUNT)
 const RED_BCOUNT    = num('red-bombers-count', BOMBER_COUNT)
-const BLUE_CCOUNT   = num('blue-cruisers-count', 0)
-const RED_CCOUNT    = num('red-cruisers-count', 0)
+const BLUE_CCOUNT   = num('blue-cruisers-count', CRUISER_COUNT)
+const RED_CCOUNT    = num('red-cruisers-count', CRUISER_COUNT)
 // Bomber launch time. Default mirrors the game: blue auto-dispatches at
 // BOMBER_AUTO_DISPATCH, red rolls a random 5–15s. Override with a fixed number.
 const BLUE_LAUNCH   = argVal('blue-bombers', null)   // null → BOMBER_AUTO_DISPATCH
@@ -377,7 +377,7 @@ if (hasFlag('sweep3')) {
   const wingFor3 = (c, b) => ({ cruisers: c, bombers: b, fighters: Math.max(0, Math.floor((FLEET_BUDGET - PTS_FLAGSHIP - PTS_CRUISER * c - PTS_BOMBER * b) / PTS_FIGHTER)) })
 
   console.log(`\nThree-type build sweep — ${BUILDS.length} builds × ${runsEach} runs (${BUILDS.length * runsEach} sims)`)
-  console.log(`Red: default ${RED_FIGHTERS}F/${RED_BCOUNT}B/0C (random launch).  Blue bombers launch ${blueLaunch}s, leftover points → fighters.`)
+  console.log(`Red: default ${RED_FIGHTERS}F/${RED_BCOUNT}B/${RED_CCOUNT}C (random launch).  Blue bombers launch ${blueLaunch}s, leftover points → fighters.`)
   console.log('\n  Blue build (F/B/C) | Blue W | Red W | Avg t | Blue surv | Red surv | Blue cap')
   console.log('  -------------------+--------+-------+-------+-----------+----------+---------')
 
@@ -387,7 +387,7 @@ if (hasFlag('sweep3')) {
     const cfg = {
       blueFighters: wing.fighters, redFighters: RED_FIGHTERS,
       blueBombers: wing.bombers, redBombers: RED_BCOUNT,
-      blueCruisers: wing.cruisers, redCruisers: 0,
+      blueCruisers: wing.cruisers, redCruisers: RED_CCOUNT,
       blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH),
     }
     const res = []
@@ -419,7 +419,7 @@ if (hasFlag('sweep3')) {
   const blueLaunch = BLUE_LAUNCH == null ? 10 : Number(BLUE_LAUNCH)
 
   console.log(`\nBuild sweep — ${bomberCounts.length} builds × ${runsEach} runs (${bomberCounts.length * runsEach} sims)`)
-  console.log(`Red: default ${RED_FIGHTERS}F/${RED_BCOUNT}B (random launch).  Blue bombers launch ${blueLaunch}s, leftover points → fighters.`)
+  console.log(`Red: default ${RED_FIGHTERS}F/${RED_BCOUNT}B/${RED_CCOUNT}C (random launch).  Blue bombers launch ${blueLaunch}s, leftover points → fighters.`)
   console.log('\n  Blue build   | Blue W | Red W | Draw | Avg t | Blue surv | Red surv | Blue cap')
   console.log('  -------------+--------+-------+------+-------+-----------+----------+---------')
 
@@ -429,7 +429,7 @@ if (hasFlag('sweep3')) {
     const cfg = {
       blueFighters: wing.fighters, redFighters: RED_FIGHTERS,
       blueBombers: wing.bombers, redBombers: RED_BCOUNT,
-      blueCruisers: 0, redCruisers: 0,
+      blueCruisers: 0, redCruisers: RED_CCOUNT,
       blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH),
     }
     const res = []

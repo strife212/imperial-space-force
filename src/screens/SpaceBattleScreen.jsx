@@ -7,7 +7,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
 import {
-  FLEET_SIZE, SHIP_HP, BOMBER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
+  FLEET_SIZE, SHIP_HP, BOMBER_COUNT, CRUISER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER,
@@ -47,8 +47,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [started, setStarted] = useState(false) // pre-battle briefing until START
   // per-team fleet composition, customisable on the briefing within the 1000-point budget
   const [comp, setComp] = useState({
-    blue: { fighters: FLEET_SIZE, bombers: BOMBER_COUNT, cruisers: 0 },
-    red:  { fighters: FLEET_SIZE, bombers: BOMBER_COUNT, cruisers: 0 },
+    blue: { fighters: FLEET_SIZE, bombers: BOMBER_COUNT, cruisers: CRUISER_COUNT },
+    red:  { fighters: FLEET_SIZE, bombers: BOMBER_COUNT, cruisers: CRUISER_COUNT },
   })
   const compRef = useRef(comp)
   useEffect(() => { compRef.current = comp }, [comp])
