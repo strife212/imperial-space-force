@@ -7,8 +7,10 @@
 //   npm run sim -- --red-bombers 7    # force red's launch time too (else random 5–15s)
 //   npm run sim -- --blue-fighters 30 --red-fighters 20 --blue-bombers-count 3
 //   npm run sim -- --verbose          # per-run table (on by default for ≤20 runs)
-//   npm run sim -- --sweep3           # 25 fighter/bomber/cruiser builds × 100 runs
-//   npm run sim -- --sweep3 --workers 12   # parallelise the sweep across 12 threads (default 12; 1 = sequential)
+//   npm run sim -- --sweep3           # 25 fighter/bomber/cruiser builds × 100 runs (vs default red)
+//   npm run sim -- --sweep3 --workers 12   # parallelise the sweep across 12 threads (default 16; 1 = sequential)
+//   npm run sim -- --sweep4           # CROSS-MATRIX: 25 blue × 25 red = 625 match-ups × 50 runs
+//   npm run sim -- --sweep4 --runs 200 --workers 16   # full-precision matrix (125,000 sims)
 //
 // All COMBAT VALUES (HP, damage, armour, speeds, ranges, point costs, morale
 // thresholds, …) are imported live from src/screens/battle/constants.js, so this
@@ -53,7 +55,7 @@ const RED_CCOUNT    = num('red-cruisers-count', CRUISER_COUNT)
 const BLUE_LAUNCH   = argVal('blue-bombers', null)   // null → BOMBER_AUTO_DISPATCH
 const RED_LAUNCH    = argVal('red-bombers', null)    // null → random 5–15s
 const VERBOSE       = hasFlag('verbose') || (!hasFlag('quiet') && RUNS <= 20)
-const WORKERS       = num('workers', 12)   // parallel worker threads for --sweep3
+const WORKERS       = num('workers', 16)   // parallel worker threads for --sweep3 / --sweep4
 const CRUISER_SPEED_OVR = argVal('cruiser-speed', null)   // override cruiser move speed (experiments)
 const CRUISER_STEER = argVal('cruiser-steer', 'arc')      // 'arc' (turning circle) | 'force' (old flocking)
 
@@ -426,9 +428,95 @@ const runBuildsBatch = (builds, runs, params) => builds.map(([c, b]) => {
   return a
 })
 
+// Cross-matrix: run every (blue build × red build) cell `runs` times and return
+// per-cell win tallies (mergeable across workers). Pure — used by main + workers.
+const runMatrixBatch = (cells, runs, params) => cells.map(cell => {
+  const cfg = {
+    blueFighters: cell.blue.fighters, redFighters: cell.red.fighters,
+    blueBombers: cell.blue.bombers, redBombers: cell.red.bombers,
+    blueCruisers: cell.blue.cruisers, redCruisers: cell.red.cruisers,
+    blueLaunch: params.blueLaunch, redLaunch: params.redLaunch,
+    cruiserSpeed: params.cruiserSpeed, cruiserArc: params.cruiserArc,
+  }
+  let blueW = 0, redW = 0, draw = 0
+  for (let i = 0; i < runs; i++) {
+    const r = runBattle(cfg)
+    if (r.winner === 'BLUE') blueW++; else if (r.winner === 'RED') redW++; else draw++
+  }
+  return { bi: cell.bi, ri: cell.ri, blueW, redW, draw, n: runs }
+})
+
 if (!isMainThread) {
   // Worker thread: run an assigned slice of battles and post the aggregates back.
-  parentPort.postMessage(runBuildsBatch(workerData.builds, workerData.runs, workerData.params))
+  if (workerData.kind === 'matrix') parentPort.postMessage(runMatrixBatch(workerData.cells, workerData.runs, workerData.params))
+  else parentPort.postMessage(runBuildsBatch(workerData.builds, workerData.runs, workerData.params))
+} else if (hasFlag('sweep4')) {
+  // ── Cross-matrix sweep ──────────────────────────────────────────────────────
+  // The 25 curated builds played by BOTH sides: 25 blue × 25 red = 625 match-ups,
+  // each run `runs` times. Reveals how each blue build holds up across the whole
+  // spread of enemy fleets (not just the one default red), and which red builds are
+  // hardest. Runs are split across WORKERS threads (each worker runs every cell).
+  const runsEach = hasFlag('runs') ? RUNS : 50
+  const blueLaunch = BLUE_LAUNCH == null ? 10 : Number(BLUE_LAUNCH)
+  const wings = SWEEP3_BUILDS.map(([c, b]) => wingFor3(c, b))
+  const cells = []
+  SWEEP3_BUILDS.forEach((_, bi) => SWEEP3_BUILDS.forEach((__, ri) => cells.push({ bi, ri, blue: wings[bi], red: wings[ri] })))
+  const params = { blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH), cruiserSpeed: CRUISER_SPEED_OVR == null ? CRUISER_SPEED : Number(CRUISER_SPEED_OVR), cruiserArc: CRUISER_STEER !== 'force' }
+  const nWorkers = Math.max(1, Math.min(WORKERS, runsEach))
+  const total = cells.length * runsEach
+
+  console.log(`\nCross-matrix sweep — ${wings.length} blue × ${wings.length} red = ${cells.length} match-ups × ${runsEach} runs (${total} sims) on ${nWorkers} worker${nWorkers > 1 ? 's' : ''}`)
+  console.log(`Blue bombers launch ${blueLaunch}s, red random.  Cruiser speed: ${params.cruiserSpeed}, steer: ${params.cruiserArc ? 'arc' : 'force'}.`)
+
+  const t0 = Date.now()
+  const base = Math.floor(runsEach / nWorkers), rem = runsEach % nWorkers
+  const split = Array.from({ length: nWorkers }, (_, w) => base + (w < rem ? 1 : 0)).filter(n => n > 0)
+
+  let cellsAgg
+  if (nWorkers > 1) {
+    const parts = await Promise.all(split.map(runs => new Promise((resolve, reject) => {
+      const wk = new Worker(new URL(import.meta.url), { workerData: { kind: 'matrix', cells, runs, params } })
+      wk.on('message', m => { resolve(m); wk.terminate() })
+      wk.on('error', reject)
+    })))
+    cellsAgg = cells.map((_, ci) => {
+      const a = { bi: parts[0][ci].bi, ri: parts[0][ci].ri, blueW: 0, redW: 0, draw: 0, n: 0 }
+      for (const p of parts) { const x = p[ci]; a.blueW += x.blueW; a.redW += x.redW; a.draw += x.draw; a.n += x.n }
+      return a
+    })
+  } else {
+    cellsAgg = runMatrixBatch(cells, runsEach, params)
+  }
+  const secs = ((Date.now() - t0) / 1000).toFixed(1)
+
+  // index into a [blue][red] grid of blue win %
+  const N = wings.length
+  const grid = Array.from({ length: N }, () => Array(N).fill(0))
+  for (const a of cellsAgg) grid[a.bi][a.ri] = Math.round((a.blueW / a.n) * 100)
+  const label = (w) => `${w.fighters}F${w.bombers}B${w.cruisers}C`
+
+  // legend
+  console.log('\nBuild legend (index: fighters/bombers/cruisers):')
+  let line = ''
+  wings.forEach((w, i) => { line += `${String(i).padStart(2)}:${label(w).padEnd(9)} `; if ((i + 1) % 5 === 0) { console.log('  ' + line.trimEnd()); line = '' } })
+  if (line) console.log('  ' + line.trimEnd())
+
+  // matrix: rows = blue build, cols = red build, value = blue win %
+  console.log(`\nBlue win % — rows = blue build, cols = red build (each cell = ${runsEach} runs):`)
+  console.log('     red→ ' + wings.map((_, i) => String(i).padStart(3)).join(' '))
+  console.log('  blue↓   ' + wings.map(() => '---').join(' '))
+  for (let bi = 0; bi < N; bi++) {
+    console.log(`  ${String(bi).padStart(2)} ${label(wings[bi]).padStart(8)} ` + grid[bi].map(v => String(v).padStart(3)).join(' '))
+  }
+
+  // per-build summaries
+  const blueMean = wings.map((w, bi) => ({ w, bi, mean: grid[bi].reduce((s, v) => s + v, 0) / N }))
+  const redMean  = wings.map((w, ri) => ({ w, ri, mean: cellsAgg.filter(a => a.ri === ri).reduce((s, a) => s + (a.blueW / a.n) * 100, 0) / N }))
+  console.log('\nMost robust BLUE builds (mean blue win % across all 25 red builds):')
+  for (const r of [...blueMean].sort((a, b) => b.mean - a.mean).slice(0, 6)) console.log(`  ${label(r.w).padEnd(9)} — ${r.mean.toFixed(1)}%`)
+  console.log('\nToughest RED builds (lowest mean blue win % they concede, across all 25 blue builds):')
+  for (const r of [...redMean].sort((a, b) => a.mean - b.mean).slice(0, 6)) console.log(`  ${label(r.w).padEnd(9)} — blue wins ${r.mean.toFixed(1)}%`)
+  console.log(`\nDone in ${secs}s.`)
 } else if (hasFlag('sweep3')) {
   // ── Three-type sweep ──────────────────────────────────────────────────────────
   // 25 curated blue builds spanning fighters / bombers / cruisers, each spending the
