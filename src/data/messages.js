@@ -52,7 +52,7 @@ const TRIGGERED_MESSAGES = [
   {
     id: 100,
     enabled: true,
-    requires: 'reactorPoweredUp',
+    requires: 'penroseActivated',
     verified: true,
     sender: 'Admiralty Command',
     subject: 'Antenna Misalignment',
