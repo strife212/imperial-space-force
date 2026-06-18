@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ENCYCLOPEDIA } from '../data/encyclopediaData'
-import { getFlag } from '../lib/store'
+import { ENCYCLOPEDIA } from '../../data/encyclopediaData'
+import { getFlag } from '../../lib/store'
 
 // Renders a string supporting **bold**, *italic*, and \n line breaks
 const splitBreaks = (str, kp) =>

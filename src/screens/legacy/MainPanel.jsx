@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { LOG_MESSAGES, PKG_NAMES, SECTION_INFO } from '../lib/constants'
-import { PLANETS, SUN, SUN_IDX, getTargetName } from '../lib/planetData'
+import { LOG_MESSAGES, PKG_NAMES, SECTION_INFO } from '../../lib/constants'
+import { PLANETS, SUN, SUN_IDX, getTargetName } from '../../lib/planetData'
 import LaunchCodeVerifier from './LaunchCodeVerifier'
-import HudHeader from '../components/HudHeader'
-import HudFooter from '../components/HudFooter'
-import { setFlag } from '../lib/store'
+import HudHeader from '../../components/HudHeader'
+import HudFooter from '../../components/HudFooter'
+import { setFlag } from '../../lib/store'
 import XBandRadioPanel from './XBandRadioPanel'
 
 // ── Glitch overlay (under attack) ────────────────────────────────────────────

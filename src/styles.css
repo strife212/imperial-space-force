@@ -3342,14 +3342,14 @@ body {
 }
 
 .menu-btn--disabled {
-  border-color: rgba(60,120,255,0.18);
-  color: rgba(106,173,245,0.3);
+  border-color: rgba(60,120,255,0.4);
+  color: rgba(106,173,245,0.55);
   cursor: not-allowed;
 }
 .menu-btn--disabled:hover {
   background: transparent;
-  border-color: rgba(60,120,255,0.18);
-  color: rgba(106,173,245,0.3);
+  border-color: rgba(60,120,255,0.4);
+  color: rgba(106,173,245,0.55);
   box-shadow: none;
 }
 

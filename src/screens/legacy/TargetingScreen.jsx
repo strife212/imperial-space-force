@@ -1,8 +1,8 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
-import HudHeader from '../components/HudHeader'
-import HudFooter from '../components/HudFooter'
-import { SYSTEMS, TARGETS, findTargetIdx, getTargetInfo } from '../lib/planetData'
-import { setFlag } from '../lib/store'
+import HudHeader from '../../components/HudHeader'
+import HudFooter from '../../components/HudFooter'
+import { SYSTEMS, TARGETS, findTargetIdx, getTargetInfo } from '../../lib/planetData'
+import { setFlag } from '../../lib/store'
 
 const CANVAS_SIZE  = 600
 const STAR_R      = 16

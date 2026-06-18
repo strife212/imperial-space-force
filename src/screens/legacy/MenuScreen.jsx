@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
-import { useScreenScale } from '../hooks/useScreenScale'
+import { useScreenScale } from '../../hooks/useScreenScale'
 
 export default function MenuScreen({ onManage, onLogout, onEncyclopedia }) {
   const clickSfx   = useRef(null)

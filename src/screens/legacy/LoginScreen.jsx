@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import CryptographyModule from '../components/CryptographyModule'
-import AudioSpectrograph from '../components/AudioSpectrograph'
-import { useScreenScale } from '../hooks/useScreenScale'
+import CryptographyModule from '../../components/CryptographyModule'
+import AudioSpectrograph from '../../components/AudioSpectrograph'
+import { useScreenScale } from '../../hooks/useScreenScale'
 
 const OPERATOR_ID = 'HIH V. ASTRAIA // CLR-Ω'
 const PASSWORD    = 'IMPERIAL-CLEARANCE-OMEGA'

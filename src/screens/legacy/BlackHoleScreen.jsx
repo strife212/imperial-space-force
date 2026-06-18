@@ -4,9 +4,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
-import HudHeader from '../components/HudHeader'
-import HudFooter from '../components/HudFooter'
-import { DISK_VERT, DISK_FRAG, RIM_VERT, RIM_FRAG } from '../lib/shaders'
+import HudHeader from '../../components/HudHeader'
+import HudFooter from '../../components/HudFooter'
+import { DISK_VERT, DISK_FRAG, RIM_VERT, RIM_FRAG } from '../../lib/shaders'
 
 // ── Geometry radii (in event-horizon units) ───────────────────────────────────
 const R_HORIZON = 1.35   // black "shadow" sphere — the dominant central feature

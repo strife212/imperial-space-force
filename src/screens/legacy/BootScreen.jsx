@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { BOOT_LINES } from '../lib/constants'
+import { BOOT_LINES } from '../../lib/constants'
 
 export default function BootScreen({ onComplete }) {
   const [lines,       setLines]       = useState([])

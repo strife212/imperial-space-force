@@ -3,9 +3,9 @@ import * as THREE from 'three'
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
-import HudHeader from '../components/HudHeader'
-import HudFooter from '../components/HudFooter'
-import { PLASMA_VERT, PLASMA_FRAG, DISK_VERT, DISK_FRAG, RIM_VERT, RIM_FRAG } from '../lib/shaders'
+import HudHeader from '../../components/HudHeader'
+import HudFooter from '../../components/HudFooter'
+import { PLASMA_VERT, PLASMA_FRAG, DISK_VERT, DISK_FRAG, RIM_VERT, RIM_FRAG } from '../../lib/shaders'
 
 // ── Tiny renderer harness shared by both viewports ─────────────────────────────
 function useViewport(buildScene) {

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import HudHeader from '../components/HudHeader'
-import HudFooter from '../components/HudFooter'
+import HudHeader from '../../components/HudHeader'
+import HudFooter from '../../components/HudFooter'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const INITIAL_DIST   = 112_582_692_623_711

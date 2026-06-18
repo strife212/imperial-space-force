@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import DischargeDiagram from '../components/DischargeDiagram'
+import DischargeDiagram from '../../components/DischargeDiagram'
 
 const CHARS     = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 const BOX_COUNT = 15

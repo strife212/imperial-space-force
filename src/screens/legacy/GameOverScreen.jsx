@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getFlags } from '../lib/store'
-import UrgentMessageOverlay from '../components/UrgentMessageOverlay'
+import { getFlags } from '../../lib/store'
+import UrgentMessageOverlay from '../../components/UrgentMessageOverlay'
 
 const FAIL_INTRO_TEXT = "Astraia! What in the throne are you doing? The deep space array is showing that the Annunciator has launched towards the Throne System. You'd destroy the Universal Order?"
 const TYPE_SPEED_MS   = 35

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import HudHeader from '../components/HudHeader'
-import HudFooter from '../components/HudFooter'
+import HudHeader from '../../components/HudHeader'
+import HudFooter from '../../components/HudFooter'
 
 // ── SVG viewBox dimensions ────────────────────────────────────────────────────
 const VW = 1000
