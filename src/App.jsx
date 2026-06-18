@@ -28,7 +28,7 @@ const countTrueFlags = () => Object.values(getFlags()).filter(Boolean).length
 // ── Deep links: a bare path (e.g. /battlesim) opens straight to that screen ───
 // On GitHub Pages the unknown path is served by 404.html, which bounces it back
 // to index.html where a snippet restores the real URL before React mounts.
-const DEEP_LINKS = { battlesim: 'battle' }
+const DEEP_LINKS = { battlesim: 'home' }
 const pathScreen = () => {
   const slug = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase()
   return DEEP_LINKS[slug] || null
@@ -62,7 +62,7 @@ export default function App() {
   const [reactorSource,     setReactorSource]     = useState('main')
   const [blackholeSource,   setBlackholeSource]   = useState('debug')
   const [powerSource,       setPowerSource]       = useState('debug')
-  const [battleSource,      setBattleSource]      = useState(() => pathScreen() === 'battle' ? 'login' : 'debug')
+  const [battleSource,      setBattleSource]      = useState('debug')
   const [cutsceneSource,    setCutsceneSource]    = useState('debug')
   const [bhOutput,          setBhOutput]          = useState(0)
   const [bhYield,           setBhYield]           = useState(0)
@@ -145,7 +145,7 @@ export default function App() {
       <div className="crt-overlay" />
       <div className="scanlines" />
       <div className="vignette" />
-      {screen === 'home'    && <StartScreen onCampaign={() => { setCutsceneSource('home'); setScreen('cutscene') }} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onDebug={() => setScreen('debug')} />}
+      {screen === 'home'    && <StartScreen onCampaign={() => { setCutsceneSource('home'); setScreen('cutscene') }} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onDebug={() => setScreen('debug')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}

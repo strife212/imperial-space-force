@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { useScreenScale } from '../hooks/useScreenScale'
 
-export default function StartScreen({ onCampaign, onSkirmish, onDebug }) {
+export default function StartScreen({ onCampaign, onSkirmish, onPlay, onDebug }) {
   const clickSfx = useRef(null)
   const innerRef = useScreenScale()
   const [visible, setVisible] = useState(false)
@@ -36,11 +36,22 @@ export default function StartScreen({ onCampaign, onSkirmish, onDebug }) {
 
         <div className={`menu-content${visible ? ' menu-content--visible' : ''}`}>
           <div className="menu-buttons">
-            <button className="menu-btn menu-btn--primary" onClick={playClick(onCampaign)}>
-              CAMPAIGN
-            </button>
+            <div className="start-section">
+              <div className="start-section-label">Realtime Space Combat</div>
+              <div className="start-section-sub">3D Battle Simulator</div>
+            </div>
             <button className="menu-btn menu-btn--primary" onClick={playClick(onSkirmish)}>
               SKIRMISH BATTLE
+            </button>
+            <button className="menu-btn menu-btn--primary" onClick={playClick(onCampaign)}>
+              CAMPAIGN (WORK IN PROGRESS)
+            </button>
+            <div className="start-section start-section--spaced">
+              <div className="start-section-label">Immersive UI Based Narrative Story</div>
+              <div className="start-section-sub">2D Space Platform Simulator</div>
+            </div>
+            <button className="menu-btn menu-btn--primary" onClick={playClick(onPlay)}>
+              PLAY
             </button>
           </div>
         </div>

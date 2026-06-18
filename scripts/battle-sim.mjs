@@ -457,16 +457,19 @@ if (!isMainThread) {
   // spread of enemy fleets (not just the one default red), and which red builds are
   // hardest. Runs are split across WORKERS threads (each worker runs every cell).
   const runsEach = hasFlag('runs') ? RUNS : 50
+  // Symmetric launch timing: both fleets dispatch bombers at 10s by default, so the
+  // matrix isolates composition effects (no random red-launch noise muddying it).
   const blueLaunch = BLUE_LAUNCH == null ? 10 : Number(BLUE_LAUNCH)
+  const redLaunch  = RED_LAUNCH  == null ? 10 : Number(RED_LAUNCH)
   const wings = SWEEP3_BUILDS.map(([c, b]) => wingFor3(c, b))
   const cells = []
   SWEEP3_BUILDS.forEach((_, bi) => SWEEP3_BUILDS.forEach((__, ri) => cells.push({ bi, ri, blue: wings[bi], red: wings[ri] })))
-  const params = { blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH), cruiserSpeed: CRUISER_SPEED_OVR == null ? CRUISER_SPEED : Number(CRUISER_SPEED_OVR), cruiserArc: CRUISER_STEER !== 'force' }
+  const params = { blueLaunch, redLaunch, cruiserSpeed: CRUISER_SPEED_OVR == null ? CRUISER_SPEED : Number(CRUISER_SPEED_OVR), cruiserArc: CRUISER_STEER !== 'force' }
   const nWorkers = Math.max(1, Math.min(WORKERS, runsEach))
   const total = cells.length * runsEach
 
   console.log(`\nCross-matrix sweep — ${wings.length} blue × ${wings.length} red = ${cells.length} match-ups × ${runsEach} runs (${total} sims) on ${nWorkers} worker${nWorkers > 1 ? 's' : ''}`)
-  console.log(`Blue bombers launch ${blueLaunch}s, red random.  Cruiser speed: ${params.cruiserSpeed}, steer: ${params.cruiserArc ? 'arc' : 'force'}.`)
+  console.log(`Both fleets launch bombers ${blueLaunch}s.  Cruiser speed: ${params.cruiserSpeed}, steer: ${params.cruiserArc ? 'arc' : 'force'}.`)
 
   const t0 = Date.now()
   const base = Math.floor(runsEach / nWorkers), rem = runsEach % nWorkers

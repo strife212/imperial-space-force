@@ -3317,6 +3317,35 @@ body {
   width: 100%;
 }
 
+/* Start-screen mode subtitles above each button group */
+.start-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.start-section--spaced {
+  margin-top: 38px;
+}
+.start-section-label {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(106, 173, 245, 0.75);
+}
+.start-section-sub {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(106, 173, 245, 0.7);
+}
+
 .menu-btn {
   width: 100%;
   background: transparent;
