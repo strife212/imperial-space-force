@@ -6880,7 +6880,7 @@ body {
   padding: 10px 12px;
   border-radius: 3px;
   cursor: pointer;
-  animation: sb-dispatch-pulse 1.8s ease-in-out infinite;
+  animation: sb-dispatch-pulse 2.6s ease-in-out infinite;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
 }
 .sb-dispatch-btn:hover {
@@ -6888,10 +6888,10 @@ body {
   border-color: rgba(150, 205, 255, 0.95);
   color: #fff;
 }
-/* gentle availability pulse — glow + faint breathing scale */
+/* gentle availability pulse — soft glow + a barely-there breathing scale */
 @keyframes sb-dispatch-pulse {
-  0%, 100% { box-shadow: 0 0 10px rgba(26, 128, 255, 0.35); transform: scale(1); }
-  50%      { box-shadow: 0 0 26px rgba(80, 150, 255, 0.85); transform: scale(1.035); }
+  0%, 100% { box-shadow: 0 0 9px rgba(26, 128, 255, 0.3); transform: scale(1); }
+  50%      { box-shadow: 0 0 16px rgba(80, 150, 255, 0.5); transform: scale(1.012); }
 }
 .sb-dispatch-btn--sent {
   animation: none;
