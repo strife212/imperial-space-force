@@ -54,6 +54,8 @@ const BLUE_LAUNCH   = argVal('blue-bombers', null)   // null → BOMBER_AUTO_DIS
 const RED_LAUNCH    = argVal('red-bombers', null)    // null → random 5–15s
 const VERBOSE       = hasFlag('verbose') || (!hasFlag('quiet') && RUNS <= 20)
 const WORKERS       = num('workers', 12)   // parallel worker threads for --sweep3
+const CRUISER_SPEED_OVR = argVal('cruiser-speed', null)   // override cruiser move speed (experiments)
+const CRUISER_STEER = argVal('cruiser-steer', 'arc')      // 'arc' (turning circle) | 'force' (old flocking)
 
 const DT = 1 / 60
 const MAX_T = 300
@@ -139,7 +141,7 @@ function runBattle(cfg) {
       ships.push({
         team, hp: CRUISER_HP, alive: true, lost: false, pos, vel, quat: q,
         fireCd: 1 + Math.random() * 2, isCapital: false, isBomber: false, isCruiser: true, kills: 0,
-        weapons: 1, armor: ARMOR_CRUISER, maxSpeed: CRUISER_SPEED, minSpeed: CRUISER_MIN, radius: 1.4,
+        weapons: 1, armor: ARMOR_CRUISER, maxSpeed: cfg.cruiserSpeed ?? CRUISER_SPEED, minSpeed: CRUISER_MIN, radius: 1.4,
         turn: TURN_RATE * 0.8, standoff: CRUISER_STANDOFF, bound: BOUND_R,
       })
     }
@@ -212,7 +214,7 @@ function runBattle(cfg) {
         const dx = tx - s.pos.x, dy = ty - s.pos.y, dz = tz - s.pos.z
         const dist = Math.hypot(dx, dy, dz), step = CAP_SPEED * DT
         if (dist > 1e-4) { const f = Math.min(step, dist) / dist; s.pos.x += dx * f; s.pos.y += dy * f; s.pos.z += dz * f; orient(s.quat, _dir.set(dx, dy, dz), 1 - Math.exp(-1.5 * DT)) }
-      } else if (s.isCruiser) {
+      } else if (s.isCruiser && cfg.cruiserArc !== false) {
         // ponderous turning-circle movement (mirrors SpaceBattleScreen)
         _dir.copy(s.vel); if (_dir.lengthSq() < 1e-6) _dir.set(s.team === 'blue' ? 1 : -1, 0, 0)
         _dir.normalize()
@@ -410,6 +412,8 @@ const runBuildsBatch = (builds, runs, params) => builds.map(([c, b]) => {
     blueCruisers: wing.cruisers, redCruisers: params.redCruisers,
     blueLaunch: params.blueLaunch, redLaunch: params.redLaunch,
   }
+  cfg.cruiserSpeed = params.cruiserSpeed
+  cfg.cruiserArc = params.cruiserArc
   const a = { wing, blueW: 0, redW: 0, draw: 0, sumT: 0, blueSurv: 0, redSurv: 0, blueCap: 0, n: runs }
   for (let i = 0; i < runs; i++) {
     const r = runBattle(cfg)
@@ -433,11 +437,11 @@ if (!isMainThread) {
   const runsEach = hasFlag('runs') ? RUNS : 100
   const blueLaunch = BLUE_LAUNCH == null ? 10 : Number(BLUE_LAUNCH)
   const builds = SWEEP3_BUILDS
-  const params = { redFighters: RED_FIGHTERS, redBombers: RED_BCOUNT, redCruisers: RED_CCOUNT, blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH) }
+  const params = { redFighters: RED_FIGHTERS, redBombers: RED_BCOUNT, redCruisers: RED_CCOUNT, blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH), cruiserSpeed: CRUISER_SPEED_OVR == null ? CRUISER_SPEED : Number(CRUISER_SPEED_OVR), cruiserArc: CRUISER_STEER !== 'force' }
   const nWorkers = Math.max(1, Math.min(WORKERS, runsEach))
 
   console.log(`\nThree-type build sweep — ${builds.length} builds × ${runsEach} runs (${builds.length * runsEach} sims) on ${nWorkers} worker${nWorkers > 1 ? 's' : ''}`)
-  console.log(`Red: default ${RED_FIGHTERS}F/${RED_BCOUNT}B/${RED_CCOUNT}C (random launch).  Blue bombers launch ${blueLaunch}s, leftover points → fighters.`)
+  console.log(`Red: default ${RED_FIGHTERS}F/${RED_BCOUNT}B/${RED_CCOUNT}C (random launch).  Blue bombers launch ${blueLaunch}s.  Cruiser speed: ${params.cruiserSpeed}, steer: ${params.cruiserArc ? 'arc' : 'force'}.`)
 
   // distribute the per-build runs across the workers (each worker runs every build)
   const base = Math.floor(runsEach / nWorkers), rem = runsEach % nWorkers
