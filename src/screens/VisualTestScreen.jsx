@@ -176,7 +176,8 @@ export default function VisualTestScreen({ onReturn }) {
         blasts.push({ fire, fmat, ring, rmat, life: 0, max: 0.6, s: sc })
       }
       const impact = (pos, target, big) => {
-        spawnBlast(pos, big)
+        // no death/impact blast in the sandbox — ships are indestructible, so a
+        // burst on every hit just clutters the view. (Capital shields still flare.)
         if (target.shield) target.shieldFlash = 0.45   // capital shield flares on a hit
       }
       const fireBolt = (sh, target, big = false) => {
