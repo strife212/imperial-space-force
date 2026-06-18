@@ -21,7 +21,7 @@ import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapit
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
 import './battle/battle.css'
 
-export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpen }) {
+export default function SpaceBattleScreen({ onReturn }) {
   const mountRef     = useRef(null)
   const blueCountRef = useRef(null)
   const redCountRef  = useRef(null)
@@ -1604,12 +1604,6 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
     <div id="battle-screen">
       <HudHeader
         onLogout={onReturn}
-        center={
-          <span className={`status-pill mail-pill${unreadCount > 0 ? ' mail-pill--unread' : ''}`} onClick={onMailOpen}>
-            {unreadCount > 0 && <span className="mail-unread-dot" />}
-            ✉ IMPERIAL MESSAGING SERVICE // UNREAD: {unreadCount}
-          </span>
-        }
         right={<span className="label">TAC-SIM / FLEET ENGAGEMENT</span>}
       />
 
