@@ -7,6 +7,8 @@
 //   npm run sim -- --red-bombers 7    # force red's launch time too (else random 5–15s)
 //   npm run sim -- --blue-fighters 30 --red-fighters 20 --blue-bombers-count 3
 //   npm run sim -- --verbose          # per-run table (on by default for ≤20 runs)
+//   npm run sim -- --sweep3           # 25 fighter/bomber/cruiser builds × 100 runs
+//   npm run sim -- --sweep3 --workers 12   # parallelise the sweep across 12 threads (default 12; 1 = sequential)
 //
 // All COMBAT VALUES (HP, damage, armour, speeds, ranges, point costs, morale
 // thresholds, …) are imported live from src/screens/battle/constants.js, so this
@@ -20,6 +22,7 @@
 // SpaceBattleScreen.jsx, mirror the change here to keep results representative.
 // ─────────────────────────────────────────────────────────────────────────────
 import * as THREE from 'three'
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads'
 import {
   FLEET_SIZE, SHIP_HP, BOMBER_COUNT, CRUISER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN,
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED,
@@ -50,6 +53,7 @@ const RED_CCOUNT    = num('red-cruisers-count', CRUISER_COUNT)
 const BLUE_LAUNCH   = argVal('blue-bombers', null)   // null → BOMBER_AUTO_DISPATCH
 const RED_LAUNCH    = argVal('red-bombers', null)    // null → random 5–15s
 const VERBOSE       = hasFlag('verbose') || (!hasFlag('quiet') && RUNS <= 20)
+const WORKERS       = num('workers', 12)   // parallel worker threads for --sweep3
 
 const DT = 1 / 60
 const MAX_T = 300
@@ -381,57 +385,90 @@ const wingFor = (bombers) => {
   const remaining = FLEET_BUDGET - PTS_FLAGSHIP - PTS_BOMBER * bombers
   return { bombers, fighters: Math.max(0, Math.floor(remaining / PTS_FIGHTER)) }
 }
+// Spend the wing budget on C cruisers + B bombers, leftover → fighters. Used by --sweep3.
+const wingFor3 = (c, b) => ({ cruisers: c, bombers: b, fighters: Math.max(0, Math.floor((FLEET_BUDGET - PTS_FLAGSHIP - PTS_CRUISER * c - PTS_BOMBER * b) / PTS_FIGHTER)) })
 
-if (hasFlag('sweep3')) {
+// The 25 curated blue builds for the three-type sweep. [cruisers, bombers]
+const SWEEP3_BUILDS = [
+  [0, 0], [0, 3], [0, 6], [0, 9], [0, 11],
+  [1, 0], [1, 4], [1, 8],
+  [2, 0], [2, 3], [2, 6],
+  [3, 0], [3, 3], [3, 6],
+  [4, 0], [4, 3], [4, 5],
+  [5, 0], [5, 2], [5, 4],
+  [6, 0], [6, 3],
+  [7, 0], [8, 0], [9, 0],
+]
+
+// Run `runs` battles of each build and return per-build summed aggregates (mergeable
+// across worker threads). Pure — used by both the main thread and the workers.
+const runBuildsBatch = (builds, runs, params) => builds.map(([c, b]) => {
+  const wing = wingFor3(c, b)
+  const cfg = {
+    blueFighters: wing.fighters, redFighters: params.redFighters,
+    blueBombers: wing.bombers, redBombers: params.redBombers,
+    blueCruisers: wing.cruisers, redCruisers: params.redCruisers,
+    blueLaunch: params.blueLaunch, redLaunch: params.redLaunch,
+  }
+  const a = { wing, blueW: 0, redW: 0, draw: 0, sumT: 0, blueSurv: 0, redSurv: 0, blueCap: 0, n: runs }
+  for (let i = 0; i < runs; i++) {
+    const r = runBattle(cfg)
+    if (r.winner === 'BLUE') a.blueW++; else if (r.winner === 'RED') a.redW++; else a.draw++
+    a.sumT += r.t
+    a.blueSurv += r.blue.fighters + r.blue.bombers + r.blue.cruisers
+    a.redSurv += r.red.fighters + r.red.bombers + r.red.cruisers
+    if (r.blue.cap) a.blueCap++
+  }
+  return a
+})
+
+if (!isMainThread) {
+  // Worker thread: run an assigned slice of battles and post the aggregates back.
+  parentPort.postMessage(runBuildsBatch(workerData.builds, workerData.runs, workerData.params))
+} else if (hasFlag('sweep3')) {
   // ── Three-type sweep ──────────────────────────────────────────────────────────
   // 25 curated blue builds spanning fighters / bombers / cruisers, each spending the
   // full 1000-pt budget (fighters fill the leftover after C cruisers + B bombers).
-  // Red stays default; blue bombers launch at the given time (default 10s).
+  // Red stays default. Sims are split across WORKERS threads for speed.
   const runsEach = hasFlag('runs') ? RUNS : 100
   const blueLaunch = BLUE_LAUNCH == null ? 10 : Number(BLUE_LAUNCH)
-  const BUILDS = [ // [cruisers, bombers]
-    [0, 0], [0, 3], [0, 6], [0, 9], [0, 11],
-    [1, 0], [1, 4], [1, 8],
-    [2, 0], [2, 3], [2, 6],
-    [3, 0], [3, 3], [3, 6],
-    [4, 0], [4, 3], [4, 5],
-    [5, 0], [5, 2], [5, 4],
-    [6, 0], [6, 3],
-    [7, 0], [8, 0], [9, 0],
-  ]
-  const wingFor3 = (c, b) => ({ cruisers: c, bombers: b, fighters: Math.max(0, Math.floor((FLEET_BUDGET - PTS_FLAGSHIP - PTS_CRUISER * c - PTS_BOMBER * b) / PTS_FIGHTER)) })
+  const builds = SWEEP3_BUILDS
+  const params = { redFighters: RED_FIGHTERS, redBombers: RED_BCOUNT, redCruisers: RED_CCOUNT, blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH) }
+  const nWorkers = Math.max(1, Math.min(WORKERS, runsEach))
 
-  console.log(`\nThree-type build sweep — ${BUILDS.length} builds × ${runsEach} runs (${BUILDS.length * runsEach} sims)`)
+  console.log(`\nThree-type build sweep — ${builds.length} builds × ${runsEach} runs (${builds.length * runsEach} sims) on ${nWorkers} worker${nWorkers > 1 ? 's' : ''}`)
   console.log(`Red: default ${RED_FIGHTERS}F/${RED_BCOUNT}B/${RED_CCOUNT}C (random launch).  Blue bombers launch ${blueLaunch}s, leftover points → fighters.`)
+
+  // distribute the per-build runs across the workers (each worker runs every build)
+  const base = Math.floor(runsEach / nWorkers), rem = runsEach % nWorkers
+  const split = Array.from({ length: nWorkers }, (_, w) => base + (w < rem ? 1 : 0)).filter(n => n > 0)
+
+  let agg
+  if (nWorkers > 1) {
+    const parts = await Promise.all(split.map(runs => new Promise((resolve, reject) => {
+      const wk = new Worker(new URL(import.meta.url), { workerData: { builds, runs, params } })
+      wk.on('message', m => { resolve(m); wk.terminate() })
+      wk.on('error', reject)
+    })))
+    agg = builds.map((_, bi) => {
+      const a = { wing: parts[0][bi].wing, blueW: 0, redW: 0, draw: 0, sumT: 0, blueSurv: 0, redSurv: 0, blueCap: 0, n: 0 }
+      for (const p of parts) { const x = p[bi]; a.blueW += x.blueW; a.redW += x.redW; a.draw += x.draw; a.sumT += x.sumT; a.blueSurv += x.blueSurv; a.redSurv += x.redSurv; a.blueCap += x.blueCap; a.n += x.n }
+      return a
+    })
+  } else {
+    agg = runBuildsBatch(builds, runsEach, params)
+  }
+
   console.log('\n  Blue build (F/B/C) | Blue W | Red W | Avg t | Blue surv | Red surv | Blue cap')
   console.log('  -------------------+--------+-------+-------+-----------+----------+---------')
-
-  const rows = []
-  for (const [c, b] of BUILDS) {
-    const wing = wingFor3(c, b)
-    const cfg = {
-      blueFighters: wing.fighters, redFighters: RED_FIGHTERS,
-      blueBombers: wing.bombers, redBombers: RED_BCOUNT,
-      blueCruisers: wing.cruisers, redCruisers: RED_CCOUNT,
-      blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH),
-    }
-    const res = []
-    for (let i = 0; i < runsEach; i++) res.push(runBattle(cfg))
-    const w = (t) => res.filter(r => r.winner === t).length
-    const avg = (f) => res.reduce((a, r) => a + f(r), 0) / runsEach
-    const r = {
-      wing, blueW: w('BLUE'), redW: w('RED'), avgT: avg(x => x.t),
-      blueSurv: avg(x => x.blue.fighters + x.blue.bombers + x.blue.cruisers),
-      redSurv: avg(x => x.red.fighters + x.red.bombers + x.red.cruisers),
-      blueCap: res.filter(x => x.blue.cap).length,
-    }
-    rows.push(r)
-    const label = `${String(wing.fighters).padStart(2)}F ${String(wing.bombers).padStart(2)}B ${String(wing.cruisers).padStart(2)}C`
-    console.log(`  ${label.padEnd(18)} | ${String(r.blueW).padStart(3)}/${runsEach} | ${String(r.redW).padStart(3)}/${runsEach} | ${r.avgT.toFixed(1).padStart(5)} | ${r.blueSurv.toFixed(1).padStart(6)}    | ${r.redSurv.toFixed(1).padStart(5)}    | ${String(r.blueCap).padStart(3)}/${runsEach}`)
+  const rows = agg.map(a => ({ wing: a.wing, blueW: a.blueW, redW: a.redW, avgT: a.sumT / a.n, blueSurv: a.blueSurv / a.n, redSurv: a.redSurv / a.n, blueCap: a.blueCap, n: a.n }))
+  for (const r of rows) {
+    const label = `${String(r.wing.fighters).padStart(2)}F ${String(r.wing.bombers).padStart(2)}B ${String(r.wing.cruisers).padStart(2)}C`
+    console.log(`  ${label.padEnd(18)} | ${String(r.blueW).padStart(3)}/${r.n} | ${String(r.redW).padStart(3)}/${r.n} | ${r.avgT.toFixed(1).padStart(5)} | ${r.blueSurv.toFixed(1).padStart(6)}    | ${r.redSurv.toFixed(1).padStart(5)}    | ${String(r.blueCap).padStart(3)}/${r.n}`)
   }
   const sorted = [...rows].sort((a, b) => b.blueW - a.blueW)
   console.log('\nTop blue builds by win-rate:')
-  for (const r of sorted.slice(0, 5)) console.log(`  ${r.wing.fighters}F / ${r.wing.bombers}B / ${r.wing.cruisers}C — ${r.blueW}/${runsEach}`)
+  for (const r of sorted.slice(0, 5)) console.log(`  ${r.wing.fighters}F / ${r.wing.bombers}B / ${r.wing.cruisers}C — ${r.blueW}/${r.n}`)
 } else if (hasFlag('sweep')) {
   // ── Sweep mode ──────────────────────────────────────────────────────────────
   // Walk an even ladder of bomber counts from 0 → max-affordable, filling the rest
