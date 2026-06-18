@@ -6855,16 +6855,19 @@ body {
 .sb-dispatch {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 9px;
+  align-items: flex-start;
+  gap: 7px;
   margin-top: 5px;
-  pointer-events: none;     /* only the button captures clicks */
+  pointer-events: none;     /* only the button + live sprites capture clicks */
   font-family: var(--font-mono);
-  width: 232px;
+}
+.sb-dispatch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .sb-dispatch-btn {
   pointer-events: auto;
-  width: 100%;
   background: rgba(26, 100, 255, 0.16);
   border: 1px solid var(--c-scarlet);
   color: #eaf4ff;
@@ -6901,9 +6904,9 @@ body {
 .sb-dispatch-icons {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 7px;
   flex-wrap: wrap;
+  max-width: 132px;        /* wrap to a second row past ~4 sprites, beside the button */
 }
 .sb-dispatch-bomber { display: block; line-height: 0; }
 .sb-dispatch-bomber .sb-sprite { width: 26px; height: 26px; }
@@ -6911,6 +6914,10 @@ body {
 .sb-dispatch-bomber .sb-sprite { filter: drop-shadow(0 0 4px rgba(26, 128, 255, 0.55)); }
 .sb-dispatch-bomber--dead .sb-sprite path { fill: var(--c-ash-dim); }
 .sb-dispatch-bomber--dead .sb-sprite { opacity: 0.35; filter: none; }
+/* trackable bomber: clickable, with a hover lift + glow */
+.sb-dispatch-bomber--live { pointer-events: auto; cursor: pointer; transition: transform 0.1s ease; }
+.sb-dispatch-bomber--live:hover { transform: scale(1.2); }
+.sb-dispatch-bomber--live:hover .sb-sprite { filter: drop-shadow(0 0 6px rgba(140, 200, 255, 0.95)); }
 .sb-dispatch-countdown {
   font-size: 10px;
   letter-spacing: 0.1em;

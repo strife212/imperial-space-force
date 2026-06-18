@@ -66,6 +66,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const followHpRef  = useRef(null)             // live "remaining / max" hull text for the tracked ship
   const followBarRef = useRef(null)             // live hull bar fill for the tracked ship
   const exitFollowRef = useRef(null)            // revert-to-tactical fn, wired up inside the scene
+  const followBomberRef = useRef(null)          // follow-a-blue-bomber-by-index fn, wired up inside the scene
   const killSeq = useRef(0)
   const audioRef = useRef(null)
   const blueCapRef = useRef(null), blueShieldRef = useRef(null), blueReserveRef = useRef(null)
@@ -762,6 +763,16 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         controls.update()
       }
       exitFollowRef.current = revertToTactical
+      // follow a specific blue bomber by its roster index (driven by the dispatch sprites);
+      // only acts while that bomber is actually on the field and not destroyed
+      followBomberRef.current = (idx) => {
+        const b = ships.find(s => s.isBomber && s.team === 'blue' && s.bIndex === idx)
+        if (!b || !b.alive || !b.entered || b.warpOut) return false
+        followRef.current = b
+        setFollowName(b.name); setFollowTeam(b.team)
+        controls.enabled = false
+        return true
+      }
       // a near-stationary press (not an orbit drag) selects the ship under the cursor
       let downX = 0, downY = 0, downT = 0
       const onDown = (e) => { downX = e.clientX; downY = e.clientY; downT = performance.now() }
@@ -1309,6 +1320,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         renderer.domElement.removeEventListener('pointerdown', onDown)
         renderer.domElement.removeEventListener('pointerup', onUp)
         exitFollowRef.current = null
+        followBomberRef.current = null
         controls.dispose()
         disposables.forEach(d => d.dispose && d.dispose())
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
@@ -1476,19 +1488,29 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
 
           {comp.blue.bombers > 0 && (
             <div className="sb-dispatch">
-              <button
-                className={`sb-dispatch-btn${bombersCalled ? ' sb-dispatch-btn--sent' : ''}`}
-                onClick={callBombers}
-                disabled={bombersCalled}
-              >
-                {bombersCalled ? '✦ BOMBERS INBOUND' : '▼ DISPATCH BOMBERS'}
-              </button>
-              <div className="sb-dispatch-icons">
-                {blueBomberAlive.map((alive, i) => (
-                  <span key={i} className={`sb-dispatch-bomber${alive ? '' : ' sb-dispatch-bomber--dead'}`}>
-                    <ShipSprite team="blue" kind="bomber" />
-                  </span>
-                ))}
+              <div className="sb-dispatch-row">
+                <button
+                  className={`sb-dispatch-btn${bombersCalled ? ' sb-dispatch-btn--sent' : ''}`}
+                  onClick={callBombers}
+                  disabled={bombersCalled}
+                >
+                  {bombersCalled ? '✦ BOMBERS INBOUND' : '▼ DISPATCH BOMBERS'}
+                </button>
+                <div className="sb-dispatch-icons">
+                  {blueBomberAlive.map((alive, i) => {
+                    const live = bombersCalled && alive   // launched + not destroyed → trackable
+                    return (
+                      <span
+                        key={i}
+                        className={`sb-dispatch-bomber${alive ? '' : ' sb-dispatch-bomber--dead'}${live ? ' sb-dispatch-bomber--live' : ''}`}
+                        onClick={live ? () => followBomberRef.current?.(i) : undefined}
+                        title={live ? 'Track this bomber' : undefined}
+                      >
+                        <ShipSprite team="blue" kind="bomber" />
+                      </span>
+                    )
+                  })}
+                </div>
               </div>
               {!bombersCalled && <div className="sb-dispatch-countdown" ref={bomberCountdownRef} />}
             </div>
