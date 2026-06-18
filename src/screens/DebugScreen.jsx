@@ -27,6 +27,7 @@ const SCREENS_COL2 = [
   { key: 'launch-sequence', label: 'Launch Sequence Dialogue'  },
   { key: 'blackhole',       label: 'Black Hole Visualisation'  },
   { key: 'battle',          label: 'Space Battle Simulation'   },
+  { key: 'vistest',         label: 'Combat Visual Test'        },
 ]
 
 const FLAG_LABELS = {
