@@ -25,7 +25,7 @@ const FIGHTER_RANGE = 50     // fighters hold fire past this (≈1.5× the BOUND
 const TURN_RATE   = 7        // orientation slerp responsiveness
 const FIELD_FIGHTER_CAP = 25 // max fighters a team can have on the field at once
 const REINFORCE_INTERVAL = 10 // seconds between reinforcement waves from the reserve
-const BOMBER_AUTO_DISPATCH = 20 // sim-seconds before the blue bomber wing auto-launches if the player hasn't
+const BOMBER_AUTO_DISPATCH = 15 // sim-seconds before the blue bomber wing auto-launches if the player hasn't
 // Armour: % chance an incoming hit that connects is deflected to zero damage.
 // Only fighter bolts are mitigated — capital-ship attacks and bomber bombs
 // always land in full.

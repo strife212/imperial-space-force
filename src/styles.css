@@ -6848,19 +6848,16 @@ body {
 }
 .sb-tac-btn:disabled { cursor: default; opacity: 0.85; }
 
-/* ── Bomber dispatch — prominent centre-left command ──────────────────────────
-   The blue bomber wing is a decisive, one-shot order, so it gets its own large
-   pulsing control apart from the tactics panel, with a roster of bomber sprites
-   and an auto-dispatch countdown beneath. */
+/* ── Bomber dispatch — prominent command, docked in the tactics panel ─────────
+   The blue bomber wing is a decisive, one-shot order, so it keeps its large
+   pulsing button, roster of bomber sprites and auto-dispatch countdown — now
+   sitting with the other fleet controls at bottom-left rather than floating. */
 .sb-dispatch {
-  position: absolute;
-  left: 22px; top: 50%;
-  transform: translateY(-50%);
-  z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 11px;
+  gap: 9px;
+  margin-top: 5px;
   pointer-events: none;     /* only the button captures clicks */
   font-family: var(--font-mono);
   width: 232px;

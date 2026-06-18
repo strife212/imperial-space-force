@@ -1473,27 +1473,27 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
               <button className={`sb-tac-btn${fighterControl === 'capital' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('capital')}>ATTACK CAPITAL SHIP</button>
             </div>
           </div>
-        </div>
 
-        {comp.blue.bombers > 0 && (
-          <div className="sb-dispatch">
-            <button
-              className={`sb-dispatch-btn${bombersCalled ? ' sb-dispatch-btn--sent' : ''}`}
-              onClick={callBombers}
-              disabled={bombersCalled}
-            >
-              {bombersCalled ? '✦ BOMBERS INBOUND' : '▼ DISPATCH BOMBERS'}
-            </button>
-            <div className="sb-dispatch-icons">
-              {blueBomberAlive.map((alive, i) => (
-                <span key={i} className={`sb-dispatch-bomber${alive ? '' : ' sb-dispatch-bomber--dead'}`}>
-                  <ShipSprite team="blue" kind="bomber" />
-                </span>
-              ))}
+          {comp.blue.bombers > 0 && (
+            <div className="sb-dispatch">
+              <button
+                className={`sb-dispatch-btn${bombersCalled ? ' sb-dispatch-btn--sent' : ''}`}
+                onClick={callBombers}
+                disabled={bombersCalled}
+              >
+                {bombersCalled ? '✦ BOMBERS INBOUND' : '▼ DISPATCH BOMBERS'}
+              </button>
+              <div className="sb-dispatch-icons">
+                {blueBomberAlive.map((alive, i) => (
+                  <span key={i} className={`sb-dispatch-bomber${alive ? '' : ' sb-dispatch-bomber--dead'}`}>
+                    <ShipSprite team="blue" kind="bomber" />
+                  </span>
+                ))}
+              </div>
+              {!bombersCalled && <div className="sb-dispatch-countdown" ref={bomberCountdownRef} />}
             </div>
-            {!bombersCalled && <div className="sb-dispatch-countdown" ref={bomberCountdownRef} />}
-          </div>
-        )}
+          )}
+        </div>
 
         <button className="sb-restart-top" onClick={restartCombat}>⟳ RESTART COMBAT</button>
 
