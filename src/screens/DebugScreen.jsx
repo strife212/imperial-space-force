@@ -10,6 +10,7 @@ const SAMPLE_URGENT = {
 }
 
 const SCREENS_COL1 = [
+  { key: 'home',         label: 'Start Screen'           },
   { key: 'login',        label: 'Login Screen'           },
   { key: 'boot',         label: 'Boot / Loading Screen'  },
   { key: 'menu',         label: 'Menu Screen'             },

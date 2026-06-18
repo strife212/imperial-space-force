@@ -146,7 +146,7 @@ export default function App() {
       <div className="scanlines" />
       <div className="vignette" />
       {screen === 'home'    && <StartScreen onCampaign={() => { setCutsceneSource('home'); setScreen('cutscene') }} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
-      {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onDebug={() => setScreen('debug')} />}
+      {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onBack={() => setScreen('home')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}
       {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setCountdownSeconds(10); setScreen('monitor') }} onPower={() => { setPowerSource('main'); setScreen('power') }} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} onAdjustAntenna={() => setScreen('antenna')} antennaAligned={antennaAligned} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} targetIdx={targetIdx} countdownSeconds={countdownSeconds} underAttack={underAttack} onRadioFreq={(f) => { setRadioFreq(f); if (f === 9.2 && antennaAligned) setUnderAttack(true) }} radioFreq={radioFreq} {...mailProps} />}

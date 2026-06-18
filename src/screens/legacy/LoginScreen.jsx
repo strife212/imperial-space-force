@@ -9,7 +9,7 @@ const ID_SPEED    = 38   // ms per character
 const PW_SPEED    = 60   // ms per character
 
 
-export default function LoginScreen({ onComplete, onDebug }) {
+export default function LoginScreen({ onComplete, onBack }) {
   const [exiting,        setExiting]        = useState(false)
   const [phase,          setPhase]          = useState('idle')  // idle | typing | ready | crypto
   const [operatorText,   setOperatorText]   = useState('')
@@ -276,7 +276,7 @@ export default function LoginScreen({ onComplete, onDebug }) {
         </div>
       </div>
       <footer className="login-footer">
-        <button className="login-debug-link" onClick={onDebug}>debug</button>
+        <button className="login-debug-link" onClick={onBack}>← back</button>
       </footer>
     </div>
   )
