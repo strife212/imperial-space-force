@@ -6848,15 +6848,80 @@ body {
 }
 .sb-tac-btn:disabled { cursor: default; opacity: 0.85; }
 
-/* bomber wing: Call Bombers button + a roster of greying sprites */
-.sb-tac-bombers { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-.sb-tac-bomber-icons { display: flex; align-items: center; gap: 5px; }
-.sb-tac-bomber { display: block; line-height: 0; }
-.sb-tac-bomber .sb-sprite { width: 18px; height: 18px; }
-.sb-tac-bomber .sb-sprite--blue path { fill: var(--c-scarlet); }
-.sb-tac-bomber .sb-sprite { filter: drop-shadow(0 0 3px rgba(26, 128, 255, 0.5)); }
-.sb-tac-bomber--dead .sb-sprite path { fill: var(--c-ash-dim); }
-.sb-tac-bomber--dead .sb-sprite { opacity: 0.35; filter: none; }
+/* ── Bomber dispatch — prominent centre-left command ──────────────────────────
+   The blue bomber wing is a decisive, one-shot order, so it gets its own large
+   pulsing control apart from the tactics panel, with a roster of bomber sprites
+   and an auto-dispatch countdown beneath. */
+.sb-dispatch {
+  position: absolute;
+  left: 22px; top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+  pointer-events: none;     /* only the button captures clicks */
+  font-family: var(--font-mono);
+  width: 232px;
+}
+.sb-dispatch-btn {
+  pointer-events: auto;
+  width: 100%;
+  background: rgba(26, 100, 255, 0.16);
+  border: 1px solid var(--c-scarlet);
+  color: #eaf4ff;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 10px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  animation: sb-dispatch-pulse 1.8s ease-in-out infinite;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+.sb-dispatch-btn:hover {
+  background: rgba(26, 100, 255, 0.3);
+  border-color: rgba(150, 205, 255, 0.95);
+  color: #fff;
+}
+/* gentle availability pulse — glow + faint breathing scale */
+@keyframes sb-dispatch-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(26, 128, 255, 0.35); transform: scale(1); }
+  50%      { box-shadow: 0 0 26px rgba(80, 150, 255, 0.85); transform: scale(1.035); }
+}
+.sb-dispatch-btn--sent {
+  animation: none;
+  background: rgba(2, 6, 18, 0.6);
+  border-color: var(--c-line-2);
+  color: var(--c-rose);
+  cursor: default;
+  box-shadow: none;
+}
+.sb-dispatch-icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.sb-dispatch-bomber { display: block; line-height: 0; }
+.sb-dispatch-bomber .sb-sprite { width: 26px; height: 26px; }
+.sb-dispatch-bomber .sb-sprite--blue path { fill: var(--c-scarlet); }
+.sb-dispatch-bomber .sb-sprite { filter: drop-shadow(0 0 4px rgba(26, 128, 255, 0.55)); }
+.sb-dispatch-bomber--dead .sb-sprite path { fill: var(--c-ash-dim); }
+.sb-dispatch-bomber--dead .sb-sprite { opacity: 0.35; filter: none; }
+.sb-dispatch-countdown {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-ash-dim);
+  text-align: center;
+  min-height: 12px;
+}
 
 /* ── Ergosphere energy-extraction panel ───────────────────────────────────── */
 .ee-panel {

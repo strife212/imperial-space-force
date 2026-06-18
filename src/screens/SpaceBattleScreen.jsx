@@ -10,7 +10,7 @@ import {
   FLEET_SIZE, SHIP_HP, BOMBER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
-  FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
+  FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
   PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
@@ -78,6 +78,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [bombersCalled, setBombersCalled] = useState(false)              // player has called the blue bomber wing
   const [blueBomberAlive, setBlueBomberAlive] = useState(() => Array(BOMBER_COUNT).fill(true))  // per-bomber status for the roster
   const callBombersRef = useRef(false)
+  const bomberCountdownRef = useRef(null)       // live "auto dispatch in Ns" text element
   const capTacticRef      = useRef(capTactic)
   const fighterControlRef = useRef(fighterControl)
   useEffect(() => { capTacticRef.current = capTactic }, [capTactic])
@@ -798,6 +799,14 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         }
         // blue bombers wait for the player's order; red bombers arrive at a random time
         if (!gameOver) {
+          // the blue wing auto-launches at the deadline if the player hasn't intervened;
+          // tick the on-screen countdown until then (sim-time based, so it pauses with the game)
+          const hasBlueBombers = compRef.current.blue.bombers > 0
+          if (hasBlueBombers && !blueBombersLaunched && !callBombersRef.current) {
+            const left = Math.max(0, Math.ceil(BOMBER_AUTO_DISPATCH - battleSimT))
+            if (bomberCountdownRef.current) bomberCountdownRef.current.textContent = `Bombers auto dispatched in ${left} second${left === 1 ? '' : 's'}`
+            if (battleSimT >= BOMBER_AUTO_DISPATCH) { callBombersRef.current = true; setBombersCalled(true) }
+          }
           if (!blueBombersLaunched && callBombersRef.current) { blueBombersLaunched = true; launchBombers('blue') }
           if (!redBombersLaunched && t >= redBomberEntry)     { redBombersLaunched = true; launchBombers('red') }
         }
@@ -1441,22 +1450,27 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
               <button className={`sb-tac-btn${fighterControl === 'capital' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('capital')}>ATTACK CAPITAL SHIP</button>
             </div>
           </div>
-          <div className="sb-tac-group">
-            <div className="sb-tac-label">BOMBER WING</div>
-            <div className="sb-tac-bombers">
-              <button className={`sb-tac-btn${bombersCalled ? ' sb-tac-btn--on' : ''}`} onClick={callBombers} disabled={bombersCalled}>
-                {bombersCalled ? 'BOMBERS INBOUND' : 'CALL BOMBERS'}
-              </button>
-              <div className="sb-tac-bomber-icons">
-                {blueBomberAlive.map((alive, i) => (
-                  <span key={i} className={`sb-tac-bomber${alive ? '' : ' sb-tac-bomber--dead'}`}>
-                    <ShipSprite team="blue" kind="bomber" />
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
+
+        {comp.blue.bombers > 0 && (
+          <div className="sb-dispatch">
+            <button
+              className={`sb-dispatch-btn${bombersCalled ? ' sb-dispatch-btn--sent' : ''}`}
+              onClick={callBombers}
+              disabled={bombersCalled}
+            >
+              {bombersCalled ? '✦ BOMBERS INBOUND' : '▼ DISPATCH BOMBERS'}
+            </button>
+            <div className="sb-dispatch-icons">
+              {blueBomberAlive.map((alive, i) => (
+                <span key={i} className={`sb-dispatch-bomber${alive ? '' : ' sb-dispatch-bomber--dead'}`}>
+                  <ShipSprite team="blue" kind="bomber" />
+                </span>
+              ))}
+            </div>
+            {!bombersCalled && <div className="sb-dispatch-countdown" ref={bomberCountdownRef} />}
+          </div>
+        )}
 
         <button className="sb-restart-top" onClick={restartCombat}>⟳ RESTART COMBAT</button>
 

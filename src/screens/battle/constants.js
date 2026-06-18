@@ -25,6 +25,7 @@ const FIGHTER_RANGE = 50     // fighters hold fire past this (≈1.5× the BOUND
 const TURN_RATE   = 7        // orientation slerp responsiveness
 const FIELD_FIGHTER_CAP = 25 // max fighters a team can have on the field at once
 const REINFORCE_INTERVAL = 10 // seconds between reinforcement waves from the reserve
+const BOMBER_AUTO_DISPATCH = 20 // sim-seconds before the blue bomber wing auto-launches if the player hasn't
 // Armour: % chance an incoming hit that connects is deflected to zero damage.
 // Only fighter bolts are mitigated — capital-ship attacks and bomber bombs
 // always land in full.
@@ -107,7 +108,7 @@ export {
   FLEET_SIZE, SHIP_HP, BOMBER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
-  FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
+  FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
   PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, BLUE_CAP_NAMES, CAP_PREFIX, randomBlueCapName, splitCapName, COMMS_PORTRAIT,
   VICTORY_SEGMENTS,
