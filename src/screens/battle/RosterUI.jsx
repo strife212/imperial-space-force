@@ -61,8 +61,8 @@ function CountAdjust({ count, cost, free, onAdjust }) {
 
 // ── Pre-battle ship info tooltips ────────────────────────────────────────────
 const SHIP_INFO = {
-  capital: { hp: CAP_HP,    dmg: `${CAP_WEAPONS} × 1`, speed: CAP_SPEED,    armor: ARMOR_FLAGSHIP, notes: [`${FLARES_FLAGSHIP} flares decoy incoming missiles`] },
-  bomber:  { hp: BOMBER_HP, dmg: `${BOMB_DMG} / 1`,    speed: BOMBER_SPEED, armor: ARMOR_BOMBER,   notes: ['Bomb only targets capital ships', 'Point defence laser targets fighters', `${FLARES_BOMBER} flares decoy incoming missiles`] },
+  capital: { hp: CAP_HP,    dmg: `${CAP_WEAPONS} × 1`, speed: CAP_SPEED,    armor: ARMOR_FLAGSHIP, flares: FLARES_FLAGSHIP, notes: [] },
+  bomber:  { hp: BOMBER_HP, dmg: `${BOMB_DMG} / 1`,    speed: BOMBER_SPEED, armor: ARMOR_BOMBER,   flares: FLARES_BOMBER, notes: ['Bomb only targets capital ships', 'Point defence laser targets fighters'] },
   cruiser: { hp: CRUISER_HP, dmg: `${MISSILE_SALVO} × ${MISSILE_DMG}`, speed: CRUISER_SPEED, armor: ARMOR_CRUISER, notes: [`Fires a ${MISSILE_SALVO}-missile salvo`, 'Homing missiles seek the nearest enemies', `Long range (${MISSILE_RANGE}) — holds back and bombards`] },
   fighter: { hp: SHIP_HP,   dmg: 1,                    speed: MAX_SPEED,    armor: ARMOR_FIGHTER,  notes: [] },
 }
@@ -128,6 +128,17 @@ function ShipInfoTip({ kind, team }) {
             <div className="sb-info-stat"><span>Damage</span><b>{info.dmg}</b></div>
             <div className="sb-info-stat"><span>Speed</span><b>{info.speed}</b></div>
             <div className="sb-info-stat"><span>Armor</span><b>{info.armor}%</b></div>
+            {info.flares != null && (
+              <div className="sb-info-stat sb-info-stat--flares">
+                <span>Flares</span>
+                <b>
+                  {info.flares}
+                  <span className="sb-info-flare-dots">
+                    {Array.from({ length: info.flares }, (_, i) => <i key={i} className="sb-info-flare-dot" />)}
+                  </span>
+                </b>
+              </div>
+            )}
           </div>
           {info.notes.length > 0 && (
             <div className="sb-info-notes">{info.notes.map((n, i) => <div key={i}>▸ {n}</div>)}</div>

@@ -68,6 +68,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const followRef    = useRef(null)             // the ship the camera is following (or null)
   const followHpRef  = useRef(null)             // live "remaining / max" hull text for the tracked ship
   const followBarRef = useRef(null)             // live hull bar fill for the tracked ship
+  const followTargetRef = useRef(null)          // live "TARGET: …" text for the tracked ship
   const exitFollowRef = useRef(null)            // revert-to-tactical fn, wired up inside the scene
   const followBomberRef = useRef(null)          // follow-a-blue-bomber-by-index fn, wired up inside the scene
   const killSeq = useRef(0)
@@ -484,7 +485,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           scene.add(mesh)
           ships.push({
             mesh, mat, team, hp: SHIP_HP, alive: !reserve, reserve, pos, vel,
-            name: team === 'blue' ? 'Blue Interceptor' : 'Red Marauder',
+            name: `${team === 'blue' ? 'Blue' : 'Red'} Fighter ${i + 1}`,
             fireCd: 0.5 + Math.random() * 2.5, flash: 0,
             isCapital: false, kills: 0, weapons: 1, armor: ARMOR_FIGHTER, maxSpeed: MAX_SPEED, minSpeed: MIN_SPEED, radius: 0, turn: TURN_RATE,
             standoff: STANDOFF, bound: BOUND_R,
@@ -515,7 +516,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           scene.add(mesh)
           ships.push({
             mesh, mat, team, hp: CRUISER_HP, alive: true, pos, vel,
-            name: team === 'blue' ? 'Blue Missile Cruiser' : 'Red Missile Cruiser',
+            name: `${team === 'blue' ? 'Blue' : 'Red'} Cruiser ${i + 1}`,
             fireCd: 1 + Math.random() * 2, flash: 0,
             isCapital: false, isBomber: false, isCruiser: true, kills: 0, weapons: 1, armor: ARMOR_CRUISER,
             maxSpeed: CRUISER_SPEED, minSpeed: CRUISER_MIN, radius: 1.4, turn: TURN_RATE * 0.8,
@@ -623,7 +624,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           scene.add(mesh)
           ships.push({
             mesh, mat, team, hp: BOMBER_HP, alive: false, pos: home.clone(), vel: new THREE.Vector3(),
-            name: team === 'blue' ? 'Blue Bomber' : 'Red Bomber', bIndex: i,
+            name: `${team === 'blue' ? 'Blue' : 'Red'} Bomber ${i + 1}`, bIndex: i,
             fireCd: 1 + Math.random() * 1.5, pdCd: 0.5 + Math.random() * 1.5, flash: 0,
             isCapital: false, isBomber: true, kills: 0, weapons: 1, armor: ARMOR_BOMBER,
             maxSpeed: BOMBER_SPEED, minSpeed: BOMBER_MIN, radius: 1.2, turn: TURN_RATE * 0.7,
@@ -893,6 +894,19 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       renderer.domElement.addEventListener('pointerdown', onDown)
       renderer.domElement.addEventListener('pointerup', onUp)
 
+      // dashed red lines from a followed ship to each foe it's engaging (a ship
+      // with several weapons can attack several targets — up to the capital's gun count)
+      const targetLineMat = new THREE.LineDashedMaterial({ color: 0xff3322, dashSize: 1.4, gapSize: 0.9, transparent: true, opacity: 0.85, depthWrite: false })
+      disposables.push(targetLineMat)
+      const targetLines = Array.from({ length: CAP_WEAPONS }, () => {
+        const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()])
+        const line = new THREE.Line(geo, targetLineMat)
+        line.frustumCulled = false; line.visible = false; scene.add(line)
+        disposables.push(geo)
+        return { line, geo }
+      })
+      const hideTargetLines = () => targetLines.forEach(t => (t.line.visible = false))
+
       // ── Frame loop ───────────────────────────────────────────────────────────
       const clock = new THREE.Clock()
       let simT = 0, battleSimT = 0
@@ -1005,6 +1019,9 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             else if (ctl === 'screen')  target = nearestBomber || nearestFighter || enemyCap || nearest  // bombers → fighters → capital
             else                        target = (nearestBomber && nbd < 22 * 22) ? nearestBomber : nearest  // 'default': nearest, nearby bomber priority
           }
+          // record what this ship intends to attack (drives the third-person target readout)
+          if (s.isBomber) { const ec = s.team === 'blue' ? redCapital : blueCapital; s.attackTarget = (ec && ec.alive) ? ec : target }
+          else s.attackTarget = target
 
           if (s.route) {
             // capitals cruise toward their patrol-slot on the circle (smooth,
@@ -1133,7 +1150,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
               } else if (s.weapons > 1) {
                 // capital: rapid multi-bolt broadside spread across the enemy fleet
                 const enemies = ships.filter(e => e.alive && e.team !== s.team)
-                if (enemies.length) for (let k = 0; k < s.weapons; k++) fireBolt(s, enemies[(Math.random() * enemies.length) | 0], true)
+                if (enemies.length) {
+                  const vt = []
+                  for (let k = 0; k < s.weapons; k++) { const e = enemies[(Math.random() * enemies.length) | 0]; vt.push(e); fireBolt(s, e, true) }
+                  s.volleyTargets = vt   // actual foes this broadside fired at (for the third-person readout)
+                }
                 s.fireCd = 0.7 + Math.random() * 0.9
               } else if (s.isCruiser) {
                 // cruiser: launch a salvo of homing missiles, spread across the nearest enemies in range
@@ -1433,7 +1454,40 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           const hp = Math.max(0, follow.hp)
           if (followHpRef.current) followHpRef.current.textContent = `${Math.ceil(hp)} / ${maxHp}`
           if (followBarRef.current) followBarRef.current.style.width = (hp / maxHp * 100) + '%'
+          // target readout + a dashed line to each foe the tracked ship is engaging
+          const foes = ships.filter(e => e.alive && e.team !== follow.team)
+          let tgts = []
+          if (foes.length) {
+            const byDist = (a, b) => follow.pos.distanceToSquared(a.pos) - follow.pos.distanceToSquared(b.pos)
+            if (follow.isCapital) tgts = (follow.volleyTargets || []).filter(t => t && t.alive)   // actual foes the last broadside fired at
+            else if (follow.isCruiser) tgts = foes.slice().sort(byDist).slice(0, MISSILE_SALVO)  // missile salvo
+            else if (follow.isBomber) {                                                          // bomb (capital) + PD (fighter)
+              const ec = follow.team === 'blue' ? redCapital : blueCapital
+              if (ec && ec.alive) tgts.push(ec)
+              const ftr = foes.filter(e => !e.isCapital && !e.isBomber && !e.isCruiser).sort(byDist)[0]
+              if (ftr) tgts.push(ftr)
+              if (!tgts.length) tgts = foes.slice().sort(byDist).slice(0, 1)
+            } else tgts = (follow.attackTarget && follow.attackTarget.alive) ? [follow.attackTarget] : foes.slice().sort(byDist).slice(0, 1)
+          }
+          tgts.forEach((tg, i) => {
+            const { line, geo } = targetLines[i]
+            const p = geo.attributes.position
+            p.setXYZ(0, follow.pos.x, follow.pos.y, follow.pos.z)
+            p.setXYZ(1, tg.pos.x, tg.pos.y, tg.pos.z)
+            p.needsUpdate = true
+            line.computeLineDistances(); line.visible = true
+          })
+          for (let i = tgts.length; i < targetLines.length; i++) targetLines[i].line.visible = false
+          if (followTargetRef.current) {
+            if (tgts.length) {
+              const c = {}; tgts.forEach(t => (c[t.name] = (c[t.name] || 0) + 1))
+              const str = Object.entries(c).map(([n, k]) => k > 1 ? `${n} ×${k}` : n).join(', ')
+              followTargetRef.current.textContent = `${tgts.length > 1 ? 'TARGETS' : 'TARGET'}: ${str}`
+              followTargetRef.current.style.visibility = 'visible'
+            } else followTargetRef.current.style.visibility = 'hidden'
+          }
         } else {
+          hideTargetLines()
           controls.update()
         }
         composer.render()
@@ -1708,6 +1762,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             <div className="sb-track-name">{followName}</div>
             <div className="sb-track-hpbar"><div className="sb-track-hpfill" ref={followBarRef} /></div>
             <div className="sb-track-hp">HULL <b ref={followHpRef} /></div>
+            <div className="sb-track-target" ref={followTargetRef} />
           </div>
         )}
 
