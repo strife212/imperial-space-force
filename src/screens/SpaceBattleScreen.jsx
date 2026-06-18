@@ -12,7 +12,7 @@ import {
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER,
   FLARES_BOMBER, FLARES_FLAGSHIP,
-  CRUISER_HP, CRUISER_SPEED, CRUISER_MIN, CRUISER_SCALE, CRUISER_STANDOFF,
+  CRUISER_HP, CRUISER_SPEED, CRUISER_MIN, CRUISER_SCALE, CRUISER_STANDOFF, CRUISER_TURN_RATE,
   MISSILE_DMG, MISSILE_SALVO, MISSILE_SPEED, MISSILE_LIFE, MISSILE_RANGE, MISSILE_MISS_CHANCE, MISSILE_HOMING, MISSILE_TURN, MISSILE_ACCEL, MISSILE_LAUNCH_SPEED, MISSILE_CD_MIN, MISSILE_CD_RND,
   PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
@@ -1040,6 +1040,38 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
               orient(s.mesh, _dir.set(dx, dy, dz), 1 - Math.exp(-1.5 * dt))
             }
             s.mesh.position.copy(s.pos)
+          } else if (s.isCruiser) {
+            // ponderous turning-circle movement: cruise forward at constant speed and
+            // steer the heading slowly toward an orbit of the nearest enemy — it banks
+            // around in an arc rather than pivoting on the spot, and turns infrequently
+            _dir.copy(s.vel); if (_dir.lengthSq() < 1e-6) _dir.set(s.team === 'blue' ? 1 : -1, 0, 0)
+            _dir.normalize()                                   // current heading
+            if (nearest) {
+              _tmp.subVectors(nearest.pos, s.pos); const dist = _tmp.length() || 1; _tmp.divideScalar(dist)
+              _tan.crossVectors(UP, _tmp).normalize()          // tangential (orbit)
+              const radial = THREE.MathUtils.clamp((dist - s.standoff) / s.standoff, -1, 1)
+              _acc.copy(_tan).addScaledVector(_tmp, radial * 0.9)   // mostly orbit + gentle range-keeping
+            } else {
+              _acc.copy(_dir)
+            }
+            const rr = s.pos.length()
+            if (rr > s.bound) _acc.addScaledVector(_tmp.copy(s.pos).normalize(), -1.4)   // bank back into the arena
+            if (_acc.lengthSq() < 1e-6) _acc.copy(_dir)
+            _acc.normalize()                                   // desired heading
+            // occasional slow wander so its course isn't perfectly rigid (turns infrequently)
+            s.wanderCd = (s.wanderCd ?? 0) - dt
+            if (s.wanderCd <= 0) { s.wanderRate = (Math.random() - 0.5) * 0.5; s.wanderCd = 2.5 + Math.random() * 2.5 }
+            if (s.wanderRate) _acc.applyAxisAngle(UP, s.wanderRate * dt)
+            // rotate heading toward desired at a capped rate → fixed turning circle
+            const ang = _dir.angleTo(_acc), step = CRUISER_TURN_RATE * dt
+            if (ang > 1e-4) {
+              if (ang <= step) _dir.copy(_acc)
+              else { _tmp.crossVectors(_dir, _acc); if (_tmp.lengthSq() < 1e-6) _tmp.copy(UP); _tmp.normalize(); _dir.applyAxisAngle(_tmp, step).normalize() }
+            }
+            s.vel.copy(_dir).multiplyScalar(s.maxSpeed)
+            s.pos.addScaledVector(s.vel, dt)
+            s.mesh.position.copy(s.pos)
+            orient(s.mesh, _dir, 1 - Math.exp(-6 * dt))
           } else {
             _acc.set(0, 0, 0)
             const enemyCap = s.team === 'blue' ? redCapital : blueCapital
