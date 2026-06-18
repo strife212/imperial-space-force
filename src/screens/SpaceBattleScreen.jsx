@@ -12,7 +12,7 @@ import {
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER,
   CRUISER_HP, CRUISER_SPEED, CRUISER_MIN, CRUISER_SCALE, CRUISER_STANDOFF,
-  MISSILE_DMG, MISSILE_SALVO, MISSILE_SPEED, MISSILE_LIFE, MISSILE_RANGE, MISSILE_MISS_CHANCE, MISSILE_HOMING, MISSILE_CD_MIN, MISSILE_CD_RND,
+  MISSILE_DMG, MISSILE_SALVO, MISSILE_SPEED, MISSILE_LIFE, MISSILE_RANGE, MISSILE_MISS_CHANCE, MISSILE_HOMING, MISSILE_TURN, MISSILE_ACCEL, MISSILE_LAUNCH_SPEED, MISSILE_CD_MIN, MISSILE_CD_RND,
   PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
@@ -1146,11 +1146,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             const p = Math.min(1, b.dropT / b.dropDur)
             const e = 1 - Math.pow(1 - p, 2)                 // ease-out — pops out then settles
             b.mesh.position.copy(b.dropStart).addScaledVector(b.dropDir, b.dropDist * e)
-            if (p >= 1) {                                    // ignite → aim, thrust, smoke
-              const aim = (b.target && b.target.alive) ? b.target.pos : _tmp.copy(b.mesh.position).addScaledVector(b.fwd, 10)
-              b.dir.copy(aim).sub(b.mesh.position).normalize()
+            if (p >= 1) {                                    // ignite → keep forward heading, then steer + accelerate
+              b.dir.copy(b.fwd)                              // leave along the launcher's facing (no snap-to-target)
               b.mesh.quaternion.setFromUnitVectors(yAxis, b.dir)
               b.phase = 'fly'; b.life = 0                    // maxLife governs flight only
+              b.curSpeed = MISSILE_LAUNCH_SPEED              // builds up to MISSILE_SPEED via MISSILE_ACCEL
               audioRef.current?.playLaser(b.shooter.team)
             }
             continue
@@ -1161,12 +1161,23 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             const d = _tmp.length()
             if (d < 1.3) { damage(b.target, b.shooter, b.dmg, b.bomb); done = true }
             else {
-              b.dir.lerp(_tmp.normalize(), b.homing ?? 0.12).normalize()   // missiles home harder
+              _tmp.normalize()
+              if (b.missile) {
+                // steer toward the target at a capped turn rate → real turning radius
+                const ang = b.dir.angleTo(_tmp)
+                const step = MISSILE_TURN * dt
+                if (ang <= step || ang < 1e-4) b.dir.copy(_tmp)
+                else { _tan.crossVectors(b.dir, _tmp).normalize(); if (_tan.lengthSq() > 1e-6) b.dir.applyAxisAngle(_tan, step).normalize() }
+              } else {
+                b.dir.lerp(_tmp, b.homing ?? 0.12).normalize()
+              }
               b.mesh.quaternion.setFromUnitVectors(yAxis, b.dir)
             }
           }
           if (!done) {
-            b.mesh.position.addScaledVector(b.dir, (b.speed ?? BOLT_SPEED) * dt)
+            let spd = b.speed ?? BOLT_SPEED
+            if (b.missile) { b.curSpeed = Math.min(b.speed, (b.curSpeed ?? MISSILE_LAUNCH_SPEED) + MISSILE_ACCEL * dt); spd = b.curSpeed }
+            b.mesh.position.addScaledVector(b.dir, spd * dt)
             if (b.life > b.maxLife) done = true
           }
           if (b.bomb || b.missile) {   // lay a smoke trail behind bombs & missiles
