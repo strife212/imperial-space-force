@@ -685,6 +685,21 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         embers.push({ mesh: m, mat, vel: new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5 + 0.4, (Math.random() - 0.5) * 2.5), life: 0, max: 0.6 + Math.random() * 0.5 })
       }
 
+      // ── Flares: balls of flame a ship ejects to decoy missiles ────────────────
+      const flameFX = []
+      const spawnFlares = (sh) => {
+        const big = sh.isCapital ? 2.4 : sh.isBomber ? 1.4 : 1
+        for (let n = 0; n < 10; n++) {
+          const mat = new THREE.MeshBasicMaterial({ color: n % 2 ? 0xffe070 : 0xff8a30, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false })
+          const m = new THREE.Mesh(blastGeo, mat)
+          const dir = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize()
+          m.position.copy(sh.pos).addScaledVector(dir, 1.6 * big)
+          m.scale.setScalar((0.8 + Math.random() * 0.6) * big)
+          scene.add(m)
+          flameFX.push({ mesh: m, mat, vel: dir.multiplyScalar(15 + Math.random() * 11), life: 0, max: 0.9 + Math.random() * 0.6 })
+        }
+      }
+
       // ── Warp light-trails: glowing streaks left along a warping ship's path,
       // which linger briefly and fade in place after the ship has gone ──────────
       const trails = []
@@ -1157,19 +1172,23 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             continue
           }
           let done = false
-          if (b.willHit && b.target.alive) {
+          if (b.missile && b.decoyed) {
+            // decoyed by a flare: lock lost — sail straight past and detonate harmlessly
+            b.fuse -= dt
+            if (b.fuse <= 0) { spawnBlast(b.mesh.position, false); done = true }
+          } else if (b.willHit && b.target.alive) {
             _tmp.subVectors(b.target.pos, b.mesh.position)
             const d = _tmp.length()
-            if (d < 1.3) {
-              if (b.missile && b.target.flares > 0) {   // a flare decoys the missile — no damage
-                b.target.flares--
-                spawnEmber(b.mesh.position, 0xffe070); spawnEmber(b.mesh.position, 0xfff0a0)
-              } else {
-                damage(b.target, b.shooter, b.dmg, b.bomb)
-              }
+            if (b.missile && b.target.flares > 0 && d < 12) {
+              // the ship pops a flare — missile is thrown off (no damage), flies past
+              b.target.flares--
+              b.decoyed = true
+              b.fuse = 0.45 + Math.random() * 0.45
+              spawnFlares(b.target)
+            } else if (d < 1.3) {
+              damage(b.target, b.shooter, b.dmg, b.bomb)
               done = true
-            }
-            else {
+            } else {
               _tmp.normalize()
               if (b.missile) {
                 // steer toward the target at a capped turn rate → real turning radius
@@ -1253,6 +1272,17 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           em.mesh.scale.multiplyScalar(0.986)
           em.mat.opacity = Math.max(0, 0.9 * (1 - em.life / em.max))
           if (em.life >= em.max) { scene.remove(em.mesh); em.mat.dispose(); embers.splice(i, 1) }
+        }
+
+        // ── Flares: ejected balls of flame burst outward, drift, and cool ───────
+        for (let i = flameFX.length - 1; i >= 0; i--) {
+          const f = flameFX[i]
+          f.life += dt
+          f.mesh.position.addScaledVector(f.vel, dt); f.vel.multiplyScalar(0.985); f.mesh.scale.multiplyScalar(0.99)
+          const k = f.life / f.max
+          f.mat.color.setRGB(1, 0.7 - k * 0.45, 0.25 - k * 0.2)
+          f.mat.opacity = Math.max(0, 1 - k)
+          if (f.life >= f.max) { scene.remove(f.mesh); f.mat.dispose(); flameFX.splice(i, 1) }
         }
 
         // ── Warp light-trails: fade in place, then clear ────────────────────────
@@ -1464,6 +1494,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         disposables.forEach(d => d.dispose && d.dispose())
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
         embers.forEach(e => e.mat.dispose())
+        flameFX.forEach(f => f.mat.dispose())
         puffs.forEach(p => p.mat.dispose())
         trails.forEach(tr => tr.mat.dispose())
         composer.dispose && composer.dispose()

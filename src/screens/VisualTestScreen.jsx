@@ -147,12 +147,19 @@ export default function VisualTestScreen({ onReturn }) {
       ships.forEach(s => orient(s.quat, s.vel))
 
       // ── Projectiles / FX ──────────────────────────────────────────────────────
-      const bolts = [], blasts = [], puffs = [], sparks = []
-      const spawnFlareBurst = (p) => {   // bright chaff sparks when a flare decoys a missile
-        for (let n = 0; n < 4; n++) {
-          const mat = new THREE.MeshBasicMaterial({ color: 0xffe070, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false })
-          const m = new THREE.Mesh(blastGeo, mat); m.position.copy(p); m.scale.setScalar(0.25 + Math.random() * 0.25); scene.add(m)
-          sparks.push({ mesh: m, mat, vel: new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8), life: 0, max: 0.4 + Math.random() * 0.3 })
+      const bolts = [], blasts = [], puffs = [], flameFX = []
+      // small balls of flame ejected from a ship when it pops flares — burst
+      // outward from just off the hull in all directions so they read clearly
+      const spawnFlares = (sh) => {
+        const big = sh.kind === 'capital' ? 2.4 : sh.kind === 'bomber' ? 1.4 : 1
+        for (let n = 0; n < 10; n++) {
+          const mat = new THREE.MeshBasicMaterial({ color: n % 2 ? 0xffe070 : 0xff8a30, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false })
+          const m = new THREE.Mesh(blastGeo, mat)
+          const dir = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize()
+          m.position.copy(sh.pos).addScaledVector(dir, 1.6 * big)   // start off the hull
+          m.scale.setScalar((0.8 + Math.random() * 0.6) * big)
+          scene.add(m)
+          flameFX.push({ mesh: m, mat, vel: dir.multiplyScalar(15 + Math.random() * 11), life: 0, max: 0.9 + Math.random() * 0.6 })
         }
       }
       const spawnSmoke = (p) => {
@@ -235,13 +242,20 @@ export default function VisualTestScreen({ onReturn }) {
           }
           let done = false
           _tmp.subVectors(b.target.pos, b.mesh.position); const d = _tmp.length()
-          if (d < (b.target.kind === 'capital' ? 6 : 1.6)) {
-            const decoyed = b.missile && flaresRef.current && (b.target.kind === 'capital' || b.target.kind === 'bomber')
-            if (decoyed) spawnFlareBurst(b.mesh.position.clone())               // flare throws off the missile — no hit
-            else impact(b.mesh.position.clone(), b.target, b.big || b.bomb || b.missile)
-            done = true
+          // flare decoy: as the missile closes, the ship pops flares, the missile
+          // loses its lock, flies straight past, and detonates harmlessly beyond.
+          if (b.missile && !b.decoyed && flaresRef.current && (b.target.kind === 'capital' || b.target.kind === 'bomber') && d < 12) {
+            b.decoyed = true
+            b.fuse = 0.45 + Math.random() * 0.45
+            spawnFlares(b.target)
           }
-          else {
+          if (b.decoyed) {
+            b.fuse -= dt
+            if (b.fuse <= 0) { spawnBlast(b.mesh.position.clone(), false); done = true }   // explodes after sailing past
+          } else if (d < (b.target.kind === 'capital' ? 6 : 1.6)) {
+            impact(b.mesh.position.clone(), b.target, b.big || b.bomb || b.missile)
+            done = true
+          } else {
             _tmp.normalize()
             if (b.missile) { const ang = b.dir.angleTo(_tmp), st = MISSILE_TURN * dt; if (ang <= st) b.dir.copy(_tmp); else { _tan.crossVectors(b.dir, _tmp).normalize(); if (_tan.lengthSq() > 1e-6) b.dir.applyAxisAngle(_tan, st).normalize() } }
             else b.dir.lerp(_tmp, b.homing).normalize()
@@ -267,9 +281,13 @@ export default function VisualTestScreen({ onReturn }) {
           const p = puffs[i]; p.life += dt; p.mesh.scale.multiplyScalar(1 + dt * 1.6); p.mat.opacity = Math.max(0, 0.5 * (1 - p.life / p.max))
           if (p.life >= p.max) { scene.remove(p.mesh); p.mat.dispose(); puffs.splice(i, 1) }
         }
-        for (let i = sparks.length - 1; i >= 0; i--) {
-          const s = sparks[i]; s.life += dt; s.mesh.position.addScaledVector(s.vel, dt); s.mesh.scale.multiplyScalar(0.93); s.mat.opacity = Math.max(0, 1 - s.life / s.max)
-          if (s.life >= s.max) { scene.remove(s.mesh); s.mat.dispose(); sparks.splice(i, 1) }
+        for (let i = flameFX.length - 1; i >= 0; i--) {
+          const f = flameFX[i]; f.life += dt
+          f.mesh.position.addScaledVector(f.vel, dt); f.vel.multiplyScalar(0.985); f.mesh.scale.multiplyScalar(0.99)
+          const k = f.life / f.max
+          f.mat.color.setRGB(1, 0.7 - k * 0.45, 0.25 - k * 0.2)   // cool from yellow → deep orange as it dies
+          f.mat.opacity = Math.max(0, 1 - k)
+          if (f.life >= f.max) { scene.remove(f.mesh); f.mat.dispose(); flameFX.splice(i, 1) }
         }
 
         controls.update()
@@ -291,7 +309,7 @@ export default function VisualTestScreen({ onReturn }) {
       return () => {
         cancelAnimationFrame(raf); ro.disconnect(); controls.dispose()
         disposables.forEach(d => d.dispose && d.dispose())
-        blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() }); puffs.forEach(p => p.mat.dispose()); sparks.forEach(s => s.mat.dispose())
+        blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() }); puffs.forEach(p => p.mat.dispose()); flameFX.forEach(f => f.mat.dispose())
         composer.dispose && composer.dispose(); renderer.dispose()
         if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement)
       }
