@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { getFlags, setFlag } from './lib/store'
+import StartScreen from './screens/StartScreen'
 import LoginScreen from './screens/LoginScreen'
 import BootScreen from './screens/BootScreen'
 import MainPanel from './screens/MainPanel'
@@ -52,7 +53,7 @@ const URGENT_ATTACK_SEQ = [
 ]
 
 export default function App() {
-  const [screen,            setScreen]            = useState(() => pathScreen() || 'login')
+  const [screen,            setScreen]            = useState(() => pathScreen() || 'home')
   const [launchPackage,     setLaunchPackage]     = useState('')
   const [plasmaLevel,       setPlasmaLevel]       = useState(0)
   const [targetIdx,         setTargetIdx]         = useState(-1)
@@ -142,6 +143,7 @@ export default function App() {
       <div className="crt-overlay" />
       <div className="scanlines" />
       <div className="vignette" />
+      {screen === 'home'    && <StartScreen onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onDebug={() => setScreen('debug')} />}
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onDebug={() => setScreen('debug')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}

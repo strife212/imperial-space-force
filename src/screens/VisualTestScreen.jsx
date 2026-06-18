@@ -14,6 +14,7 @@ import {
   NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital,
   buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield,
 } from './battle/geometry'
+import './battle/battle.css'
 
 const TYPES = ['fighter', 'bomber', 'cruiser', 'capital']
 const LABEL = { fighter: 'Fighter', bomber: 'Bomber', cruiser: 'Cruiser', capital: 'Capital' }

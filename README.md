@@ -1,7 +1,9 @@
 # IMPERIAL SPACE FORCE
-Tactical Command Interface
+Real-time 3D fleet battle simulator
 
-A narrative browser game built as a fictional military command terminal. The player operates an imperial orbital weapons platform through a series of interlocking screens, each simulating a real system on the station.
+A browser game built around a procedural **blue vs red** space battle: two fleets jump in, brawl, and one warps out broken. You compose your fleet within a points budget on a pre-battle briefing, issue tactical orders mid-fight, and watch it play out as a three.js set-piece with a follow camera, kill feed and post-battle breakdown. A headless version of the same combat loop runs from the command line for balance sweeps.
+
+The project began life as a narrative command-terminal game (the *HMSS Her Annunciator* orbital weapons platform); that game still ships intact — see [Legacy: 2D Command Terminal](#legacy-2d-command-terminal) — but the battle simulation is now the front door.
 
 ---
 
@@ -10,101 +12,74 @@ A narrative browser game built as a fictional military command terminal. The pla
 - **React 19** — all UI as functional components with hooks; no class components
 - **Vite 8** — dev server and build tooling
 - **Vanilla CSS** — single `styles.css` file; no CSS framework or preprocessor
-- **three.js** — powers the 3D visualisers (reactor torus, black hole, power-management previews, and the space-battle simulation); the rest of the game's visuals are hand-rolled on `<canvas>` 2D
-- **Web Audio API** — procedurally synthesised sound effects for the space battle (no audio assets required)
+- **three.js** — powers the space-battle simulation and the legacy 3D visualisers (reactor torus, black hole, power previews)
+- **Web Audio API** — procedurally synthesised battle sound effects (no audio assets required)
+- **Node `worker_threads`** — parallelises the headless balance-sim harness across CPU cores
 - **Deployed to GitHub Pages** via GitHub Actions, served at [imperialspaceforce.com](https://imperialspaceforce.com)
 
 ---
 
-## Project Structure
+## Entry Flow
 
-```
-src/
-├── App.jsx                  # Root component; owns all screen state and navigation
-├── styles.css               # All styles (single file, ~5000 lines)
-├── screens/                 # One file per screen/major view
-│   ├── BootScreen.jsx       # Animated boot sequence with diagnostic lines
-│   ├── LoginScreen.jsx      # Credential entry, cryptography module, anthem player
-│   ├── MenuScreen.jsx       # Main menu with ship dossier
-│   ├── MainPanel.jsx        # Primary HUD — multi-panel command grid (largest file)
-│   ├── XBandRadioPanel.jsx  # Tunable frequency dial sub-panel
-│   ├── PowerManagementScreen.jsx   # Two-stage power hub — live three.js reactor & black-hole previews
-│   ├── ReactorScreen.jsx    # Plasma density management minigame
-│   ├── AntennaAlignmentScreen.jsx  # Beam alignment minigame with spectrograph
-│   ├── TargetingScreen.jsx  # Interactive solar system orbital map
-│   ├── LaunchMonitorScreen.jsx     # Post-launch orbital trajectory view
-│   ├── EncyclopediaScreen.jsx      # Three-column lore browser with locked entries
-│   ├── GameOverScreen.jsx   # End state with encyclopedia unlock summary
-│   ├── LaunchCodeVerifier.jsx      # Launch authorisation dialog
-│   ├── BlackHoleScreen.jsx  # three.js black hole visualiser (accretion disk, labelled features)
-│   ├── SpaceBattleScreen.jsx       # three.js fleet battle sim — screen component, sim loop & audio
-│   ├── battle/                     # battle-screen modules (split out of SpaceBattleScreen.jsx)
-│   │   ├── constants.js            # fleet/ship stats, point costs, armour, names, comms & sound data
-│   │   ├── geometry.js             # GLSL shaders + ship-model & backdrop builders
-│   │   └── RosterUI.jsx            # pre-battle order-of-battle UI (rosters, info tooltips, briefing)
-│   └── DebugScreen.jsx      # Dev tool for jumping between screens and toggling flags
-├── components/
-│   ├── HudHeader.jsx        # Persistent top bar (used across HUD screens)
-│   ├── HudFooter.jsx        # Persistent status bar
-│   ├── MailOverlay.jsx      # Imperial Messaging Service — inbox with reply/typing effect
-│   ├── AudioSpectrograph.jsx # Reusable canvas-based audio visualiser
-│   └── CryptographyModule.jsx # Animated login credential sequence
-├── data/
-│   ├── encyclopediaData.js  # All lore entries with lock conditions
-│   ├── messages.js          # In-game mail — initial and triggered messages
-│   └── portraits.js         # Character portrait assets for mail system
-├── hooks/
-│   └── useScreenScale.js    # Scales screen content to fit small viewports
-└── lib/
-    ├── store.js             # Persistent flag store (localStorage) for game state
-    ├── planetData.js        # Solar system data — orbits, colours, distances
-    ├── shaders.js           # Shared GLSL (plasma / accretion disk / fresnel rim) for the 3D screens
-    └── constants.js         # Boot sequence lines and other static data
-```
+`App.jsx` opens on the **Start screen** (`screen === 'home'`):
 
-`public/sfx/` holds optional sound-effect overrides for the space battle (see its README).
+- **Campaign** — placeholder, currently disabled.
+- **Skirmish Battle** — opens the battle briefing, where you build both fleets and start the engagement.
+- A faint **debug** link in the footer opens the debug screen (jump to any screen, toggle story flags).
 
 ---
 
-## Key Architecture Decisions
+## The Space Battle
 
-**Single-file CSS.** All styles live in `styles.css`. Sections are clearly delimited by comments. This keeps the styling co-located and easy to search without the overhead of CSS modules or a build step.
+A self-contained three.js engagement: a player-built **blue** fleet against a **red** fleet, fought to attrition until one side breaks and warps out.
 
-**Screen switching via state.** `App.jsx` holds a `screen` string and conditionally renders one screen at a time. Screens unmount when not active — no hidden screens in the background. Navigation state (target index, plasma level, etc.) lives in App and is passed down as props.
-
-**Canvas-based visuals.** The radar, targeting, railgun installation view, orbital map, and audio spectrograph are all drawn on `<canvas>` elements using the 2D API directly, with RAF animation loops managed in `useEffect`. No canvas library is used.
-
-**Persistent flags.** `src/lib/store.js` provides `getFlag` / `setFlag` backed by `localStorage`. Flags gate encyclopedia entries, trigger new mail messages, and track story progress across sessions.
-
-**Viewport scaling.** Screens use one of two patterns to fit small displays without scrolling:
-- `useScreenScale` hook — measures natural `scrollHeight` once on mount and applies a `transform: scale()` to the inner container (used for Login, Menu, Debug)
-- Outer-clip / inner-scaler pattern — hardcoded `NATURAL_H`, outer `position: fixed; overflow: hidden`, inner div gets explicit `width/height` and `transform: scale()` updated on resize (used for MainPanel, TargetingScreen)
-
-**Session-triggered messages.** `App.jsx` tracks a `sessionFlags` set. When a flag is triggered (reactor powered up, targeting map viewed, etc.), it checks `messages.js` for any mail that requires that flag and hasn't been seen, then surfaces it with a toast notification.
-
----
-
-## Space Battle Simulation
-
-A self-contained three.js set-piece (reachable from the debug screen) that plays out a procedural attrition battle — a 25-fighter + 1 capital fleet against a mirror-image enemy, **blue vs red**.
-
-- **Fleets & models** — distinct per-side fighter hulls (blue delta-wing interceptor, red forked marauder) and large flagships (*HMSS Limitless Light* vs *Rebel Capital Ship*), each built by merging primitives into a single geometry per ship type.
-- **Behaviour** — fighters steer (seek nearest enemy to a standoff range, separation, wander, arena bounds) and fire gently-homing laser bolts; capitals fly a fixed circular patrol at the rear and loose rapid broadsides.
-- **Combat** — pure attrition: bolts deal 1 damage at ~72% accuracy; fighters have 6 HP, capitals 60. Capitals show escalating **damage states** (hull fires, embers), a drawn-out **death sequence** (rippling secondary explosions → final blast) and leave **persistent drifting wreckage**.
-- **Presentation** — a hyperspace **jump-in** (capitals first, fighters following into formation), a nebula skydome with a random on-screen background body (gas giant / ringed planet / black hole), engine glows, fireball + shockwave explosions, a live **kill feed**, capital name/shield labels, and a **post-battle stats breakdown**.
-- **Player tactics** (blue fleet only) — capital *Hold Back* / *Directly Engage*, and fighter targeting *Attack All* / *Enemy Fighters* / *Enemy Capital Ship*.
-- **Audio** — laser, explosion, jump-in, victory and ambient sounds are synthesised at runtime via the Web Audio API through a shared bus (compressor + soft-clip saturation + reverb send), rate-limited so massed fire stays a crackle rather than a wall of noise. Each sound can be overridden by dropping a file into `public/sfx/` — missing files fall back to the synth.
+- **Ship types** — four roles per side, each with distinct hulls:
+  - **Fighters** — fast, fragile, the irreplaceable core; brawl at a standoff range and fire gently-homing laser bolts.
+  - **Bombers** — tankier, slower; close in and drop high-damage bombs on the enemy flagship, with a point-defence laser against fighters.
+  - **Missile cruisers** — ponderous ranged platforms that hold at standoff and lob homing missile salvos; move on a turning circle rather than pivoting on the spot.
+  - **Flagship (capital)** — a tanky command vessel with an energy shield and a multi-bolt broadside. Losing it shatters fleet morale.
+- **Fleet building** — on the briefing, both fleets are composed within a **1000-point budget** (`compStrength` in `battle/constants.js`) using `+`/`−` controls. The default red fleet is 24 fighters / 4 bombers / 1 cruiser; the player mirrors or counters it.
+- **Combat** — bolts, bombs and missiles each have their own damage, accuracy, range and homing. **Armour** gives the flagship/bombers/cruiser a chance to deflect fighter bolts to zero. **Flares** are a limited missile countermeasure: each flagship and bomber can decoy a number of incoming missiles (the missile loses lock, sails past, and detonates harmlessly) before its pool runs dry.
+- **Player tactics** (blue only) — flagship *Hold Back* / *Directly Engage*; fighter targeting *Attack All* / *Enemy Fighters* / *Enemy Capital Ship*; and a bomber wing you dispatch on your call (auto-launches if you wait too long).
+- **Presentation** — a hyperspace **jump-in**, a nebula skydome with a random background body (gas giant / ringed planet / black hole), engine glows, missile smoke trails, flare flame-bursts, fireball + shockwave explosions, capital damage states and a drawn-out death sequence with drifting wreckage.
+- **Follow camera** — click any ship to enter a third-person view with HP and a red **target** readout, numbered ship names (`Blue Fighter 3`, etc.), and dashed lines to every target it's currently engaging (the flagship tracks up to four, bombers two, cruisers two).
+- **Audio** — laser, explosion, jump-in, victory and ambient sounds are synthesised at runtime via the Web Audio API through a shared bus (compressor + soft-clip saturation + reverb send), rate-limited so massed fire stays a crackle. Each sound can be overridden by dropping a file into `public/sfx/` — missing files fall back to the synth.
 
 ### File breakdown
 
-The battle screen was split out of a single ~2000-line file into focused modules under `src/screens/`. Imports flow one way: `constants → geometry → RosterUI → SpaceBattleScreen`.
+Imports flow one way: `constants → geometry → RosterUI → SpaceBattleScreen`.
 
 | File | Responsibility |
 |---|---|
-| `SpaceBattleScreen.jsx` | The screen component: React state and player tactics, the three.js scene with its per-frame simulation loop (spawning, steering, combat, fighter reserves/reinforcements, follow camera, picture-in-picture event cam, scoreboard & victory), and the Web Audio engine. |
-| `battle/constants.js` | Pure data and helpers — fleet/ship stats (HP, speed, damage, armour), the per-ship point costs and 1000-point fleet budget, capital-ship name list, comms portraits and victory text, the optional sound-file map, and the `compStrength` / `splitCapName` helpers. No React or three.js. |
-| `battle/geometry.js` | All three.js geometry: the inline GLSL shaders (nebula skydome, gas giant, ring), the six ship-model builders (fighter / bomber / capital × blue / red), and the random backdrop builders (gas giant / ringed planet / black hole). |
-| `battle/RosterUI.jsx` | The pre-battle order-of-battle UI: the `Briefing` screen, per-team `TeamRoster`, `ShipSprite`, the `+`/`−` `CountAdjust` fleet builder controls, and the ship info tooltip (`ShipInfoTip` with its slowly rotating 3D `ShipModel3D`) — plus `renderCommsBody` for the in-battle comms typewriter. |
+| `screens/SpaceBattleScreen.jsx` | The screen component: React state and player tactics, the three.js scene with its per-frame simulation loop (spawning, steering, combat, missiles/flares, fighter reserves/reinforcements, follow camera, picture-in-picture event cam, scoreboard & victory), and the Web Audio engine. |
+| `screens/battle/constants.js` | Pure data and helpers — fleet/ship stats (HP, speed, damage, armour, flares), the per-ship point costs and 1000-point fleet budget, missile/cruiser tuning, capital-ship name list, comms portraits and victory text, the optional sound-file map, and the `compStrength` / `splitCapName` helpers. No React or three.js. |
+| `screens/battle/geometry.js` | All three.js geometry: the inline GLSL shaders (nebula skydome, gas giant, ring, shield fresnel), the ship-model builders (fighter / bomber / cruiser / capital × blue / red) and the random backdrop builders. |
+| `screens/battle/RosterUI.jsx` | The pre-battle order-of-battle UI: the `Briefing` screen, per-team rosters, `ShipSprite`, the `CountAdjust` fleet-builder controls, and the ship info tooltip with its rotating 3D `ShipModel3D` — plus `renderCommsBody` for the in-battle comms typewriter. |
+| `screens/VisualTestScreen.jsx` | **Combat Visual Test** sandbox (reachable from debug): two indestructible, selectable ships orbit and fire so individual weapon/flare/explosion FX can be tuned in isolation, with a flares on/off toggle and a reset. |
+
+---
+
+## Battle Sim Harness
+
+`scripts/battle-sim.mjs` is a headless, faithful port of the in-game combat loop (three.js vector math only, no rendering) used to balance fleet compositions. It runs thousands of engagements and reports win rates, with the heavy lifting fanned out across CPU cores via `worker_threads`.
+
+```bash
+npm run sim -- --runs 200                       # single match-up, 200 runs
+npm run sim -- --sweep3 --runs 200 --workers 16 # full 25-build sweep, parallel
+```
+
+Key flags:
+
+| Flag | Effect |
+|---|---|
+| `--runs N` | simulations per cell |
+| `--workers N` | parallel worker threads (default 12) |
+| `--sweep3` | sweep the full grid of fighter/bomber/cruiser builds vs the default red fleet |
+| `--blue-fighters / --blue-bombers-count / --blue-cruisers-count` (and `--red-*`) | override fleet composition |
+| `--cruiser-speed`, `--cruiser-steer arc\|force` | A/B cruiser tuning |
+| `--verbose` / `--quiet` | output detail |
+
+The harness imports `battle/constants.js` directly, so balance changes to the game are reflected in the sim with no duplication. A full 5000-sim sweep (25 builds × 200 runs) completes in well under a minute on 16 workers.
 
 ---
 
@@ -112,19 +87,53 @@ The battle screen was split out of a single ~2000-line file into focused modules
 
 ```bash
 npm install
-npm run dev
+npm run dev      # http://localhost:5173/
+npm run build    # outputs static site to dist/
+npm run sim      # run the headless balance harness (see above)
 ```
-
-Runs at `http://localhost:5173/`
-
-```bash
-npm run build
-```
-
-Outputs to `dist/` — deploy the contents to any static host.
 
 ---
 
 ## Debug Mode
 
-Click the small debug link on the login screen footer to open the debug screen. From there you can jump directly to any screen and toggle persistent story flags without playing through the full sequence.
+Click the small **debug** link in the Start-screen footer to open the debug screen. From there you can jump directly to any screen (including the battle and the Combat Visual Test), and toggle persistent story flags without playing through the full sequence.
+
+---
+
+## Legacy: 2D Command Terminal
+
+Before the battle sim took centre stage, the game was a narrative browser experience styled as a fictional imperial military command terminal. The player operated the *HMSS Her Annunciator* orbital weapons platform through a series of interlocking screens, each simulating a system on the station. These screens all still exist and remain reachable via the debug screen.
+
+### Legacy structure
+
+```
+src/screens/
+├── BootScreen.jsx           # Animated boot sequence with diagnostic lines
+├── LoginScreen.jsx          # Credential entry, cryptography module, anthem player
+├── MenuScreen.jsx           # Platform menu with ship dossier
+├── MainPanel.jsx            # Primary HUD — multi-panel command grid (largest file)
+├── XBandRadioPanel.jsx      # Tunable frequency dial sub-panel
+├── PowerManagementScreen.jsx   # Two-stage power hub — live three.js reactor & black-hole previews
+├── ReactorScreen.jsx        # Plasma density management minigame
+├── AntennaAlignmentScreen.jsx  # Beam alignment minigame with spectrograph
+├── TargetingScreen.jsx      # Interactive solar system orbital map
+├── LaunchMonitorScreen.jsx  # Post-launch orbital trajectory view
+├── EncyclopediaScreen.jsx   # Three-column lore browser with locked entries
+├── GameOverScreen.jsx       # End state with encyclopedia unlock summary
+├── LaunchCodeVerifier.jsx   # Launch authorisation dialog
+└── BlackHoleScreen.jsx      # three.js black hole visualiser (accretion disk, labelled features)
+
+src/components/   # HudHeader/Footer, MailOverlay, AudioSpectrograph, CryptographyModule, UrgentMessageOverlay
+src/data/         # encyclopediaData.js, messages.js, portraits.js
+src/hooks/        # useScreenScale.js
+src/lib/          # store.js (localStorage flags), planetData.js, shaders.js, constants.js
+```
+
+### Legacy architecture notes
+
+- **Single-file CSS.** All styles live in `styles.css` (~5000 lines), delimited by section comments — co-located and easy to search without CSS modules.
+- **Screen switching via state.** `App.jsx` holds a `screen` string and renders one screen at a time; screens unmount when inactive. Navigation/game state (target index, plasma level, etc.) lives in App and passes down as props.
+- **Canvas-based visuals.** The radar, targeting map, orbital views and audio spectrograph are drawn directly on `<canvas>` with the 2D API and RAF loops in `useEffect` — no canvas library.
+- **Persistent flags.** `src/lib/store.js` provides `getFlag` / `setFlag` backed by `localStorage`; flags gate encyclopedia entries, trigger mail, and track story progress across sessions.
+- **Viewport scaling.** Either the `useScreenScale` hook (measure `scrollHeight`, apply `transform: scale()`) or an outer-clip / inner-scaler pattern with a hardcoded natural height.
+- **Session-triggered messages.** `App.jsx` tracks a `sessionFlags` set; triggering a flag surfaces any gated mail from `messages.js` with a toast notification.

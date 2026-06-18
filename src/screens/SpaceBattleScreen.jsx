@@ -19,6 +19,7 @@ import {
 } from './battle/constants'
 import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop } from './battle/geometry'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
+import './battle/battle.css'
 
 export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpen }) {
   const mountRef     = useRef(null)
