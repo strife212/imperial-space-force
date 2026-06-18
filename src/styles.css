@@ -6553,6 +6553,9 @@ body {
 .sb-brief-bombers .sb-sprite { width: 30px; height: 30px; }
 .sb-brief-bombers .sb-sprite--blue { filter: drop-shadow(0 0 4px rgba(26, 128, 255, 0.6)); }
 .sb-brief-bombers .sb-sprite--red  { filter: drop-shadow(0 0 4px rgba(255, 36, 0, 0.5)); }
+.sb-brief-cruisers .sb-sprite { width: 28px; height: 28px; }
+.sb-brief-cruisers .sb-sprite--blue { filter: drop-shadow(0 0 4px rgba(26, 128, 255, 0.6)); }
+.sb-brief-cruisers .sb-sprite--red  { filter: drop-shadow(0 0 4px rgba(255, 36, 0, 0.5)); }
 .sb-brief-fighters .sb-sprite--blue { filter: drop-shadow(0 0 3px rgba(26, 128, 255, 0.5)); }
 .sb-brief-fighters .sb-sprite--red  { filter: drop-shadow(0 0 3px rgba(255, 36, 0, 0.4)); }
 .sb-sprite--cap { height: 84px; width: auto; flex-shrink: 0; }

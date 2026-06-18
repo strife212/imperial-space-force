@@ -195,6 +195,38 @@ function buildRedBomber() {
   return mergeGeometries(parts, false)
 }
 
+// Missile cruisers — ranged support ships bristling with missile pods/racks.
+// Blue: sleek twin-pod cruiser.  Red: blocky hull with side missile racks.
+function buildBlueCruiser() {
+  const parts = []
+  let g = new THREE.ConeGeometry(0.34, 1.3, 6); g.rotateX(Math.PI / 2); g.translate(0, 0, 1.1); parts.push(g)   // sharp nose
+  g = new THREE.BoxGeometry(0.6, 0.42, 2.4); g.translate(0, 0, 0); parts.push(g)                                 // central fuselage
+  g = new THREE.BoxGeometry(0.34, 0.5, 1.0); g.translate(0, 0.42, -0.4); parts.push(g)                           // dorsal sensor spine
+  for (const sx of [0.78, -0.78]) {
+    g = new THREE.BoxGeometry(0.7, 0.06, 0.5); g.translate(sx * 0.55, 0, 0.1); parts.push(g)                     // outrigger pylon
+    g = new THREE.BoxGeometry(0.34, 0.34, 1.5); g.translate(sx, 0, 0.1); parts.push(g)                           // missile pod
+    g = new THREE.ConeGeometry(0.17, 0.5, 5); g.rotateX(Math.PI / 2); g.translate(sx, 0, 1.0); parts.push(g)     // pod nose cap
+  }
+  g = new THREE.BoxGeometry(0.05, 0.5, 0.6); g.translate(0, 0.28, -1.2); parts.push(g)                           // tail fin
+  g = new THREE.BoxGeometry(0.5, 0.4, 0.55); g.translate(0, 0, -1.45); parts.push(g)                             // engine block
+  return mergeGeometries(parts, false)
+}
+function buildRedCruiser() {
+  const parts = []
+  let g = new THREE.BoxGeometry(1.1, 0.7, 2.8); parts.push(g)                                                    // slab hull
+  g = new THREE.BoxGeometry(0.5, 0.5, 0.9); g.translate(0, 0, 1.7); parts.push(g)                                // blunt prow
+  for (const sx of [0.82, -0.82]) {
+    g = new THREE.BoxGeometry(0.52, 0.6, 2.2); g.translate(sx, 0, -0.1); parts.push(g)                           // side missile rack housing
+    for (const sz of [0.7, 0.1, -0.5, -1.1]) {                                                                   // exposed missile tubes
+      g = new THREE.BoxGeometry(0.16, 0.16, 0.5); g.translate(sx, 0.18, sz + 0.4); parts.push(g)
+    }
+  }
+  g = new THREE.BoxGeometry(0.5, 0.5, 0.7); g.translate(0, 0.55, 0.2); parts.push(g)                             // command tower
+  g = new THREE.BoxGeometry(0.5, 0.5, 0.85); g.translate(0.34, 0, -1.55); parts.push(g)                          // engine R
+  g = new THREE.BoxGeometry(0.5, 0.5, 0.85); g.translate(-0.34, 0, -1.55); parts.push(g)                         // engine L
+  return mergeGeometries(parts, false)
+}
+
 // ── Background bodies ──────────────────────────────────────────────────────────
 // Each builder adds its meshes to the scene and pushes geometry/materials to
 // `disposables`; it returns an optional per-frame tick(t) for animated bodies.
@@ -306,5 +338,5 @@ function makeBackdrop(scene, disposables, lightDir, camera) {
 export {
   NEBULA_VERT, NEBULA_FRAG,
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber,
-  makeShield, makeBackdrop,
+  buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop,
 }

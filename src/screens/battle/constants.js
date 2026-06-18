@@ -26,12 +26,27 @@ const TURN_RATE   = 7        // orientation slerp responsiveness
 const FIELD_FIGHTER_CAP = 25 // max fighters a team can have on the field at once
 const REINFORCE_INTERVAL = 10 // seconds between reinforcement waves from the reserve
 const BOMBER_AUTO_DISPATCH = 15 // sim-seconds before the blue bomber wing auto-launches if the player hasn't
+// Missile cruiser — a ranged support ship that holds back and lobs homing missiles
+const CRUISER_HP    = 16
+const CRUISER_SPEED = 5.0
+const CRUISER_MIN   = 2.0
+const CRUISER_SCALE = 1.7    // larger than a bomber
+const CRUISER_STANDOFF = 30  // keeps its distance and bombards from range
+const MISSILE_DMG   = 3
+const MISSILE_SPEED = 30      // slower than a bolt (46) so the smoke trail reads
+const MISSILE_LIFE  = 3.0
+const MISSILE_RANGE = 60      // long reach — cruisers open fire well before the brawl
+const MISSILE_MISS_CHANCE = 0.15
+const MISSILE_HOMING = 0.22   // per-step turn toward target (vs 0.12 for fighter bolts)
+const MISSILE_CD_MIN = 2.2
+const MISSILE_CD_RND = 2.0
 // Armour: % chance an incoming hit that connects is deflected to zero damage.
 // Only fighter bolts are mitigated — capital-ship attacks and bomber bombs
 // always land in full.
 const ARMOR_FIGHTER  = 0
 const ARMOR_BOMBER   = 10
 const ARMOR_FLAGSHIP = 25
+const ARMOR_CRUISER  = 10
 
 // Fleet "strength" valuation, balanced so the standard fleet (1 flagship +
 // 5 bombers + 25 fighters) totals exactly 1000. Started from HP × DPS, then
@@ -40,6 +55,7 @@ const ARMOR_FLAGSHIP = 25
 // anti-flagship — they sit out the fighter brawl that decides most battles).
 const PTS_FIGHTER  = 10
 const PTS_BOMBER   = 40
+const PTS_CRUISER  = 50
 const PTS_FLAGSHIP = 550
 // A living flagship is never worth less than this in fleet strength: its guns
 // and the morale of an intact command vessel keep it valuable even at 1 HP.
@@ -47,7 +63,7 @@ const PTS_FLAGSHIP_MIN = 50
 const FLEET_BUDGET = 1000
 const RETREAT_STRENGTH = 100 // a fleet that drops below this remaining power breaks and warps out
 const MORALE_BROKEN_STRENGTH = 150 // higher rout threshold once a fleet's flagship is destroyed
-const compStrength = (c) => c.fighters * PTS_FIGHTER + c.bombers * PTS_BOMBER + PTS_FLAGSHIP
+const compStrength = (c) => c.fighters * PTS_FIGHTER + c.bombers * PTS_BOMBER + (c.cruisers || 0) * PTS_CRUISER + PTS_FLAGSHIP
 const TEAMS = {
   blue: { color: 0x3a93ff, bolt: 0x8fc6ff },
   red:  { color: 0xff3322, bolt: 0xff7a5a },
@@ -111,8 +127,10 @@ export {
   FLEET_SIZE, SHIP_HP, BOMBER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
-  FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
-  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
+  FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER,
+  CRUISER_HP, CRUISER_SPEED, CRUISER_MIN, CRUISER_SCALE, CRUISER_STANDOFF,
+  MISSILE_DMG, MISSILE_SPEED, MISSILE_LIFE, MISSILE_RANGE, MISSILE_MISS_CHANCE, MISSILE_HOMING, MISSILE_CD_MIN, MISSILE_CD_RND,
+  PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, BLUE_CAP_NAMES, CAP_PREFIX, randomBlueCapName, splitCapName, COMMS_PORTRAIT,
   VICTORY_SEGMENTS,
 }

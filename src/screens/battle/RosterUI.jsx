@@ -3,10 +3,11 @@ import * as THREE from 'three'
 import {
   TEAMS, CAP_HP, CAP_WEAPONS, CAP_SPEED, ARMOR_FLAGSHIP, BOMBER_HP, BOMB_DMG, BOMBER_SPEED,
   ARMOR_BOMBER, SHIP_HP, MAX_SPEED, ARMOR_FIGHTER, splitCapName, compStrength, FLEET_BUDGET,
-  COMMS_PORTRAIT, PTS_BOMBER, PTS_FIGHTER, PTS_FLAGSHIP, RED_CAP_NAME,
+  COMMS_PORTRAIT, PTS_BOMBER, PTS_FIGHTER, PTS_CRUISER, PTS_FLAGSHIP, RED_CAP_NAME,
+  CRUISER_HP, CRUISER_SPEED, ARMOR_CRUISER, MISSILE_DMG, MISSILE_RANGE,
   RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, FIELD_FIGHTER_CAP, REINFORCE_INTERVAL,
 } from './constants'
-import { buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber } from './geometry'
+import { buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser } from './geometry'
 
 // Render the revealed slice of segmented body text, honouring \n line breaks
 // and per-segment colour classes (used for the typewriter effect).
@@ -33,15 +34,17 @@ const SPRITE_PATHS = {
   redFighter:  'M6 3 L12 11 L18 3 L16 9 L21 21 L12 17 L3 21 L8 9 Z',
   blueBomber:  'M12 2 L16 11 L21 20 L13 17 L13 21 L11 21 L11 17 L3 20 L8 11 Z',
   redBomber:   'M5 3 L12 10 L19 3 L17 10 L22 21 L15 18 L12 21 L9 18 L2 21 L7 10 Z',
+  blueCruiser: 'M12 2 L14 8 L19 9 L19 13 L14 13 L14 19 L17 22 L12 20 L7 22 L10 19 L10 13 L5 13 L5 9 L10 8 Z',
+  redCruiser:  'M8 2 L16 2 L16 7 L21 9 L21 14 L16 13 L16 19 L19 22 L5 22 L8 19 L8 13 L3 14 L3 9 L8 7 Z',
   blueCapital: 'M12 2 L16 24 L15 52 L18 61 L12 57 L6 61 L9 52 L8 24 Z',
   redCapital:  'M14 3 L20 12 L20 20 L25 26 L25 34 L20 38 L20 56 L16 61 L12 61 L8 56 L8 38 L3 34 L3 26 L8 20 L8 12 Z',
 }
-const SPRITE_SUFFIX = { capital: 'Capital', bomber: 'Bomber', fighter: 'Fighter' }
+const SPRITE_SUFFIX = { capital: 'Capital', bomber: 'Bomber', cruiser: 'Cruiser', fighter: 'Fighter' }
 function ShipSprite({ team, kind }) {
   const cap = kind === 'capital'
   const vb = cap ? (team === 'blue' ? '0 0 24 64' : '0 0 28 64') : '0 0 24 24'
   return (
-    <svg className={`sb-sprite sb-sprite--${team}${cap ? ' sb-sprite--cap' : ''}${kind === 'bomber' ? ' sb-sprite--bomber' : ''}`} viewBox={vb} aria-hidden="true">
+    <svg className={`sb-sprite sb-sprite--${team}${cap ? ' sb-sprite--cap' : ''}${kind === 'bomber' ? ' sb-sprite--bomber' : ''}${kind === 'cruiser' ? ' sb-sprite--cruiser' : ''}`} viewBox={vb} aria-hidden="true">
       <path d={SPRITE_PATHS[team + SPRITE_SUFFIX[kind]]} />
     </svg>
   )
@@ -59,15 +62,18 @@ function CountAdjust({ count, cost, free, onAdjust }) {
 const SHIP_INFO = {
   capital: { hp: CAP_HP,    dmg: `${CAP_WEAPONS} × 1`, speed: CAP_SPEED,    armor: ARMOR_FLAGSHIP, notes: [] },
   bomber:  { hp: BOMBER_HP, dmg: `${BOMB_DMG} / 1`,    speed: BOMBER_SPEED, armor: ARMOR_BOMBER,   notes: ['Bomb only targets capital ships', 'Point defence laser targets fighters'] },
+  cruiser: { hp: CRUISER_HP, dmg: MISSILE_DMG,         speed: CRUISER_SPEED, armor: ARMOR_CRUISER, notes: ['Homing missiles seek the nearest enemy', `Long range (${MISSILE_RANGE}) — holds back and bombards`] },
   fighter: { hp: SHIP_HP,   dmg: 1,                    speed: MAX_SPEED,    armor: ARMOR_FIGHTER,  notes: [] },
 }
 const shipClass = (kind, team) =>
   kind === 'capital' ? 'Capital Ship'
   : kind === 'bomber' ? 'Heavy Bomber'
+  : kind === 'cruiser' ? 'Missile Cruiser'
   : team === 'blue' ? 'Interceptor' : 'Marauder'
 const buildShipGeo = (kind, team) =>
   kind === 'capital' ? (team === 'blue' ? buildBlueCapital() : buildRedCapital())
   : kind === 'bomber' ? (team === 'blue' ? buildBlueBomber() : buildRedBomber())
+  : kind === 'cruiser' ? (team === 'blue' ? buildBlueCruiser() : buildRedCruiser())
   : (team === 'blue' ? buildBlueModel() : buildRedModel())
 
 // A small WebGL viewport that slowly spins a ship model (mounted only while a tip is open)
@@ -157,6 +163,13 @@ function TeamRoster({ team, capName, onCycleName, comp, onAdjust }) {
         {Array.from({ length: comp.bombers }, (_, i) => <ShipSprite key={i} team={team} kind="bomber" />)}
       </div>
       <div className="sb-brief-fighters-label">
+        <span>MISSILE CRUISERS <ShipInfoTip kind="cruiser" team={team} /> <span className="sb-brief-fighters-count">×{comp.cruisers}</span></span>
+        <CountAdjust count={comp.cruisers} cost={PTS_CRUISER} free={free} onAdjust={(d) => onAdjust('cruisers', d)} />
+      </div>
+      <div className="sb-brief-fighters sb-brief-cruisers">
+        {Array.from({ length: comp.cruisers }, (_, i) => <ShipSprite key={i} team={team} kind="cruiser" />)}
+      </div>
+      <div className="sb-brief-fighters-label">
         <span>FIGHTERS <ShipInfoTip kind="fighter" team={team} /> <span className="sb-brief-fighters-count">×{comp.fighters}</span></span>
         <CountAdjust count={comp.fighters} cost={PTS_FIGHTER} free={free} onAdjust={(d) => onAdjust('fighters', d)} />
       </div>
@@ -217,7 +230,7 @@ function InstructionsModal({ onClose }) {
             <p>
               You have a <b>{FLEET_BUDGET}-point</b> budget. Spend it with the <b>+</b> / <b>−</b> controls
               beside each ship type on the briefing screen — the strength readout at the bottom of each roster
-              shows what you've committed. Three classes of ship:
+              shows what you've committed. Four classes of ship:
             </p>
             <div className="sb-instr-ships">
               <ManualShip kind="capital" name="Capital Ship — Flagship" cost={PTS_FLAGSHIP}>
@@ -230,6 +243,12 @@ function InstructionsModal({ onClose }) {
                 90% accuracy but <b>only target the enemy flagship</b>. A secondary point-defence laser swats
                 nearby fighters (or enemy bombers if no fighters are close). Murderous against a capital — if
                 you can escort it through the fighter screen.
+              </ManualShip>
+              <ManualShip kind="cruiser" name="Missile Cruiser" cost={PTS_CRUISER}>
+                {CRUISER_HP} HP, {ARMOR_CRUISER}% armour. A ranged support ship that hangs back at the edge of
+                the fight and lobs <b>homing missiles</b> ({MISSILE_DMG} damage) that seek the nearest enemy —
+                fighter, bomber or flagship alike — out to a long {MISSILE_RANGE}-unit reach. Soft if the brawl
+                reaches it, deadly while it can stand off and bombard.
               </ManualShip>
               <ManualShip kind="fighter" name="Fighter — Interceptor" cost={PTS_FIGHTER}>
                 {SHIP_HP} HP, no armour, fast and cheap. The all-rounder that engages anything. Only

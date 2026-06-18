@@ -10,11 +10,13 @@ import {
   FLEET_SIZE, SHIP_HP, BOMBER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
   BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
-  FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP,
-  PTS_FIGHTER, PTS_BOMBER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
+  FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER,
+  CRUISER_HP, CRUISER_SPEED, CRUISER_MIN, CRUISER_SCALE, CRUISER_STANDOFF,
+  MISSILE_DMG, MISSILE_SPEED, MISSILE_LIFE, MISSILE_RANGE, MISSILE_MISS_CHANCE, MISSILE_HOMING, MISSILE_CD_MIN, MISSILE_CD_RND,
+  PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
-import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, makeShield, makeBackdrop } from './battle/geometry'
+import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop } from './battle/geometry'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
 
 export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpen }) {
@@ -44,8 +46,8 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
   const [started, setStarted] = useState(false) // pre-battle briefing until START
   // per-team fleet composition, customisable on the briefing within the 1000-point budget
   const [comp, setComp] = useState({
-    blue: { fighters: FLEET_SIZE, bombers: BOMBER_COUNT },
-    red:  { fighters: FLEET_SIZE, bombers: BOMBER_COUNT },
+    blue: { fighters: FLEET_SIZE, bombers: BOMBER_COUNT, cruisers: 0 },
+    red:  { fighters: FLEET_SIZE, bombers: BOMBER_COUNT, cruisers: 0 },
   })
   const compRef = useRef(comp)
   useEffect(() => { compRef.current = comp }, [comp])
@@ -412,11 +414,14 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       const teamGeo = { blue: buildBlueModel(), red: buildRedModel() }
       const capGeo  = { blue: buildBlueCapital(), red: buildRedCapital() }
       const bomberGeo = { blue: buildBlueBomber(), red: buildRedBomber() }
+      const cruiserGeo = { blue: buildBlueCruiser(), red: buildRedCruiser() }
       const boltGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.7, 6)
       const blastGeo = new THREE.SphereGeometry(1, 12, 12)
       const ringGeo = new THREE.RingGeometry(0.62, 1.0, 32)
       const trailGeo = new THREE.CylinderGeometry(1, 1, 1, 6)   // unit streak (Y axis); scaled per warp segment
-      disposables.push(teamGeo.blue, teamGeo.red, capGeo.blue, capGeo.red, bomberGeo.blue, bomberGeo.red, boltGeo, blastGeo, ringGeo, trailGeo)
+      const missileGeo = new THREE.CylinderGeometry(0.13, 0.07, 1.4, 6)   // small dart (long axis = travel)
+      const missileMat = new THREE.MeshBasicMaterial({ color: 0xffcaa0, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })  // glowing missile
+      disposables.push(teamGeo.blue, teamGeo.red, capGeo.blue, capGeo.red, bomberGeo.blue, bomberGeo.red, cruiserGeo.blue, cruiserGeo.red, boltGeo, blastGeo, ringGeo, trailGeo, missileGeo, missileMat)
       const boltMat = {
         blue: new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
         red:  new THREE.MeshBasicMaterial({ color: TEAMS.red.bolt,  transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -488,6 +493,37 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       }
       spawnFleet('blue', -31, 1)    // blue charges from the left (+X)
       spawnFleet('red',   31, -1)   // red charges from the right (-X)
+
+      // ── Missile cruisers — ranged support, deploy on-field with the fleet ──────
+      const spawnCruisers = (team, sx, vdir) => {
+        for (let i = 0; i < compRef.current[team].cruisers; i++) {
+          const mat = new THREE.MeshStandardMaterial({
+            color: TEAMS[team].color, emissive: TEAMS[team].color,
+            emissiveIntensity: 0.5, metalness: 0.6, roughness: 0.4,
+          })
+          disposables.push(mat)
+          const mesh = new THREE.Group()
+          mesh.add(new THREE.Mesh(cruiserGeo[team], mat))
+          const glow = new THREE.Mesh(blastGeo, glowMat[team])
+          glow.scale.setScalar(0.42); glow.position.set(0, 0, -1.5); mesh.add(glow)
+          const pos = new THREE.Vector3(sx + (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 12)
+          const vel = new THREE.Vector3(vdir * (2 + Math.random() * 2), (Math.random() - 0.5), (Math.random() - 0.5))
+          mesh.position.copy(pos)
+          orient(mesh, vel)
+          mesh.scale.setScalar(CRUISER_SCALE)
+          scene.add(mesh)
+          ships.push({
+            mesh, mat, team, hp: CRUISER_HP, alive: true, pos, vel,
+            name: team === 'blue' ? 'Blue Missile Cruiser' : 'Red Missile Cruiser',
+            fireCd: 1 + Math.random() * 2, flash: 0,
+            isCapital: false, isBomber: false, isCruiser: true, kills: 0, weapons: 1, armor: ARMOR_CRUISER,
+            maxSpeed: CRUISER_SPEED, minSpeed: CRUISER_MIN, radius: 1.4, turn: TURN_RATE * 0.8,
+            standoff: CRUISER_STANDOFF, bound: BOUND_R, baseScale: CRUISER_SCALE,
+          })
+        }
+      }
+      spawnCruisers('blue', -27, 1)
+      spawnCruisers('red',   27, -1)
 
       // ── Capital ships — huge flagships that fly a fixed circular patrol ───────
       // The orbit (radius, height, direction) is rolled once at the start of the
@@ -611,7 +647,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
       }
       for (const s of ships) {
         s.home = s.pos.clone()
-        s.baseScale = s.isCapital ? 3.2 : 1
+        s.baseScale = s.isCapital ? 3.2 : s.isCruiser ? CRUISER_SCALE : 1
         // capitals jump in first; the fighters follow them in
         s.jumpDelay = s.isCapital ? Math.random() * 0.15 : CAP_LEAD + Math.random() * FIGHTER_STAGGER
         if (s.route) {
@@ -699,6 +735,21 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         mesh.quaternion.setFromUnitVectors(yAxis, dir)
         scene.add(mesh)
         bolts.push({ mesh, dir, target, willHit, life: 0, shooter, dmg: bomb ? BOMB_DMG : 1, bomb, maxLife: bomb ? BOMB_LIFE : 2.2, smokeCd: 0 })
+        audioRef.current?.playLaser(shooter.team)
+      }
+
+      // Cruiser ordnance: a guided missile that homes hard onto its target and
+      // lays a smoke trail. Subject to armour like a normal hit (not a bomb).
+      const fireMissile = (shooter, target) => {
+        const willHit = Math.random() > MISSILE_MISS_CHANCE
+        _tmp.set(0, 0, 1).applyQuaternion(shooter.mesh.quaternion)
+        const start = shooter.pos.clone().addScaledVector(_tmp, 1.6)
+        const dir = target.pos.clone().sub(start).normalize()
+        const mesh = new THREE.Mesh(missileGeo, missileMat)
+        mesh.position.copy(start)
+        mesh.quaternion.setFromUnitVectors(yAxis, dir)
+        scene.add(mesh)
+        bolts.push({ mesh, dir, target, willHit, life: 0, shooter, dmg: MISSILE_DMG, bomb: false, missile: true, homing: MISSILE_HOMING, speed: MISSILE_SPEED, maxLife: MISSILE_LIFE, smokeCd: 0 })
         audioRef.current?.playLaser(shooter.team)
       }
 
@@ -925,7 +976,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           // pick a firing target. Blue fighters follow the player's FIGHTER CONTROL
           // mode; red fighters always use the AI 'default' behaviour
           let target = nearest
-          if (!s.isCapital && !s.isBomber) {
+          if (!s.isCapital && !s.isBomber && !s.isCruiser) {
             const enemyCap = (redCapital && redCapital.alive) ? redCapital : null
             const ctl = s.team === 'blue' ? fighterControlRef.current : 'default'
             if (ctl === 'capital')      target = enemyCap || nearest                                    // focus the flagship
@@ -955,7 +1006,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             _acc.set(0, 0, 0)
             const enemyCap = s.team === 'blue' ? redCapital : blueCapital
             // blue fighters set to "screen carrier" hold station around the flagship
-            const screening = s.team === 'blue' && !s.isBomber && fighterControlRef.current === 'screen' && blueCapital && blueCapital.alive
+            const screening = s.team === 'blue' && !s.isBomber && !s.isCruiser && fighterControlRef.current === 'screen' && blueCapital && blueCapital.alive
             if (s.isBomber && enemyCap && enemyCap.alive) {
               // run to the enemy flagship and orbit it, dropping bombs
               _tmp.subVectors(s.pos, enemyCap.pos)            // outward radial
@@ -1063,6 +1114,11 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
                 const enemies = ships.filter(e => e.alive && e.team !== s.team)
                 if (enemies.length) for (let k = 0; k < s.weapons; k++) fireBolt(s, enemies[(Math.random() * enemies.length) | 0], true)
                 s.fireCd = 0.7 + Math.random() * 0.9
+              } else if (s.isCruiser) {
+                // cruiser: lob a homing missile at the nearest enemy ship in range
+                if (nearest && s.pos.distanceToSquared(nearest.pos) < MISSILE_RANGE * MISSILE_RANGE) {
+                  fireMissile(s, nearest); s.fireCd = MISSILE_CD_MIN + Math.random() * MISSILE_CD_RND
+                }
               } else if (target && s.pos.distanceToSquared(target.pos) < FIGHTER_RANGE * FIGHTER_RANGE) {
                 fireBolt(s, target)   // fighters hold fire until the target is within range
                 s.fireCd = 1.2 + Math.random() * 2.8
@@ -1081,15 +1137,15 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
             const d = _tmp.length()
             if (d < 1.3) { damage(b.target, b.shooter, b.dmg, b.bomb); done = true }
             else {
-              b.dir.lerp(_tmp.normalize(), 0.12).normalize()
+              b.dir.lerp(_tmp.normalize(), b.homing ?? 0.12).normalize()   // missiles home harder
               b.mesh.quaternion.setFromUnitVectors(yAxis, b.dir)
             }
           }
           if (!done) {
-            b.mesh.position.addScaledVector(b.dir, BOLT_SPEED * dt)
+            b.mesh.position.addScaledVector(b.dir, (b.speed ?? BOLT_SPEED) * dt)
             if (b.life > b.maxLife) done = true
           }
-          if (b.bomb) {   // lay a smoke trail behind the bomb
+          if (b.bomb || b.missile) {   // lay a smoke trail behind bombs & missiles
             b.smokeCd -= dt
             if (b.smokeCd <= 0) { spawnSmoke(b.mesh.position); b.smokeCd = 0.03 }
           }
@@ -1211,7 +1267,7 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
         // capital erodes fleet power before it's destroyed. A living flagship never drops
         // below PTS_FLAGSHIP_MIN, though (its guns and morale keep it worth something).
         const strength = { blue: 0, red: 0 }
-        for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? Math.max(PTS_FLAGSHIP_MIN, PTS_FLAGSHIP * Math.max(0, s.hp) / CAP_HP) : s.isBomber ? PTS_BOMBER : PTS_FIGHTER
+        for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? Math.max(PTS_FLAGSHIP_MIN, PTS_FLAGSHIP * Math.max(0, s.hp) / CAP_HP) : s.isBomber ? PTS_BOMBER : s.isCruiser ? PTS_CRUISER : PTS_FIGHTER
         if (blueStrengthRef.current) blueStrengthRef.current.textContent = Math.round(strength.blue)
         if (redStrengthRef.current)  redStrengthRef.current.textContent  = Math.round(strength.red)
         if (powerBarRef.current) {                                   // ratio bar: blue's share of total strength
@@ -1417,9 +1473,9 @@ export default function SpaceBattleScreen({ onReturn, unreadCount = 0, onMailOpe
           <div className="sb-morale sb-morale--blue" ref={blueMoraleRef} style={{ display: 'none' }}>Flagship Lost<br />Morale Broken</div>
           <div className="sb-morale sb-morale--red" ref={redMoraleRef} style={{ display: 'none' }}>Flagship Lost<br />Morale Broken</div>
           <div className="sb-score-row">
-            <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.blue.fighters) + 1}</span></span>
+            <span className="sb-score sb-score--blue">BLUE FLEET <span ref={blueCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.blue.fighters) + comp.blue.cruisers + 1}</span></span>
             <span className="sb-vs">⚔ ENGAGED ⚔</span>
-            <span className="sb-score sb-score--red"><span ref={redCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.red.fighters) + 1}</span> RED FLEET</span>
+            <span className="sb-score sb-score--red"><span ref={redCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.red.fighters) + comp.red.cruisers + 1}</span> RED FLEET</span>
           </div>
           <div className="sb-strength-row">
             <span className="sb-strength sb-strength--blue">STRENGTH <span ref={blueStrengthRef}>{compStrength(comp.blue)}</span>/{FLEET_BUDGET}</span>
