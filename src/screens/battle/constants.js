@@ -1,6 +1,6 @@
 // ── Battle parameters ──────────────────────────────────────────────────────────
 const FLEET_SIZE  = 25
-const SHIP_HP     = 5
+const SHIP_HP     = 6
 const BOMBER_COUNT = 5       // heavy bombers per side
 const BOMBER_HP    = 12      // tankier than a fighter
 const BOMBER_SPEED = 4.5     // slower than fighters (MAX_SPEED 7.5)
@@ -21,7 +21,7 @@ const MIN_SPEED   = 2.6
 const SEP_RADIUS  = 3.0
 const BOUND_R     = 34       // ships steer back inside this radius
 const STANDOFF    = 14       // preferred engagement range — keeps a frontline gap
-const FIGHTER_RANGE = 50     // fighters hold fire past this (≈1.5× the BOUND_R arena radius)
+const FIGHTER_RANGE = 45     // fighters hold fire past this (was 50; −10% weapon range)
 const TURN_RATE   = 7        // orientation slerp responsiveness
 const FIELD_FIGHTER_CAP = 25 // max fighters a team can have on the field at once
 const REINFORCE_INTERVAL = 10 // seconds between reinforcement waves from the reserve
