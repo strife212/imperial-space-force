@@ -225,6 +225,74 @@ function buildRedCruiser() {
   return mergeGeometries(parts, false)
 }
 
+// ── Cutscene prop: the Aleph ─────────────────────────────────────────────────
+// A neutral, faction-less artefact in the spirit of the 2001 monolith — an
+// ornate golden arched tablet with a glowing halo emblem.
+// Unlike the ship builders (which return one geometry for the caller to skin),
+// this returns a self-contained THREE.Group with its own gold + emissive
+// materials. The near-white core reads as a glow under a bloom pass. Recentre at
+// the call site via Box3, and dispose by traversing the group.
+function buildAleph() {
+  const group = new THREE.Group()
+
+  const gold       = new THREE.MeshStandardMaterial({ color: 0xc4901a, emissive: 0x3a2400, emissiveIntensity: 0.6, metalness: 1.0, roughness: 0.3 })
+  const goldBright = new THREE.MeshStandardMaterial({ color: 0xffcf5a, emissive: 0xffa820, emissiveIntensity: 1.1, metalness: 0.95, roughness: 0.22 })
+  const coreMat    = new THREE.MeshBasicMaterial({ color: 0xfff0c4 })   // near-white → blooms into a glow
+  const glowMat    = new THREE.MeshBasicMaterial({ color: 0xffd070, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false })
+
+  // arched "tablet" outline: a vertical rectangle capped by a semicircle
+  const arch = (halfW, bottom, top) => {
+    const s = new THREE.Shape()
+    s.moveTo(-halfW, -bottom)
+    s.lineTo(-halfW, top)
+    s.absarc(0, top, halfW, Math.PI, 0, true)
+    s.lineTo(halfW, -bottom)
+    s.lineTo(-halfW, -bottom)
+    return s
+  }
+
+  // main body slab
+  const body = new THREE.ExtrudeGeometry(arch(1.5, 3.2, 1.8), { depth: 0.7, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.1, bevelSegments: 2, curveSegments: 28 })
+  group.add(new THREE.Mesh(body, gold))
+  const frontZ = 0.95   // clear of the body's front face + bevel
+
+  // raised inner panel (brighter gold), set proud of the front face
+  const panel = new THREE.ExtrudeGeometry(arch(1.15, 2.6, 1.5), { depth: 0.14, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.06, bevelSegments: 1, curveSegments: 24 })
+  const panelMesh = new THREE.Mesh(panel, goldBright); panelMesh.position.z = frontZ - 0.16
+  group.add(panelMesh)
+
+  // halo emblem ring + glowing core, in the upper third on the front
+  const emblemY = 1.5, emblemZ = frontZ + 0.06
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.92, 0.12, 14, 48), goldBright)
+  ring.position.set(0, emblemY, emblemZ)
+  group.add(ring)
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.46, 24, 24), coreMat)
+  core.position.set(0, emblemY, emblemZ + 0.04)
+  group.add(core)
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(1.0, 24, 24), glowMat)
+  glow.position.copy(core.position)
+  group.add(glow)
+
+  // vertical light seam down the lower body
+  const seam = new THREE.Mesh(new THREE.BoxGeometry(0.16, 3.4, 0.06), coreMat)
+  seam.position.set(0, -1.0, frontZ + 0.02)
+  group.add(seam)
+
+  // horizontal ornament bands across the slab
+  for (const y of [-0.2, -1.4, -2.5]) {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.14, 0.12), goldBright)
+    band.position.set(0, y, frontZ)
+    group.add(band)
+  }
+
+  // base plinth to ground it
+  const base = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 1.4), gold)
+  base.position.set(0, -3.5, 0.1)
+  group.add(base)
+
+  return group
+}
+
 // ── Background bodies ──────────────────────────────────────────────────────────
 // Each builder adds its meshes to the scene and pushes geometry/materials to
 // `disposables`; it returns an optional per-frame tick(t) for animated bodies.
@@ -336,5 +404,5 @@ function makeBackdrop(scene, disposables, lightDir, camera) {
 export {
   NEBULA_VERT, NEBULA_FRAG,
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber,
-  buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop,
+  buildBlueCruiser, buildRedCruiser, buildAleph, makeShield, makeBackdrop,
 }

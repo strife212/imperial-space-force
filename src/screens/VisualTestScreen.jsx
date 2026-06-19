@@ -12,7 +12,7 @@ import {
 } from './battle/constants'
 import {
   NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital,
-  buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield,
+  buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, buildAleph, makeShield,
 } from './battle/geometry'
 import './battle/battle.css'
 
@@ -25,8 +25,106 @@ const buildGeo = (k, team) =>
   : k === 'cruiser' ? (team === 'blue' ? buildBlueCruiser() : buildRedCruiser())
   : (team === 'blue' ? buildBlueModel() : buildRedModel())
 
+// Descriptive class name for the model-viewer list
+const CLASS_NAME = (k, team) =>
+  k === 'aleph' ? 'Aleph'
+  : k === 'capital' ? 'Capital Ship'
+  : k === 'bomber' ? 'Heavy Bomber'
+  : k === 'cruiser' ? 'Missile Cruiser'
+  : team === 'blue' ? 'Interceptor' : 'Marauder'
+// Every model: each team's ships (grouped by class) plus faction-less cutscene props
+const MODELS = [
+  ...TYPES.flatMap(kind => ['blue', 'red'].map(team => ({ kind, team }))),
+  { kind: 'aleph', team: 'prop' },
+]
+
+// A single large viewer that renders the selected ship on an orbitable turntable.
+// One WebGL context for the whole gallery — the hull is swapped in place when the
+// selection changes, so the list scales to any number of models.
+function ModelStage({ kind, team }) {
+  const mountRef = useRef(null)
+  const sceneRef = useRef(null)
+
+  // set up the renderer / scene / controls once
+  useEffect(() => {
+    const mount = mountRef.current
+    if (!mount) return
+    let raf
+    try {
+      const w = mount.clientWidth || 1, h = mount.clientHeight || 1
+      const scene = new THREE.Scene()
+      const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 600)
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.setSize(w, h)
+      mount.appendChild(renderer.domElement)
+      const controls = new OrbitControls(camera, renderer.domElement)
+      controls.enableDamping = true; controls.dampingFactor = 0.06; controls.enablePan = false
+      controls.autoRotate = true; controls.autoRotateSpeed = 0.5
+      scene.add(new THREE.AmbientLight(0x90a8d0, 0.75))
+      const key = new THREE.DirectionalLight(0xffffff, 1.2); key.position.set(4, 6, 5); scene.add(key)
+      const rim = new THREE.DirectionalLight(0x4060a0, 0.6); rim.position.set(-5, -2, -4); scene.add(rim)
+      const holder = new THREE.Group(); scene.add(holder)
+      const composer = new EffectComposer(renderer)
+      composer.addPass(new RenderPass(scene, camera))
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(w, h), 0.7, 0.5, 0.25))   // glow for emissive cores
+      sceneRef.current = { scene, camera, renderer, controls, holder, rim }
+      const loop = () => { controls.update(); composer.render(); raf = requestAnimationFrame(loop) }
+      loop()
+      const onResize = () => {
+        const nw = mount.clientWidth, nh = mount.clientHeight; if (!nw || !nh) return
+        camera.aspect = nw / nh; camera.updateProjectionMatrix(); renderer.setSize(nw, nh); composer.setSize(nw, nh)
+      }
+      const ro = new ResizeObserver(onResize); ro.observe(mount)
+      return () => {
+        cancelAnimationFrame(raf); ro.disconnect(); controls.dispose()
+        holder.traverse(n => { n.geometry?.dispose?.(); if (n.material) (Array.isArray(n.material) ? n.material : [n.material]).forEach(m => m.dispose()) })
+        composer.dispose?.(); renderer.dispose()
+        if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement)
+        sceneRef.current = null
+      }
+    } catch (err) {
+      console.error('Model stage failed to initialise:', err)
+    }
+  }, [])
+
+  // swap the displayed model whenever the selection changes
+  useEffect(() => {
+    const st = sceneRef.current
+    if (!st) return
+    const { holder, camera, controls, rim } = st
+    while (holder.children.length) {
+      const c = holder.children[0]; holder.remove(c)
+      c.traverse(n => { n.geometry?.dispose?.(); if (n.material) (Array.isArray(n.material) ? n.material : [n.material]).forEach(m => m.dispose()) })
+    }
+    let radius
+    if (team === 'prop') {
+      // self-contained gold prop (its own materials) — recentre via bounding box
+      const obj = buildAleph()
+      holder.add(obj)
+      const box = new THREE.Box3().setFromObject(obj)
+      obj.position.sub(box.getCenter(new THREE.Vector3()))
+      radius = box.getSize(new THREE.Vector3()).length() / 2
+      rim.color.set(0xffcf5a)
+    } else {
+      const geo = buildGeo(kind, team); geo.center(); geo.computeBoundingSphere()
+      const mat = new THREE.MeshStandardMaterial({ color: TEAMS[team].color, emissive: TEAMS[team].color, emissiveIntensity: 0.34, metalness: 0.6, roughness: 0.4 })
+      holder.add(new THREE.Mesh(geo, mat))
+      radius = geo.boundingSphere.radius || 1
+      rim.color.set(TEAMS[team].color)
+    }
+    const r = radius || 1
+    camera.position.set(0, r * 0.5, r * 2.8); controls.target.set(0, 0, 0); controls.update()
+    controls.minDistance = r * 1.2; controls.maxDistance = r * 6
+  }, [kind, team])
+
+  return <div className="vistest-stage-canvas" ref={mountRef} />
+}
+
 export default function VisualTestScreen({ onReturn }) {
   const mountRef = useRef(null)
+  const [mode, setMode] = useState('combat')        // 'combat' duel sandbox | 'viewer' model gallery
+  const [selected, setSelected] = useState(MODELS[0])  // model shown in the viewer
   const [blueType, setBlueType] = useState('fighter')
   const [redType, setRedType]   = useState('fighter')
   const [resetKey, setResetKey] = useState(0)
@@ -35,6 +133,7 @@ export default function VisualTestScreen({ onReturn }) {
   useEffect(() => { flaresRef.current = flares }, [flares])
 
   useEffect(() => {
+    if (mode !== 'combat') return       // the duel scene only runs in combat mode
     const mount = mountRef.current
     if (!mount) return
     let renderer, composer, raf
@@ -319,7 +418,7 @@ export default function VisualTestScreen({ onReturn }) {
       console.error('Visual test failed to initialise:', err)
       if (renderer) { try { renderer.dispose() } catch (_) {} }
     }
-  }, [blueType, redType, resetKey])
+  }, [blueType, redType, resetKey, mode])
 
   const typeRow = (team, val, setVal) => (
     <div className={`vistest-team vistest-team--${team}`}>
@@ -332,21 +431,56 @@ export default function VisualTestScreen({ onReturn }) {
 
   return (
     <div id="vistest-screen">
-      <HudHeader onLogout={onReturn} right={<span className="label">VFX-LAB / COMBAT VISUAL TEST</span>} />
+      <HudHeader onLogout={onReturn} right={<span className="label">VFX-LAB / {mode === 'combat' ? 'COMBAT VISUAL TEST' : 'MODEL VIEWER'}</span>} />
       <div className="vistest-stage">
-        <div className="vistest-canvas" ref={mountRef} />
-        <div className="vistest-controls">
-          {typeRow('blue', blueType, setBlueType)}
-          <div className="vistest-mid">
-            <button className="vistest-reset" onClick={() => setResetKey(k => k + 1)}>⟳ RESET</button>
-            <label className="vistest-check">
-              <input type="checkbox" checked={flares} onChange={(e) => setFlares(e.target.checked)} />
-              Flares: {flares ? 'unlimited' : 'off'}
-            </label>
-          </div>
-          {typeRow('red', redType, setRedType)}
+        <div className="vistest-modes">
+          <button className={`vistest-mode-btn${mode === 'combat' ? ' vistest-mode-btn--on' : ''}`} onClick={() => setMode('combat')}>Combat</button>
+          <button className={`vistest-mode-btn${mode === 'viewer' ? ' vistest-mode-btn--on' : ''}`} onClick={() => setMode('viewer')}>Model Viewer</button>
         </div>
-        <div className="vistest-hint">Drag to orbit // scroll to zoom // ships are indestructible</div>
+
+        {mode === 'combat' ? (
+          <>
+            <div className="vistest-canvas" ref={mountRef} />
+            <div className="vistest-controls">
+              {typeRow('blue', blueType, setBlueType)}
+              <div className="vistest-mid">
+                <button className="vistest-reset" onClick={() => setResetKey(k => k + 1)}>⟳ RESET</button>
+                <label className="vistest-check">
+                  <input type="checkbox" checked={flares} onChange={(e) => setFlares(e.target.checked)} />
+                  Flares: {flares ? 'unlimited' : 'off'}
+                </label>
+              </div>
+              {typeRow('red', redType, setRedType)}
+            </div>
+            <div className="vistest-hint">Drag to orbit // scroll to zoom // ships are indestructible</div>
+          </>
+        ) : (
+          <div className="vistest-viewer">
+            <div className="vistest-list">
+              {MODELS.map(({ kind, team }) => {
+                const on = selected.kind === kind && selected.team === team
+                return (
+                  <button
+                    key={team + kind}
+                    className={`vistest-list-item vistest-list-item--${team}${on ? ' vistest-list-item--on' : ''}`}
+                    onClick={() => setSelected({ kind, team })}
+                  >
+                    <span className="vistest-list-dot" />
+                    <span className="vistest-list-team">{team.toUpperCase()}</span>
+                    <span className="vistest-list-name">{CLASS_NAME(kind, team)}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="vistest-stage-main">
+              <ModelStage kind={selected.kind} team={selected.team} />
+              <div className={`vistest-stage-label vistest-stage-label--${selected.team}`}>
+                <span className="vistest-stage-team">{selected.team.toUpperCase()}</span>
+                <span className="vistest-stage-class">{CLASS_NAME(selected.kind, selected.team)}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

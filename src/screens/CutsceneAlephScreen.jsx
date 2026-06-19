@@ -5,36 +5,48 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import HudHeader from '../components/HudHeader'
 import { TEAMS, BOMBER_SCALE, COMMS_PORTRAIT } from './battle/constants'
-import { NEBULA_VERT, NEBULA_FRAG, buildBlueCapital, buildRedBomber } from './battle/geometry'
+import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildBlueCapital, buildRedBomber, buildAleph } from './battle/geometry'
 import { renderCommsBody } from './battle/RosterUI'
 import UrgentMessageOverlay from './battle/UrgentMessageOverlay'
 import './battle/battle.css'
 
-// ── Scripted timeline (seconds from scene start) ─────────────────────────────
-const WARP_FROM_X = -210   // supply ship streaks in from far behind
+// ── Scripted timeline ────────────────────────────────────────────────────────
+const WARP_FROM_X = -210   // science vessel streaks in from far behind
+const WARP_TO_X   = -95
 const WARP_DUR    = 1.0
-const CRUISE_SPEED = 7      // steady forward drift along +X
-const COMMS1_T    = 3.6    // "Arrived in system. All looks clear."
-const BOMBERS_T   = 8.0    // red bombers ambush out of nowhere
-const N_BOMBERS   = 6
+const CRUISE_SPEED = 17     // forward drift toward the artifact
+const SHIP_LANE_Z = 22      // the vessel travels in a lane offset from the artifact (kept clear of it)
+const STOP_X      = 0       // pulls up alongside the artifact here
+const REVEAL_X    = -78     // the artifact reveals once the vessel closes to here
+const ALEPH_SCALE = 2.0
+const ALEPH_HALF_H = 7      // ≈ artifact half-height after scaling (for the scan sweep)
+const SCAN_POS    = new THREE.Vector3(0, 4, 13)   // where the fighter holds to scan
+const SCAN_DUR    = 4.5
+const FLY_DUR     = 2.2     // fighter's flight out to the artifact
+const N_BOMBERS   = 8
 const BOMB_SPEED  = 36
 const CUT_HP      = 60
 const CUT_BOMB_DMG = 3
 const DEATH_DUR   = 1.8
 
-const COMMS_DWELL_MS = 4200   // how long a line lingers after it's fully typed
-const LINE_1 = 'Arrived in system. All looks clear.'
-const LINE_2 = 'Abandon ship! Contact high command, we need reinforcements immediately!'
+const SHIP_NAME = 'Imperial Science Vessel Cassiopeia'
+const DLG1 = 'Leaving relativistic speed, entering newtonian flight model. Approaching source of unknown radio signal.'
+const DLG2 = 'Radiation levels are off the charts. Spectrogram readings are indeterminate. This is it, no doubt.'
+const DLG3 = 'Ambush by unknown attackers! Abandon ship! Call for reinforcements!'
 
-export default function CutsceneScreen({ onReturn, onComplete }) {
+const COMMS_DWELL_MS = 4200   // how long a line lingers after it's fully typed
+const easeOut3 = (p) => 1 - Math.pow(1 - p, 3)
+const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
+
+export default function CutsceneAlephScreen({ onReturn, onComplete }) {
   const mountRef = useRef(null)
   const [resetKey, setResetKey] = useState(0)
-  const [comms, setComms] = useState(null)        // { id, team, name, portrait, text, segments, persist }
-  const [commsText, setCommsText] = useState('')  // progressively-typed body
+  const [comms, setComms] = useState(null)
+  const [commsText, setCommsText] = useState('')
   const commsSeq = useRef(0)
-  const [ending,     setEnding]     = useState(false)  // abandon-ship shown → end sequence begins
-  const [fadeBlack,  setFadeBlack]  = useState(false)  // screen fading to black
-  const [showUrgent, setShowUrgent] = useState(false)  // urgent transmission overlay visible
+  const [ending,     setEnding]     = useState(false)
+  const [fadeBlack,  setFadeBlack]  = useState(false)
+  const [showUrgent, setShowUrgent] = useState(false)
 
   // typewriter: type the line out, let it sit a while, then (unless it persists) auto-hide
   useEffect(() => {
@@ -52,11 +64,9 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
     return () => { clearInterval(typer); clearTimeout(hide) }
   }, [comms?.id])
 
-  // reset comms / end-sequence whenever the scene replays
   useEffect(() => { setComms(null); setEnding(false); setFadeBlack(false); setShowUrgent(false) }, [resetKey])
 
-  // End sequence: a few seconds after "abandon ship", fade to black, then show
-  // the urgent transmission from Admiralty Command.
+  // End sequence: after "abandon ship", fade to black, then the urgent transmission
   useEffect(() => {
     if (!ending) return
     const t = setTimeout(() => setFadeBlack(true), 4200)
@@ -64,7 +74,7 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
   }, [ending])
   useEffect(() => {
     if (!fadeBlack) return
-    const t = setTimeout(() => setShowUrgent(true), 1300)   // after the 1.2s fade completes
+    const t = setTimeout(() => setShowUrgent(true), 1300)
     return () => clearTimeout(t)
   }, [fadeBlack])
 
@@ -76,7 +86,7 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
     try {
       const w = mount.clientWidth || 1, h = mount.clientHeight || 1
       const scene = new THREE.Scene()
-      const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 800)
+      const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 900)
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
       renderer.setSize(w, h)
@@ -88,7 +98,7 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
       const rim = new THREE.DirectionalLight(0x4060a0, 0.4); rim.position.set(-10, -4, -12); scene.add(rim)
 
       // nebula skydome + stars (matches the battle backdrop)
-      const nebGeo = new THREE.SphereGeometry(360, 32, 32)
+      const nebGeo = new THREE.SphereGeometry(380, 32, 32)
       const nebMat = new THREE.ShaderMaterial({
         vertexShader: NEBULA_VERT, fragmentShader: NEBULA_FRAG,
         uniforms: {
@@ -114,7 +124,8 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
       const ringGeo = new THREE.RingGeometry(0.62, 1.0, 24)
       const bombGeo = new THREE.BoxGeometry(0.6, 1.5, 0.2)
       const trailGeo = new THREE.CylinderGeometry(1, 1, 1, 6)
-      disposables.push(blastGeo, ringGeo, bombGeo, trailGeo)
+      const beamGeo = new THREE.CylinderGeometry(0.05, 0.05, 1, 8)
+      disposables.push(blastGeo, ringGeo, bombGeo, trailGeo, beamGeo)
       const glowMat = {
         blue: new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
         red:  new THREE.MeshBasicMaterial({ color: TEAMS.red.bolt,  transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -132,7 +143,19 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
         if (smooth == null) obj.quaternion.copy(_q); else obj.quaternion.slerp(_q, smooth)
       }
 
-      // ── Build the blue supply (capital) ship ──────────────────────────────────
+      // ── The Aleph: a stationary artifact at the centre, slowly tumbling ─────────
+      // Built off-centre, so wrap it in a pivot whose origin is the model's centre.
+      const alephInner = buildAleph()
+      const abox = new THREE.Box3().setFromObject(alephInner)
+      alephInner.position.sub(abox.getCenter(new THREE.Vector3()))
+      const aleph = new THREE.Group()
+      aleph.add(alephInner)
+      aleph.position.set(0, 0, 0)
+      aleph.scale.setScalar(0.001)   // grows in when revealed
+      aleph.visible = false
+      scene.add(aleph)
+
+      // ── Build the science vessel (blue capital) ────────────────────────────────
       const shipMat = new THREE.MeshStandardMaterial({ color: TEAMS.blue.color, emissive: TEAMS.blue.color, emissiveIntensity: 0.55, metalness: 0.65, roughness: 0.35 })
       const shipGeo = buildBlueCapital()
       disposables.push(shipMat, shipGeo)
@@ -155,18 +178,20 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
       scene.add(shipGroup)
       const ship = {
         group: shipGroup, mat: shipMat, glows, fires,
-        pos: new THREE.Vector3(WARP_FROM_X, 0, 0),
-        hp: CUT_HP, alive: true, dying: false, driftVel: null, trailPrev: null,
+        pos: new THREE.Vector3(WARP_FROM_X, 0, SHIP_LANE_Z),
+        hp: CUT_HP, alive: true, dying: false, stationary: false, driftVel: null, trailPrev: null,
       }
       orient(shipGroup, new THREE.Vector3(1, 0, 0))   // faces +X (its travel direction)
       shipGroup.position.copy(ship.pos)
 
-      // camera rides behind-and-above the ship for a 3/4 cinematic view
+      // camera rides behind-and-above the vessel, biased toward the artifact
       const CAM_OFF = new THREE.Vector3(-34, 14, 30)
+      const camTarget = new THREE.Vector3()
+      const lookGoal = () => _e.copy(ship.pos).add(_tmp.set(8, 1, -8))
       camera.position.copy(ship.pos).add(CAM_OFF)
-      camera.lookAt(ship.pos.x + 8, ship.pos.y, ship.pos.z)
+      camTarget.copy(lookGoal()); camera.lookAt(camTarget)
 
-      // ── Red bomber ambushers (spawned later) ──────────────────────────────────
+      // ── Red bomber ambushers (spawned later) ───────────────────────────────────
       const bombers = []
       const makeBomber = () => {
         const mat = new THREE.MeshStandardMaterial({ color: TEAMS.red.color, emissive: TEAMS.red.color, emissiveIntensity: 0.5, metalness: 0.6, roughness: 0.4 })
@@ -179,6 +204,36 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
         group.visible = false
         scene.add(group)
         return { group, mat, pos: new THREE.Vector3(), fireCd: 0.3 + Math.random() * 0.6 }
+      }
+
+      // ── Scout fighter (scans the artifact) ─────────────────────────────────────
+      let fighter = null
+      const spawnFighter = () => {
+        const mat = new THREE.MeshStandardMaterial({ color: TEAMS.blue.color, emissive: TEAMS.blue.color, emissiveIntensity: 0.6, metalness: 0.6, roughness: 0.4 })
+        const geo = buildBlueModel()
+        disposables.push(mat, geo)
+        const group = new THREE.Group()
+        group.add(new THREE.Mesh(geo, mat))
+        const glow = new THREE.Mesh(blastGeo, glowMat.blue); glow.scale.setScalar(0.28); glow.position.set(0, 0, -0.95); group.add(glow)
+        group.scale.setScalar(1.0)
+        scene.add(group)
+        fighter = { group, mat, phase: 'fly', t: 0, from: ship.pos.clone(), pos: ship.pos.clone(), warpDir: new THREE.Vector3(0.4, 0.5, 0.9).normalize() }
+        group.position.copy(fighter.pos)
+      }
+      // scan FX (created when the fighter reaches the artifact)
+      let scanBeam = null, scanBand = null
+      const startScanFX = () => {
+        const beamMat = new THREE.MeshBasicMaterial({ color: 0x8fe6ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })
+        scanBeam = { mesh: new THREE.Mesh(beamGeo, beamMat), mat: beamMat }
+        scene.add(scanBeam.mesh)
+        const bandMat = new THREE.MeshBasicMaterial({ color: 0x7fd4ff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+        const bandGeo = new THREE.BoxGeometry(10, 0.3, 5)
+        scanBand = { mesh: new THREE.Mesh(bandGeo, bandMat), mat: bandMat, geo: bandGeo }
+        scene.add(scanBand.mesh)
+      }
+      const endScanFX = () => {
+        if (scanBeam) { scene.remove(scanBeam.mesh); scanBeam.mat.dispose(); scanBeam = null }
+        if (scanBand) { scene.remove(scanBand.mesh); scanBand.mat.dispose(); scanBand.geo.dispose(); scanBand = null }
       }
 
       // ── Projectiles / FX ──────────────────────────────────────────────────────
@@ -201,9 +256,7 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
         const m = new THREE.Mesh(blastGeo, mat); m.position.copy(pos); m.scale.setScalar(0.3 + Math.random() * 0.4); scene.add(m)
         embers.push({ mesh: m, mat, vel: new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5 + 0.4, (Math.random() - 0.5) * 2.5), life: 0, max: 0.6 + Math.random() * 0.5 })
       }
-      // a random world point within an oriented box around the hull
       const hullPoint = () => _e.set((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 18).applyQuaternion(shipGroup.quaternion).add(ship.pos)
-      // glowing warp streak left behind the ship as it jumps in
       const TRAIL_GAP = 6, _td = new THREE.Vector3(), _tn = new THREE.Vector3()
       const emitTrail = () => {
         if (!ship.trailPrev) { ship.trailPrev = ship.pos.clone(); return }
@@ -229,30 +282,46 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
         bombs.push({ mesh, dir, life: 0, max: 3.0, smokeCd: 0 })
       }
 
-      // scripted-event latches
-      let wreck = null, T = 0, firedComms1 = false, bombersSpawned = false, firedComms2 = false
-      const showComms = (text, persist) => setComms({ id: ++commsSeq.current, team: 'blue', name: 'Supply Ship', portrait: COMMS_PORTRAIT.blue, text, segments: [{ text }], persist })
+      // scripted-event latches / accumulators
+      let wreck = null, T = 0, firedDlg1 = false, firedDlg2 = false, firedDlg3 = false
+      let revealing = false, revealT = 0
+      let stationaryT = 0, scanStarted = false, scanT = 0, scanDone = false
+      let postScanT = 0, bombersSpawned = false, fighterWarped = false
+      const showComms = (text, persist) => setComms({ id: ++commsSeq.current, team: 'blue', name: SHIP_NAME, portrait: COMMS_PORTRAIT.blue, text, segments: [{ text }], persist })
 
       const clock = new THREE.Clock()
       const frame = () => {
         const dt = Math.min(clock.getDelta(), 0.05)
         T += dt
 
-        // ── Supply ship: warp in, then cruise forward — or drift as a wreck ──────
+        // ── Artifact: slow tumble on two axes, grow-in on reveal ─────────────────
+        aleph.rotation.y += 0.28 * dt
+        aleph.rotation.x += 0.13 * dt
+        if (revealing && revealT < 1) {
+          revealT = Math.min(1, revealT + dt / 1.3)
+          aleph.scale.setScalar(ALEPH_SCALE * easeOut3(revealT))
+        }
+
+        // ── Vessel: warp in, cruise to the artifact, pull up alongside — or wreck ─
         if (!ship.dying) {
           if (T < WARP_DUR) {
             const p = Math.min(1, T / WARP_DUR), e = 1 - Math.pow(1 - p, 3)
-            ship.pos.x = THREE.MathUtils.lerp(WARP_FROM_X, 0, e)
+            ship.pos.x = THREE.MathUtils.lerp(WARP_FROM_X, WARP_TO_X, e)
             emitTrail()
-          } else {
-            ship.pos.x += CRUISE_SPEED * dt
+          } else if (!ship.stationary) {
             ship.trailPrev = null
+            const remaining = STOP_X - ship.pos.x
+            if (remaining > 0.06) {
+              const speed = Math.min(CRUISE_SPEED, Math.max(2.2, remaining * 1.3))   // ease in to the stop
+              ship.pos.x += Math.min(speed * dt, remaining)
+            } else { ship.stationary = true }
           }
           shipGroup.position.copy(ship.pos)
+          if (!revealing && ship.pos.x >= REVEAL_X) { revealing = true; aleph.visible = true }
         } else {
           wreck.t += dt
           ship.pos.addScaledVector(ship.driftVel, dt); shipGroup.position.copy(ship.pos)
-          shipGroup.rotateZ(0.06 * dt); shipGroup.rotateX(0.025 * dt)   // slow tumble
+          shipGroup.rotateZ(0.06 * dt); shipGroup.rotateX(0.025 * dt)
           if (wreck.t < DEATH_DUR) {
             wreck.blastCd -= dt
             if (wreck.blastCd <= 0) { spawnBlast(hullPoint(), false); wreck.blastCd = 0.1 + Math.random() * 0.2 }
@@ -265,30 +334,71 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
             shipMat.emissiveIntensity = 0.25; shipMat.metalness = 0.3; shipMat.roughness = 0.95
             glows.forEach(g => (g.visible = false))
             fires.forEach((f, i) => { f.mesh.visible = i < 2 })
-            if (!firedComms2) { firedComms2 = true; showComms(LINE_2, true); setEnding(true) }
+            if (!firedDlg3) { firedDlg3 = true; showComms(DLG3, true); setEnding(true) }
           } else {
             for (const f of fires) if (f.mesh.visible) f.mat.opacity = 0.2 + 0.2 * Math.abs(Math.sin(T * 4 + ship.pos.x))
             if (Math.random() < 0.04) spawnEmber(hullPoint(), 0xff6a30)
           }
         }
 
-        // ── Scripted beats ──────────────────────────────────────────────────────
-        if (!firedComms1 && T >= COMMS1_T) { firedComms1 = true; showComms(LINE_1, false) }
-        if (!bombersSpawned && T >= BOMBERS_T) {
-          bombersSpawned = true
-          for (let i = 0; i < N_BOMBERS; i++) {
-            const ang = (i / N_BOMBERS) * Math.PI * 2 + Math.random() * 0.6
-            const b = makeBomber()
-            b.pos.copy(ship.pos).add(new THREE.Vector3(20 + Math.random() * 16, (Math.random() - 0.5) * 18, Math.cos(ang) * (24 + Math.random() * 18)))
-            b.pos.z += Math.sin(ang) * 6
-            b.group.position.copy(b.pos); b.group.visible = true
-            orient(b.group, _dir.subVectors(ship.pos, b.pos))
-            spawnBlast(b.pos.clone(), false)   // pop-in flash
-            bombers.push(b)
-          }
+        // ── Scripted beats ───────────────────────────────────────────────────────
+        if (!firedDlg1 && T >= 2.4) { firedDlg1 = true; showComms(DLG1, false) }
+        if (ship.stationary && !ship.dying) {
+          stationaryT += dt
+          if (!firedDlg2 && stationaryT >= 1.2) { firedDlg2 = true; showComms(DLG2, false) }
+          if (!scanStarted && stationaryT >= 4.8) { scanStarted = true; spawnFighter() }
         }
 
-        // bombers bombard while the ship still lives
+        // ── Scout fighter: fly out, scan, then hold ──────────────────────────────
+        if (fighter && fighter.phase !== 'warp') {
+          if (fighter.phase === 'fly') {
+            fighter.t += dt
+            const p = Math.min(1, fighter.t / FLY_DUR)
+            fighter.pos.lerpVectors(fighter.from, SCAN_POS, easeInOut(p))
+            orient(fighter.group, _dir.subVectors(SCAN_POS, fighter.from), 1 - Math.exp(-5 * dt))
+            if (p >= 1) { fighter.phase = 'scan'; scanT = 0; startScanFX() }
+          } else if (fighter.phase === 'scan' || fighter.phase === 'idle') {
+            // gentle bob + face the artifact
+            fighter.pos.copy(SCAN_POS); fighter.pos.y += Math.sin(T * 1.6) * 0.5
+            orient(fighter.group, _dir.subVectors(ORIGIN, fighter.pos), 1 - Math.exp(-4 * dt))
+          }
+          fighter.group.position.copy(fighter.pos)
+        }
+        // scan beam + sweeping band while scanning
+        if (fighter && fighter.phase === 'scan') {
+          scanT += dt
+          if (scanBeam) {
+            _v.subVectors(ORIGIN, fighter.pos); const len = _v.length()
+            scanBeam.mesh.position.copy(fighter.pos).addScaledVector(_v, 0.5 / len)
+            scanBeam.mesh.quaternion.setFromUnitVectors(yAxis, _tmp.copy(_v).multiplyScalar(1 / len))
+            scanBeam.mesh.scale.set(1, len, 1)
+            scanBeam.mat.opacity = 0.4 + 0.3 * Math.abs(Math.sin(T * 9))
+          }
+          if (scanBand) {
+            const sweep = ((scanT * 6) % (ALEPH_HALF_H * 2)) - ALEPH_HALF_H   // bottom → top, looping
+            scanBand.mesh.position.set(0, sweep, 0)
+            scanBand.mat.opacity = 0.5 * (0.6 + 0.4 * Math.sin(T * 8))
+          }
+          if (scanT >= SCAN_DUR) { fighter.phase = 'idle'; scanDone = true; endScanFX() }
+        }
+
+        // ── Ambush: red bombers warp in once the scan is done ────────────────────
+        if (scanDone && !bombersSpawned) {
+          postScanT += dt
+          if (postScanT >= 1.4) {
+            bombersSpawned = true
+            for (let i = 0; i < N_BOMBERS; i++) {
+              const ang = (i / N_BOMBERS) * Math.PI * 2 + Math.random() * 0.6
+              const b = makeBomber()
+              b.pos.copy(ship.pos).add(new THREE.Vector3(18 + Math.random() * 16, (Math.random() - 0.5) * 18, Math.cos(ang) * (22 + Math.random() * 16)))
+              b.pos.z += Math.sin(ang) * 6
+              b.group.position.copy(b.pos); b.group.visible = true
+              orient(b.group, _dir.subVectors(ship.pos, b.pos))
+              spawnBlast(b.pos.clone(), false)
+              bombers.push(b)
+            }
+          }
+        }
         if (bombersSpawned && !ship.dying) {
           for (const b of bombers) {
             orient(b.group, _dir.subVectors(ship.pos, b.pos), 1 - Math.exp(-4 * dt))
@@ -297,7 +407,7 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
           }
         }
 
-        // ── Bombs: gently home onto the ship, trail smoke, detonate on contact ──
+        // ── Bombs home onto the vessel, trail smoke, detonate on contact ─────────
         for (let i = bombs.length - 1; i >= 0; i--) {
           const bo = bombs[i]; bo.life += dt
           _tmp.subVectors(ship.pos, bo.mesh.position); const d = _tmp.length(); _tmp.normalize()
@@ -312,14 +422,27 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
             done = true
             if (ship.hp <= 0 && !ship.dying) {
               ship.dying = true; ship.alive = false
-              ship.driftVel = new THREE.Vector3(CRUISE_SPEED * 0.25 + (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.6)
+              ship.driftVel = new THREE.Vector3((Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.6)
               wreck = { t: 0, blastCd: 0, final: false }
             }
           } else if (bo.life > bo.max) done = true
           if (done) { scene.remove(bo.mesh); bombs.splice(i, 1) }
         }
 
-        // ── FX updates ──────────────────────────────────────────────────────────
+        // ── Scout fighter warps out the moment the vessel is lost ────────────────
+        if (fighter && ship.dying && !fighterWarped) { fighterWarped = true; fighter.phase = 'warp'; fighter.t = 0; endScanFX() }
+        if (fighter && fighter.phase === 'warp') {
+          fighter.t += dt
+          const accel = 30 + fighter.t * 220
+          fighter.pos.addScaledVector(fighter.warpDir, accel * dt)
+          fighter.group.position.copy(fighter.pos)
+          orient(fighter.group, fighter.warpDir, 1 - Math.exp(-8 * dt))
+          const stretch = 1 + fighter.t * 16
+          fighter.group.scale.set(1, 1, stretch)
+          if (fighter.t > 0.5) { scene.remove(fighter.group); fighter = null }
+        }
+
+        // ── FX updates ───────────────────────────────────────────────────────────
         for (let i = blasts.length - 1; i >= 0; i--) {
           const x = blasts[i]; x.life += dt; const k = x.life / x.max
           x.fire.scale.setScalar((0.3 + k * 3.4) * x.s); x.fmat.color.setRGB(1, 0.85 - k * 0.55, 0.5 - k * 0.45); x.fmat.opacity = Math.max(0, 1 - k)
@@ -339,10 +462,10 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
           if (tr.life >= tr.max) { scene.remove(tr.mesh); tr.mat.dispose(); trails.splice(i, 1) }
         }
 
-        // camera rides with the ship
+        // camera rides with the vessel, easing toward a two-shot once alongside
         _v.copy(ship.pos).add(CAM_OFF)
         camera.position.lerp(_v, 1 - Math.exp(-3 * dt))
-        camera.lookAt(ship.pos.x + 8, ship.pos.y, ship.pos.z)
+        camTarget.lerp(lookGoal(), 1 - Math.exp(-3 * dt)); camera.lookAt(camTarget)
 
         composer.render()
         raf = requestAnimationFrame(frame)
@@ -350,7 +473,7 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
 
       composer = new EffectComposer(renderer)
       composer.addPass(new RenderPass(scene, camera))
-      composer.addPass(new UnrealBloomPass(new THREE.Vector2(w, h), 0.9, 0.6, 0.2))
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(w, h), 0.6, 0.5, 0.25))
       frame()
 
       const onResize = () => {
@@ -362,6 +485,8 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
       return () => {
         cancelAnimationFrame(raf); ro.disconnect()
         disposables.forEach(d => d.dispose && d.dispose())
+        aleph.traverse(n => { n.geometry?.dispose?.(); if (n.material) (Array.isArray(n.material) ? n.material : [n.material]).forEach(m => m.dispose()) })
+        endScanFX()
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
         puffs.forEach(p => p.mat.dispose()); embers.forEach(e => e.mat.dispose()); trails.forEach(tr => tr.mat.dispose())
         bombs.forEach(b => scene.remove(b.mesh))
@@ -376,7 +501,7 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
 
   return (
     <div id="cutscene-screen">
-      <HudHeader onLogout={onReturn} right={<span className="label">CUTSCENE / SUPPLY RUN</span>} />
+      <HudHeader onLogout={onReturn} right={<span className="label">CUTSCENE / FIRST CONTACT</span>} />
       <div className="sb-stage">
         <div className="sb-canvas" ref={mountRef} />
 
@@ -393,13 +518,12 @@ export default function CutsceneScreen({ onReturn, onComplete }) {
         {!showUrgent && <button className="cut-replay" onClick={() => setResetKey(k => k + 1)}>⟳ REPLAY</button>}
       </div>
 
-      {/* fade the whole screen to black before the transmission */}
       <div className={`cut-fade${fadeBlack ? ' cut-fade--on' : ''}`} />
 
       {showUrgent && (
         <UrgentMessageOverlay
           sender="Admiralty Command"
-          body="One of our ships has just been ambushed by unknown attackers. Activating the fleet now. Get ready to command, Admiral."
+          body="We've had an urgent distress call from the Science Vessel Cassiopeia, on a classified mission. They've called for immediate assistance. Get ready to deploy the fleet."
           dismissLabel="TO BATTLE"
           onClose={() => (onComplete ?? onReturn)?.()}
         />

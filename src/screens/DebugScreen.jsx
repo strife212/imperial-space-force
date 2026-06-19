@@ -30,6 +30,7 @@ const SCREENS_COL2 = [
   { key: 'battle',          label: 'Space Battle Simulation'   },
   { key: 'vistest',         label: 'Combat Visual Test'        },
   { key: 'cutscene',        label: 'Cutscene — Supply Run'     },
+  { key: 'cutscene-aleph',  label: 'Cutscene — First Contact'  },
 ]
 
 const FLAG_LABELS = {
