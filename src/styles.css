@@ -3346,6 +3346,41 @@ body {
   color: rgba(106, 173, 245, 0.7);
 }
 
+/* Pin the start-screen button column to the full container width so revealing
+   the (longer) narrative-story label doesn't widen the buttons. */
+.start-content { width: 100%; }
+
+/* "Extra Content" disclosure toggle — reveals the narrative-story section */
+.start-bonus {
+  margin-top: 26px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  color: rgba(106, 173, 245, 0.7);
+  transition: color 0.15s;
+}
+.start-bonus:hover { color: #fff; }
+.start-bonus-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.start-bonus-arrow {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid currentColor;
+  transition: transform 0.2s ease;
+}
+.start-bonus--open .start-bonus-arrow { transform: rotate(180deg); }
+
 .menu-btn {
   width: 100%;
   background: transparent;
@@ -3368,6 +3403,24 @@ body {
   border-color: rgba(60,160,255,0.95);
   color: #fff;
   box-shadow: 0 0 20px rgba(26,100,255,0.3);
+}
+
+/* Subtle pulsing glow marking the default choice (Skirmish Battle) */
+.menu-btn--pulse {
+  animation: menu-btn-pulse 2.4s ease-in-out infinite;
+}
+.menu-btn--pulse:hover {
+  animation: none;   /* hover takes over with the standard primary glow */
+}
+@keyframes menu-btn-pulse {
+  0%, 100% {
+    border-color: rgba(60,120,255,0.7);
+    box-shadow: 0 0 5px rgba(60,140,255,0.12);
+  }
+  50% {
+    border-color: rgba(80,170,255,0.95);
+    box-shadow: 0 0 16px rgba(60,150,255,0.4);
+  }
 }
 
 .menu-btn--disabled {
