@@ -146,7 +146,7 @@ export default function App() {
       <div className="crt-overlay" />
       <div className="scanlines" />
       <div className="vignette" />
-      {screen === 'home'    && <StartScreen onCampaign={() => { setCutsceneSource('home'); setScreen('cutscene') }} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
+      {screen === 'home'    && <StartScreen onCampaign={() => { setCutsceneSource('home'); setScreen('cutscene-aleph') }} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onBack={() => setScreen('home')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}
