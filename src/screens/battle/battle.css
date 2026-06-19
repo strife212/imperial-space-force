@@ -1053,10 +1053,13 @@
 .sb-comms-em--blue { color: var(--c-scarlet); font-weight: 700; text-shadow: 0 0 8px rgba(26, 128, 255, 0.5); }
 .sb-comms-em--red  { color: var(--c-bad);     font-weight: 700; text-shadow: 0 0 8px rgba(255, 36, 0, 0.45); }
 
-/* Cutscene dialogue: reserve room for up to three lines so the box keeps a
-   constant height — the speaker name stays put instead of jumping as the line
-   count varies or the text types itself in. */
+/* Cutscene dialogue: a wider box (with a non-wrapping speaker name, so long
+   ship titles stay on one line) and reserved room for up to three lines so the
+   box keeps a constant height — the name stays put instead of jumping as the
+   line count varies or the text types itself in. */
+#cutscene-screen .sb-comms { width: min(580px, 92%); }
 #cutscene-screen .sb-comms-body { justify-content: flex-start; }
+#cutscene-screen .sb-comms-name { white-space: nowrap; }
 #cutscene-screen .sb-comms-text { min-height: 4.2em; }
 
 /* ── Third-person tracking banner + return button (top-centre) ──────────── */

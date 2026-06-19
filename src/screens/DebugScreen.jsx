@@ -31,6 +31,7 @@ const SCREENS_COL2 = [
   { key: 'vistest',         label: 'Combat Visual Test'        },
   { key: 'cutscene',        label: 'Cutscene — Supply Run'     },
   { key: 'cutscene-aleph',  label: 'Cutscene — First Contact'  },
+  { key: 'cutscene-fleet',  label: 'Cutscene — Fleet Review'    },
 ]
 
 const FLAG_LABELS = {
