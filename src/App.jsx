@@ -16,9 +16,8 @@ import BlackHoleScreen from './screens/legacy/BlackHoleScreen'
 import PowerManagementScreen from './screens/legacy/PowerManagementScreen'
 import SpaceBattleScreen from './screens/SpaceBattleScreen'
 import VisualTestScreen from './screens/VisualTestScreen'
-import CutsceneScreen from './screens/CutsceneScreen'
-import CutsceneAlephScreen from './screens/CutsceneAlephScreen'
-import CutsceneFleetScreen from './screens/CutsceneFleetScreen'
+import Cutscene from './screens/cutscene/Cutscene'
+import { SCENES } from './screens/cutscene/scenes'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import UrgentMessageOverlay from './components/UrgentMessageOverlay'
@@ -163,9 +162,9 @@ export default function App() {
       {screen === 'blackhole'       && <BlackHoleScreen onReturn={() => setScreen(blackholeSource)} initialYield={bhYield} onPower={(out, yld) => { setBhOutput(out); setBhYield(yld); if (out > 1) triggerFlag('penroseActivated') }} {...mailProps} />}
       {screen === 'battle'          && <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />}
       {screen === 'vistest'         && <VisualTestScreen onReturn={() => setScreen('debug')} />}
-      {screen === 'cutscene'        && <CutsceneScreen onReturn={() => setScreen(cutsceneSource)} onComplete={() => { setBattleSource(cutsceneSource); setScreen('battle') }} />}
-      {screen === 'cutscene-aleph'  && <CutsceneAlephScreen onReturn={() => setScreen(cutsceneSource)} onComplete={() => { setBattleSource(cutsceneSource); setScreen('battle') }} />}
-      {screen === 'cutscene-fleet'  && <CutsceneFleetScreen onReturn={() => setScreen(cutsceneSource)} />}
+      {screen === 'cutscene'        && <Cutscene scene={SCENES.supplyRun}    onReturn={() => setScreen(cutsceneSource)} onComplete={() => { setBattleSource(cutsceneSource); setScreen('battle') }} />}
+      {screen === 'cutscene-aleph'  && <Cutscene scene={SCENES.firstContact} onReturn={() => setScreen(cutsceneSource)} onComplete={() => { setBattleSource(cutsceneSource); setScreen('battle') }} />}
+      {screen === 'cutscene-fleet'  && <Cutscene scene={SCENES.fleetReview}  onReturn={() => setScreen(cutsceneSource)} />}
       {screen === 'power'           && <PowerManagementScreen onReactor={() => { setReactorSource('power'); setScreen('reactor') }} onBlackHole={() => { setBlackholeSource('power'); setScreen('blackhole') }} onReturn={() => setScreen(powerSource)} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} {...mailProps} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
 
