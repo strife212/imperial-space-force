@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import { TEAMS, BOMBER_SCALE } from '../battle/constants'
-import { buildBlueCapital, buildRedBomber } from '../battle/geometry'
+import {
+  buildBlueCapital, buildRedCapital, buildBlueModel, buildRedModel,
+  buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser,
+} from '../battle/geometry'
 
 const yAxis = new THREE.Vector3(0, 1, 0)
 const WRECK_DEATH_DUR = 1.8
@@ -72,6 +75,37 @@ export function createFlagship(ctx, { scale = 3.2, hp = 60, deathDrift = 0, onDe
     }
   }
   return { group, ship, damage, tick }
+}
+
+// Build a fleet formation as one group: a flagship at the centre, fighters in an
+// escort ring, bombers in a block behind, cruisers on the flanks — all facing +X
+// with engine glows. Returns { group, ships } (ships = flat list of child groups,
+// so a scene can drift them or fire from random ones). One geometry/material per
+// type, shared across that fleet's ships.
+export function buildFleet(ctx, { team = 'blue', fighters = 18, bombers = 0, cruisers = 0, capital = true, ringR = 20 } = {}) {
+  const { scene, fx, orient } = ctx
+  const blue = team === 'blue'
+  const geoCap = blue ? buildBlueCapital() : buildRedCapital()
+  const geoFighter = blue ? buildBlueModel() : buildRedModel()
+  const geoBomber = blue ? buildBlueBomber() : buildRedBomber()
+  const geoCruiser = blue ? buildBlueCruiser() : buildRedCruiser()
+  const hullMat = new THREE.MeshStandardMaterial({ color: TEAMS[team].color, emissive: TEAMS[team].color, emissiveIntensity: 0.5, metalness: 0.6, roughness: 0.38 })
+  const group = new THREE.Group(); scene.add(group)
+  const ships = []
+  const FWD = new THREE.Vector3(1, 0, 0)
+  const add = (geo, scale, rear, x, y, z) => {
+    const g = new THREE.Group(); g.add(new THREE.Mesh(geo, hullMat))
+    const glow = new THREE.Mesh(fx.blastGeo, fx.glowMat[team]); glow.scale.setScalar(0.42); glow.position.set(0, 0, -rear); g.add(glow)
+    g.scale.setScalar(scale); g.position.set(x, y, z); orient(g, FWD); group.add(g); ships.push(g)
+  }
+  if (capital) add(geoCap, 3.2, 3.1, 0, 0, 0)
+  for (let i = 0; i < fighters; i++) {
+    const a = (i / Math.max(1, fighters)) * Math.PI * 2, r = ringR + (Math.random() - 0.5) * 6
+    add(geoFighter, 1.0, 0.95, Math.cos(a) * r, (Math.random() - 0.5) * 8, Math.sin(a) * r)
+  }
+  for (let i = 0; i < bombers; i++) add(geoBomber, 1.43, 1.4, -34 - Math.floor(i / 5) * 7, (Math.random() - 0.5) * 6, ((i % 5) - 2) * 9)
+  for (let i = 0; i < cruisers; i++) { const side = i % 2 ? 1 : -1, k = Math.floor(i / 2); add(geoCruiser, 1.7, 1.5, (k - 1.5) * 9, 0, side * (30 + (Math.random() - 0.5) * 4)) }
+  return { group, ships, hullMat }
 }
 
 // A wing of red bombers that warps in around a point and bombards a flagship

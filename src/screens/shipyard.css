@@ -1,0 +1,184 @@
+/* ── Shipyard / Fleet Command ─────────────────────────────────────────────── */
+#shipyard-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(20, 60, 130, 0.18), transparent 60%),
+    #02040a;
+}
+.sy-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px clamp(16px, 4vw, 56px) 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--font-mono);
+}
+
+/* operation bar */
+.sy-opbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--c-line-2);
+  background: rgba(6, 14, 30, 0.6);
+  padding: 12px 18px;
+  border-radius: 3px;
+}
+.sy-op { display: flex; flex-direction: column; gap: 3px; }
+.sy-op-num { font-size: 10px; letter-spacing: 0.28em; color: var(--c-ash-dim); }
+.sy-op-title {
+  font-size: 20px; font-weight: 800; letter-spacing: 0.06em;
+  color: var(--c-ash); text-transform: uppercase;
+  display: flex; align-items: center; gap: 12px;
+}
+.sy-op-finale {
+  font-size: 11px; letter-spacing: 0.16em; color: #ffd24a;
+  text-shadow: 0 0 10px rgba(255, 200, 80, 0.5);
+}
+.sy-credits { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.sy-credits-val {
+  font-size: 26px; font-weight: 800; color: #ffd24a; letter-spacing: 0.04em;
+  text-shadow: 0 0 14px rgba(255, 200, 80, 0.45);
+}
+.sy-credits-label { font-size: 9px; letter-spacing: 0.26em; color: var(--c-ash-dim); }
+
+.sy-brief {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+  color: var(--c-pink);
+  border-left: 2px solid var(--c-scarlet);
+  padding: 4px 0 4px 14px;
+}
+
+/* two-column matchup */
+.sy-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .sy-cols { grid-template-columns: 1fr; } }
+
+.sy-panel {
+  border: 1px solid var(--c-line-2);
+  background: rgba(4, 10, 22, 0.66);
+  border-radius: 3px;
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sy-panel--blue { border-color: rgba(40, 110, 220, 0.45); box-shadow: inset 0 0 30px rgba(26, 96, 200, 0.08); }
+.sy-panel--red  { border-color: rgba(220, 60, 40, 0.4);  box-shadow: inset 0 0 30px rgba(200, 40, 20, 0.07); }
+
+.sy-panel-head { display: flex; align-items: baseline; justify-content: space-between; }
+.sy-panel-head h2 {
+  margin: 0; font-size: 13px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+}
+.sy-panel--blue h2 { color: var(--c-scarlet); }
+.sy-panel--red  h2 { color: var(--c-bad); }
+.sy-strength { font-size: 11px; letter-spacing: 0.12em; font-weight: 700; }
+.sy-strength--good  { color: #5fe6a0; }
+.sy-strength--even  { color: var(--c-ember); }
+.sy-strength--bad   { color: var(--c-bad); }
+.sy-strength--enemy { color: rgba(255, 150, 130, 0.9); }
+
+/* flagship card */
+.sy-flagship {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-line-2);
+  border-radius: 2px;
+  background: rgba(10, 20, 44, 0.5);
+}
+.sy-flagship--red { background: rgba(40, 12, 10, 0.4); }
+.sy-flagship .sb-sprite { height: 46px; width: auto; }
+.sy-flagship-info { display: flex; flex-direction: column; gap: 2px; }
+.sy-flagship-prefix { font-size: 9px; letter-spacing: 0.3em; color: var(--c-ash-dim); }
+.sy-flagship-name { font-size: 14px; font-weight: 700; letter-spacing: 0.04em; color: var(--c-ash); }
+.sy-flagship-class { font-size: 9px; letter-spacing: 0.2em; color: var(--c-ash-dim); text-transform: uppercase; }
+
+/* ship rows */
+.sy-row {
+  display: flex; flex-direction: column; gap: 7px;
+  padding: 9px 2px;
+  border-top: 1px solid var(--c-line);
+}
+.sy-row-head { display: flex; align-items: center; justify-content: space-between; }
+.sy-row-label {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-ash);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.sy-row-count { font-size: 13px; font-weight: 700; color: var(--c-rose); }
+.sy-panel--red .sy-row-count { color: rgba(255, 150, 130, 0.95); }
+
+.sy-sprites { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; min-height: 22px; }
+.sy-sprites .sb-sprite { height: 18px; width: auto; }
+.sy-sprites--empty { font-size: 10px; letter-spacing: 0.18em; color: var(--c-ash-dim); }
+.sy-sprites-more { font-size: 11px; font-weight: 700; color: var(--c-ash-dim); letter-spacing: 0.06em; }
+
+.sy-row-buy { display: flex; align-items: center; gap: 10px; }
+.sy-btn {
+  width: 30px; height: 26px;
+  border-radius: 2px;
+  font-size: 16px; font-weight: 700; line-height: 1;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+}
+.sy-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.sy-btn--buy {
+  background: rgba(60, 200, 140, 0.1); border: 1px solid rgba(80, 220, 160, 0.55); color: #7df0c0;
+}
+.sy-btn--buy:not(:disabled):hover { background: rgba(60, 200, 140, 0.22); box-shadow: 0 0 12px rgba(60, 200, 150, 0.4); }
+.sy-btn--sell {
+  background: rgba(255, 120, 120, 0.07); border: 1px solid rgba(255, 130, 110, 0.4); color: rgba(255, 180, 170, 0.9);
+}
+.sy-btn--sell:not(:disabled):hover { background: rgba(255, 120, 120, 0.18); }
+.sy-cost {
+  min-width: 64px; text-align: center;
+  font-size: 11px; letter-spacing: 0.08em; color: #ffd24a;
+}
+
+.sy-row--intel { opacity: 0.95; }
+
+.sy-odds {
+  margin-top: auto;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; border-radius: 2px;
+  border: 1px solid var(--c-line-2);
+}
+.sy-odds-label { font-size: 9px; letter-spacing: 0.24em; color: var(--c-ash-dim); }
+.sy-odds-val { font-size: 13px; font-weight: 800; letter-spacing: 0.14em; }
+.sy-odds--good { border-color: rgba(80, 220, 160, 0.4); }
+.sy-odds--good .sy-odds-val { color: #5fe6a0; text-shadow: 0 0 10px rgba(80, 220, 160, 0.4); }
+.sy-odds--even { border-color: rgba(255, 140, 0, 0.4); }
+.sy-odds--even .sy-odds-val { color: var(--c-ember); }
+.sy-odds--bad  { border-color: rgba(255, 36, 0, 0.45); }
+.sy-odds--bad .sy-odds-val { color: var(--c-bad); text-shadow: 0 0 10px rgba(255, 40, 0, 0.4); }
+
+/* actions */
+.sy-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 2px; }
+.sy-back {
+  background: none; border: 1px solid var(--c-line-2); color: var(--c-ash-dim);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 11px 20px; border-radius: 2px; cursor: pointer; transition: color 0.15s, border-color 0.15s;
+}
+.sy-back:hover { color: var(--c-ash); border-color: var(--c-rose); }
+.sy-deploy {
+  flex: 0 0 auto;
+  background: rgba(120, 180, 255, 0.1);
+  border: 1px solid rgba(120, 180, 255, 0.6);
+  color: #eaf4ff;
+  font-family: var(--font-mono);
+  font-size: 14px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
+  padding: 13px 40px; border-radius: 2px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.sy-deploy:hover {
+  background: rgba(120, 180, 255, 0.22);
+  border-color: rgba(160, 210, 255, 0.95);
+  box-shadow: 0 0 22px rgba(80, 150, 230, 0.5);
+}

@@ -13,6 +13,7 @@ export function createFX(scene) {
   const ringGeo = new THREE.RingGeometry(0.62, 1.0, 24)
   const bombGeo = new THREE.BoxGeometry(0.6, 1.5, 0.2)
   const trailGeo = new THREE.CylinderGeometry(1, 1, 1, 6)
+  const boltGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.6, 6)
   const glowMat = {
     blue: new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
     red:  new THREE.MeshBasicMaterial({ color: TEAMS.red.bolt,  transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -20,7 +21,7 @@ export function createFX(scene) {
   const bombMat = new THREE.MeshBasicMaterial({ color: 0xffb030, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
   const smokeProto = new THREE.MeshBasicMaterial({ color: 0x8c8c8c, transparent: true, opacity: 0.5, depthWrite: false })
 
-  const blasts = [], puffs = [], embers = [], trails = []
+  const blasts = [], puffs = [], embers = [], trails = [], bolts = []
   const _d = new THREE.Vector3(), _n = new THREE.Vector3()
 
   // expanding fireball + shockwave ring
@@ -52,6 +53,14 @@ export function createFX(scene) {
     m.scale.set(0.6, len, 0.6); scene.add(m)
     trails.push({ mesh: m, mat, life: 0, max: 0.5 })
   }
+  // a travelling laser bolt that streaks from → to, then pops a small blast
+  const bolt = (from, to, color, { speed = 80, blastOnHit = true } = {}) => {
+    _d.subVectors(to, from); const dist = _d.length(); if (dist < 1e-3) return
+    _n.copy(_d).multiplyScalar(1 / dist)
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
+    const m = new THREE.Mesh(boltGeo, mat); m.position.copy(from); m.quaternion.setFromUnitVectors(yAxis, _n); m.scale.set(1, 2.4, 1); scene.add(m)
+    bolts.push({ mesh: m, mat, dir: _n.clone(), to: to.clone(), dist, travelled: 0, speed, blastOnHit })
+  }
   // a gap-throttled trail emitter (e.g. for a warp-in streak): returns emit(pos)
   const makeTrail = (color, gap = 6) => {
     let prev = null
@@ -82,6 +91,11 @@ export function createFX(scene) {
       const tr = trails[i]; tr.life += dt; tr.mat.opacity = Math.max(0, 0.55 * (1 - tr.life / tr.max))
       if (tr.life >= tr.max) { scene.remove(tr.mesh); tr.mat.dispose(); trails.splice(i, 1) }
     }
+    for (let i = bolts.length - 1; i >= 0; i--) {
+      const b = bolts[i]; const step = b.speed * dt; b.travelled += step
+      b.mesh.position.addScaledVector(b.dir, step)
+      if (b.travelled >= b.dist) { if (b.blastOnHit) blast(b.to, false); scene.remove(b.mesh); b.mat.dispose(); bolts.splice(i, 1) }
+    }
   }
 
   const dispose = () => {
@@ -89,10 +103,11 @@ export function createFX(scene) {
     puffs.forEach(p => { scene.remove(p.mesh); p.mat.dispose() })
     embers.forEach(e => { scene.remove(e.mesh); e.mat.dispose() })
     trails.forEach(t => { scene.remove(t.mesh); t.mat.dispose() })
-    blasts.length = puffs.length = embers.length = trails.length = 0
-    blastGeo.dispose(); ringGeo.dispose(); bombGeo.dispose(); trailGeo.dispose()
+    bolts.forEach(b => { scene.remove(b.mesh); b.mat.dispose() })
+    blasts.length = puffs.length = embers.length = trails.length = bolts.length = 0
+    blastGeo.dispose(); ringGeo.dispose(); bombGeo.dispose(); trailGeo.dispose(); boltGeo.dispose()
     glowMat.blue.dispose(); glowMat.red.dispose(); bombMat.dispose(); smokeProto.dispose()
   }
 
-  return { blastGeo, ringGeo, bombGeo, trailGeo, glowMat, bombMat, blast, smoke, ember, trailSeg, makeTrail, update, dispose }
+  return { blastGeo, ringGeo, bombGeo, trailGeo, boltGeo, glowMat, bombMat, blast, smoke, ember, trailSeg, makeTrail, bolt, update, dispose }
 }

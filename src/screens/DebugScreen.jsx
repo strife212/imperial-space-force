@@ -29,9 +29,24 @@ const SCREENS_COL2 = [
   { key: 'blackhole',       label: 'Black Hole Visualisation'  },
   { key: 'battle',          label: 'Space Battle Simulation'   },
   { key: 'vistest',         label: 'Combat Visual Test'        },
-  { key: 'cutscene',        label: 'Cutscene — Supply Run'     },
-  { key: 'cutscene-aleph',  label: 'Cutscene — First Contact'  },
-  { key: 'cutscene-fleet',  label: 'Cutscene — Fleet Review'    },
+  { key: 'campaign-map',    label: 'Campaign Map'              },
+  { key: 'shipyard',        label: 'Shipyard (Fleet Command)'  },
+  { key: 'campaign',        label: 'Story Campaign (1 → 10)'   },
+  { key: 'reset-campaign',  label: 'Reset Campaign Progress'   },
+]
+
+// The story cutscenes, in order (played individually from the debug screen)
+const CUTSCENES = [
+  { key: 'cut:firstContact',     label: '1 · First Contact'    },
+  { key: 'cut:muster',           label: '2 · The Muster'       },
+  { key: 'cut:warfront',         label: '3 · The Warfront'     },
+  { key: 'cut:theHush',          label: '4 · The Hush'         },
+  { key: 'cut:theLitany',        label: '5 · The Great Litany' },
+  { key: 'cut:theFall',          label: '6 · The Fall'         },
+  { key: 'cut:theResolve',       label: '7 · The Final Hearing' },
+  { key: 'cut:theAnnunciator',   label: '8 · The Annunciator'  },
+  { key: 'cut:theLance',         label: '9 · The Lance'        },
+  { key: 'cut:theOrderRestored', label: '10 · Order Restored'  },
 ]
 
 const FLAG_LABELS = {
@@ -89,6 +104,7 @@ export default function DebugScreen({ onNavigate, onDebugMain, onDebugAttack, on
           {/* Column 2 — screens + shortcuts */}
           <ul className="debug-list">
             {SCREENS_COL2.map(screenBtn)}
+            {CUTSCENES.map(screenBtn)}
             <li>
               <button className="debug-item debug-item--shortcut" onClick={onDebugFail}>
                 <span className="debug-item-key">[✕]</span>

@@ -1,0 +1,95 @@
+/* ── Campaign map ─────────────────────────────────────────────────────────── */
+#campaign-map {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #02040a;
+}
+.cmap-stage { position: relative; flex: 1 1 auto; min-height: 0; }
+.cmap-canvas { position: absolute; inset: 0; }
+
+/* node labels — positioned over each 3D node by the render loop */
+.cmap-label {
+  position: absolute;
+  top: 0; left: 0;
+  width: 150px;                /* centred via the transform's translate(-50%) */
+  text-align: center;
+  font-family: var(--font-mono);
+  pointer-events: none;
+  will-change: transform;
+  transition: opacity 0.2s;
+}
+.cmap-num {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--c-ash-dim);
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  background: rgba(2, 6, 18, 0.55);
+}
+/* title + state are hidden by default; revealed for the active and hovered nodes */
+.cmap-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-ash);
+  margin-top: 3px;
+  display: none;
+}
+.cmap-state {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  margin-top: 2px;
+  display: none;
+}
+.cmap-label--active .cmap-title, .cmap-label--active .cmap-state,
+.cmap-label--show .cmap-title,   .cmap-label--show .cmap-state { display: block; }
+
+.cmap-label--done   .cmap-num   { color: var(--c-rose); }
+.cmap-label--active .cmap-num   { color: #ffd24a; box-shadow: 0 0 12px rgba(255, 200, 80, 0.5); }
+.cmap-label--active .cmap-title { color: #fff; text-shadow: 0 0 10px rgba(255, 200, 80, 0.5); }
+.cmap-label--active .cmap-state { color: #ffd24a; text-shadow: 0 0 8px rgba(255, 200, 80, 0.6); animation: cmap-blink 1.3s steps(1) infinite; }
+.cmap-label--done   .cmap-state { color: var(--c-rose); }
+.cmap-label--locked .cmap-state { color: var(--c-ash-dim); }
+@keyframes cmap-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0.45; } }
+
+/* persistent campaign economy readout (top-left of the map) */
+.cmap-hud {
+  position: absolute;
+  top: 16px; left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
+.cmap-hud-credits { display: flex; flex-direction: column; gap: 1px; }
+.cmap-hud-val {
+  font-size: 22px; font-weight: 800; letter-spacing: 0.04em;
+  color: #ffd24a; text-shadow: 0 0 14px rgba(255, 200, 80, 0.45);
+}
+.cmap-hud-label { font-size: 8.5px; letter-spacing: 0.26em; color: var(--c-ash-dim); }
+.cmap-hud-fleet {
+  display: flex; flex-direction: column; gap: 2px;
+  border-left: 2px solid rgba(80, 130, 210, 0.5);
+  padding-left: 9px;
+}
+.cmap-hud-fleet-title { font-size: 8.5px; letter-spacing: 0.24em; color: var(--c-ash-dim); }
+.cmap-hud-fleet-line { font-size: 11px; letter-spacing: 0.06em; color: var(--c-rose); }
+
+.cmap-hint {
+  position: absolute;
+  bottom: 18px; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(150, 180, 220, 0.55);
+  pointer-events: none;
+}

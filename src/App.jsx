@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getFlags, setFlag } from './lib/store'
+import { getFlags, getFlag, setFlag } from './lib/store'
 import StartScreen from './screens/StartScreen'
 import LoginScreen from './screens/legacy/LoginScreen'
 import BootScreen from './screens/legacy/BootScreen'
@@ -17,7 +17,10 @@ import PowerManagementScreen from './screens/legacy/PowerManagementScreen'
 import SpaceBattleScreen from './screens/SpaceBattleScreen'
 import VisualTestScreen from './screens/VisualTestScreen'
 import Cutscene from './screens/cutscene/Cutscene'
-import { SCENES } from './screens/cutscene/scenes'
+import { SCENES, STORY } from './screens/cutscene/scenes'
+import CampaignMap from './screens/CampaignMap'
+import ShipyardScreen from './screens/ShipyardScreen'
+import { NODE_BATTLES, getFleet, getFlagshipName, recordBattle, resetCampaign } from './lib/campaign'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import UrgentMessageOverlay from './components/UrgentMessageOverlay'
@@ -65,6 +68,9 @@ export default function App() {
   const [powerSource,       setPowerSource]       = useState('debug')
   const [battleSource,      setBattleSource]      = useState('debug')
   const [cutsceneSource,    setCutsceneSource]    = useState('debug')
+  const [cutsceneId,        setCutsceneId]        = useState('firstContact')   // which cutscene is showing
+  const [cutsceneChain,     setCutsceneChain]     = useState(false)            // advance through STORY on complete
+  const [campaignNode,      setCampaignNode]      = useState(null)             // active campaign node: cutscene → shipyard → battle (null = not in campaign flow)
   const [bhOutput,          setBhOutput]          = useState(0)
   const [bhYield,           setBhYield]           = useState(0)
   const [messages,          setMessages]          = useState([])   // inbox fills on first main-panel visit
@@ -141,18 +147,50 @@ export default function App() {
   const markReplied = (id) => setRepliedIds(prev => new Set([...prev, id]))
   const mailProps   = { unreadCount, onMailOpen: () => { setMailOpen(true); setFlag('seenSelene', true) }, triggerFlag }
 
+  // Build the campaign-engagement config for a node: locked fleets (player from the
+  // persistent roster, enemy fixed for the node), plus result/exit/retry callbacks.
+  const exitCampaign = () => { setCampaignNode(null); setScreen('campaign-map') }
+  const campaignBattle = (i) => ({
+    nodeIndex:  i,
+    nodeTitle:  NODE_BATTLES[i].title,
+    enemyName:  NODE_BATTLES[i].enemyName,
+    enemyComp:  NODE_BATTLES[i].enemy,
+    playerComp: getFleet(),
+    flagshipName: getFlagshipName(),
+    reward:     NODE_BATTLES[i].reward,
+    onResolve:  (won) => recordBattle(i, won),   // banks Requisition + unlocks next node (once)
+    onExit:     exitCampaign,
+    onRetry:    () => setScreen('shipyard'),      // rebuild the fleet, then re-deploy
+  })
+  // Enter a campaign node from the map: replays skip straight to the shipyard;
+  // a first run plays the story cutscene first.
+  const playCampaignNode = (i) => {
+    setCampaignNode(i)
+    const completed = getFlag('campaignProgress') || 0
+    if (i < completed) { setScreen('shipyard'); return }
+    setCutsceneId(STORY[i]); setCutsceneSource('campaign'); setCutsceneChain(false); setScreen('cutscene')
+  }
+
   return (
     <>
       <div className="crt-overlay" />
       <div className="scanlines" />
       <div className="vignette" />
-      {screen === 'home'    && <StartScreen onCampaign={() => { setCutsceneSource('home'); setScreen('cutscene-aleph') }} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
+      {screen === 'home'    && <StartScreen onCampaign={() => setScreen('campaign-map')} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
+      {screen === 'campaign-map' && <CampaignMap onExit={() => setScreen('home')} onPlay={playCampaignNode} />}
+      {screen === 'shipyard'     && <ShipyardScreen nodeIndex={campaignNode ?? 0} onDeploy={() => setScreen('battle')} onExit={exitCampaign} />}
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onBack={() => setScreen('home')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}
       {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setCountdownSeconds(10); setScreen('monitor') }} onPower={() => { setPowerSource('main'); setScreen('power') }} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} onAdjustAntenna={() => setScreen('antenna')} antennaAligned={antennaAligned} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} targetIdx={targetIdx} countdownSeconds={countdownSeconds} underAttack={underAttack} onRadioFreq={(f) => { setRadioFreq(f); if (f === 9.2 && antennaAligned) setUnderAttack(true) }} radioFreq={radioFreq} {...mailProps} />}
       {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => { const imperial = !!TARGETS[targetIdx]?.system?.imperial; setGameOverFail(imperial); setScreen('gameover') }} onLogout={() => { const imperial = !!TARGETS[targetIdx]?.system?.imperial; setGameOverFail(imperial); setScreen('gameover') }} packageName={launchPackage} targetName={targetName} {...mailProps} />}
-      {screen === 'debug'     && <DebugScreen onNavigate={(s) => { if (s === 'targeting') setTargetingSource('debug'); if (s === 'reactor') setReactorSource('main'); if (s === 'blackhole') setBlackholeSource('debug'); if (s === 'power') setPowerSource('debug'); if (s === 'battle') setBattleSource('debug'); if (s === 'cutscene' || s === 'cutscene-aleph' || s === 'cutscene-fleet') setCutsceneSource('debug'); setGameOverFail(false); setUnderAttack(false); setScreen(s) }} onDebugMain={() => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(false); setScreen('main') }} onDebugAttack={() => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(true); setScreen('main') }} onDebugFail={() => { setGameOverFail(true); setScreen('gameover') }} />}
+      {screen === 'debug'     && <DebugScreen onNavigate={(s) => {
+          // cutscenes: `campaign` plays the whole story chain; `cut:<id>` plays one scene
+          if (s === 'reset-campaign') { resetCampaign(); setScreen('campaign-map'); return }
+          if (s === 'shipyard') { setCampaignNode(Math.min(NODE_BATTLES.length - 1, getFlag('campaignProgress') || 0)); setScreen('shipyard'); return }
+          if (s === 'campaign') { setCutsceneSource('debug'); setCutsceneId(STORY[0]); setCutsceneChain(true); setScreen('cutscene'); return }
+          if (s.startsWith('cut:')) { setCutsceneSource('debug'); setCutsceneId(s.slice(4)); setCutsceneChain(false); setScreen('cutscene'); return }
+          if (s === 'targeting') setTargetingSource('debug'); if (s === 'reactor') setReactorSource('main'); if (s === 'blackhole') setBlackholeSource('debug'); if (s === 'power') setPowerSource('debug'); if (s === 'battle') setBattleSource('debug'); setGameOverFail(false); setUnderAttack(false); setScreen(s) }} onDebugMain={() => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(false); setScreen('main') }} onDebugAttack={() => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(true); setScreen('main') }} onDebugFail={() => { setGameOverFail(true); setScreen('gameover') }} />}
       {screen === 'reactor'   && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); setScreen(reactorSource) }} onLogout={() => setScreen(reactorSource)} initialPlasma={plasmaLevel} {...mailProps} />}
       {screen === 'targeting' && <TargetingScreen onBack={(idx) => { setTargetIdx(idx); setScreen(targetingSource) }} initialSelectedIdx={targetIdx} {...mailProps} />}
       {screen === 'gameover'      && <GameOverScreen initialFlagCount={initialFlagCount} onEncyclopedia={() => goEncyclopedia('gameover')} fail={gameOverFail} targetName={targetName} />}
@@ -160,11 +198,16 @@ export default function App() {
       {screen === 'antenna'         && <AntennaAlignmentScreen onBack={() => setScreen('main')} onAlignComplete={() => { setAntennaAligned(true); triggerFlag('antennaAligned') }} {...mailProps} />}
       {screen === 'launch-sequence' && <LaunchSequenceScreen onReturn={() => setScreen('debug')} />}
       {screen === 'blackhole'       && <BlackHoleScreen onReturn={() => setScreen(blackholeSource)} initialYield={bhYield} onPower={(out, yld) => { setBhOutput(out); setBhYield(yld); if (out > 1) triggerFlag('penroseActivated') }} {...mailProps} />}
-      {screen === 'battle'          && <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />}
+      {screen === 'battle'          && (campaignNode !== null
+        ? <SpaceBattleScreen key={`camp-${campaignNode}`} campaign={campaignBattle(campaignNode)} onReturn={exitCampaign} />
+        : <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />)}
       {screen === 'vistest'         && <VisualTestScreen onReturn={() => setScreen('debug')} />}
-      {screen === 'cutscene'        && <Cutscene scene={SCENES.supplyRun}    onReturn={() => setScreen(cutsceneSource)} onComplete={() => { setBattleSource(cutsceneSource); setScreen('battle') }} />}
-      {screen === 'cutscene-aleph'  && <Cutscene scene={SCENES.firstContact} onReturn={() => setScreen(cutsceneSource)} onComplete={() => { setBattleSource(cutsceneSource); setScreen('battle') }} />}
-      {screen === 'cutscene-fleet'  && <Cutscene scene={SCENES.fleetReview}  onReturn={() => setScreen(cutsceneSource)} />}
+      {screen === 'cutscene'        && <Cutscene key={cutsceneId} scene={SCENES[cutsceneId]} onReturn={() => setScreen(cutsceneSource === 'campaign' ? 'campaign-map' : cutsceneSource)} onComplete={() => {
+          if (cutsceneSource === 'campaign') { setScreen('shipyard'); return }                // a campaign node: muster the fleet, then deploy
+          const i = STORY.indexOf(cutsceneId)
+          if (cutsceneChain && i >= 0 && i < STORY.length - 1) setCutsceneId(STORY[i + 1])   // next beat of the story (debug playthrough)
+          else setScreen(cutsceneSource)                                                      // single scene
+        }} />}
       {screen === 'power'           && <PowerManagementScreen onReactor={() => { setReactorSource('power'); setScreen('reactor') }} onBlackHole={() => { setBlackholeSource('power'); setScreen('blackhole') }} onReturn={() => setScreen(powerSource)} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} {...mailProps} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
 

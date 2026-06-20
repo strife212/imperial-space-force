@@ -18,10 +18,16 @@ import {
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
 import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop } from './battle/geometry'
+import { makeCampaignBackdrop } from './battle/campaignBackdrop'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
 import './battle/battle.css'
 
-export default function SpaceBattleScreen({ onReturn }) {
+// `campaign` (optional) turns this into a campaign engagement: both fleets are
+// locked (built in the shipyard beforehand), the flagship/enemy names are the
+// persistent campaign ones, the battle auto-starts, and resolving it reports the
+// result back so Requisition can be banked. Absent → the standalone skirmish.
+export default function SpaceBattleScreen({ onReturn, campaign = null }) {
+  const isCampaign = !!campaign
   const mountRef     = useRef(null)
   const blueCountRef = useRef(null)
   const redCountRef  = useRef(null)
@@ -36,21 +42,31 @@ export default function SpaceBattleScreen({ onReturn }) {
   useEffect(() => { simSpeedRef.current = simSpeed }, [simSpeed])
   const [pipCaption, setPipCaption] = useState(null)  // { team, text } — picture-in-picture event highlight
   const pipRef = useRef(null)                         // active PiP 3D state for the render loop
-  const [blueCapName, setBlueCapName] = useState(randomBlueCapName)  // blue flagship name (re-rollable on the briefing)
+  // blue flagship name: campaign uses the persistent fleet name; skirmish rolls a
+  // random one that can be re-rolled on the briefing
+  const [blueCapName, setBlueCapName] = useState(() => campaign?.flagshipName || randomBlueCapName())
   const blueCapNameRef = useRef(blueCapName)
   useEffect(() => { blueCapNameRef.current = blueCapName }, [blueCapName])
   const cycleBlueName = () => setBlueCapName(randomBlueCapName())
+  // red flagship name: campaign uses the node's enemy name; skirmish uses the default
+  const redCapName = campaign?.enemyName || RED_CAP_NAME
+  const redCapNameRef = useRef(redCapName)
+  useEffect(() => { redCapNameRef.current = redCapName }, [redCapName])
   const [winner, setWinner] = useState(null)   // null | 'BLUE' | 'RED' | 'DRAW'
   const [runId,  setRunId]  = useState(0)
   const [kills,  setKills]  = useState([])      // recent kill-feed entries
   const [stats,  setStats]  = useState(null)    // post-battle breakdown
   const [muted,  setMuted]  = useState(true)    // sound off by default
-  const [started, setStarted] = useState(false) // pre-battle briefing until START
-  // per-team fleet composition, customisable on the briefing within the 1000-point budget
-  const [comp, setComp] = useState({
-    blue: { fighters: FLEET_SIZE, bombers: BOMBER_COUNT, cruisers: CRUISER_COUNT },
-    red:  { fighters: FLEET_SIZE, bombers: BOMBER_COUNT, cruisers: CRUISER_COUNT },
-  })
+  const [started, setStarted] = useState(isCampaign) // campaign auto-starts (the shipyard was the briefing)
+  const [campResult, setCampResult] = useState(null) // campaign: banked outcome { award, won, firstClear, progress }
+  // per-team fleet composition. Skirmish: customisable on the briefing within the
+  // 1000-point budget. Campaign: locked to the fleets supplied by the shipyard.
+  const [comp, setComp] = useState(() => isCampaign
+    ? { blue: { ...campaign.playerComp }, red: { ...campaign.enemyComp } }
+    : {
+        blue: { fighters: FLEET_SIZE, bombers: BOMBER_COUNT, cruisers: CRUISER_COUNT },
+        red:  { fighters: FLEET_SIZE, bombers: BOMBER_COUNT, cruisers: CRUISER_COUNT },
+      })
   const compRef = useRef(comp)
   useEffect(() => { compRef.current = comp }, [comp])
   const adjustComp = (team, kind, delta) => setComp(c => {
@@ -312,6 +328,12 @@ export default function SpaceBattleScreen({ onReturn }) {
 
   useEffect(() => { audioRef.current?.setMuted(muted) }, [muted])
 
+  // ── Campaign: bank the outcome exactly once when the engagement resolves ──────
+  useEffect(() => {
+    if (!isCampaign || !winner || campResult) return
+    setCampResult(campaign.onResolve(winner === 'BLUE'))
+  }, [winner])   // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!started) return   // hold on the briefing until the player starts
     const mount = mountRef.current
@@ -327,7 +349,7 @@ export default function SpaceBattleScreen({ onReturn }) {
 
     // surface a capital broadcast (queued, typewriter + chirp), driven by battle events
     const showComms = (team, text, persist = false) => {
-      const name = team === 'blue' ? blueCapNameRef.current : RED_CAP_NAME
+      const name = team === 'blue' ? blueCapNameRef.current : redCapNameRef.current
       enqueueComms({ id: ++commsSeq.current, team, name, portrait: COMMS_PORTRAIT[team], text, segments: [{ text }], persist })
     }
 
@@ -386,7 +408,11 @@ export default function SpaceBattleScreen({ onReturn }) {
       // ── Background body — random type, placed somewhere on-screen up front ──────
       camera.lookAt(0, 0, 0)            // orient the camera so the unproject is correct
       camera.updateMatrixWorld()
-      const backdropTick = makeBackdrop(scene, disposables, lightDir, camera)
+      // campaign battles feature the node's signature cutscene object in the
+      // background; skirmishes get a random body
+      const backdropTick = isCampaign
+        ? makeCampaignBackdrop(scene, disposables, lightDir, camera, campaign.nodeIndex)
+        : makeBackdrop(scene, disposables, lightDir, camera)
 
       // ── Starfield (cool dim field + a few bright stars) ─────────────────────────
       const starCount = 1500
@@ -586,7 +612,7 @@ export default function SpaceBattleScreen({ onReturn }) {
         scene.add(mesh)
         ships.push({
           mesh, mat, team, hp: CAP_HP, alive: true, pos, vel,
-          name: team === 'blue' ? blueCapNameRef.current : RED_CAP_NAME,
+          name: team === 'blue' ? blueCapNameRef.current : redCapNameRef.current,
           labelEl:  team === 'blue' ? blueCapRef.current   : redCapRef.current,
           shieldEl: team === 'blue' ? blueShieldRef.current : redShieldRef.current,
           reserveEl: team === 'blue' ? blueReserveRef.current : redReserveRef.current,
@@ -1458,7 +1484,7 @@ export default function SpaceBattleScreen({ onReturn }) {
           // clear any pending battle chatter and broadcast the victor's line (persists until restart)
           const wTeam = c.blue > 0 ? 'blue' : c.red > 0 ? 'red' : null
           commsQueue.current = []; commsBusy.current = true
-          if (wTeam) { const segs = VICTORY_SEGMENTS[wTeam]; const wName = wTeam === 'blue' ? blueCapNameRef.current : RED_CAP_NAME; setComms({ id: ++commsSeq.current, team: wTeam, name: wName, portrait: COMMS_PORTRAIT[wTeam], text: segs.map(s => s.text).join(''), segments: segs, persist: true }) }
+          if (wTeam) { const segs = VICTORY_SEGMENTS[wTeam]; const wName = wTeam === 'blue' ? blueCapNameRef.current : redCapNameRef.current; setComms({ id: ++commsSeq.current, team: wTeam, name: wName, portrait: COMMS_PORTRAIT[wTeam], text: segs.map(s => s.text).join(''), segments: segs, persist: true }) }
           else setComms(null)
           const sumKills = team => ships.filter(s => s.team === team).reduce((a, s) => a + (s.kills || 0), 0)
           const cap = team => { const k = ships.find(s => s.isCapital && s.team === team); return { name: k.name, kills: k.kills || 0, alive: k.alive } }
@@ -1594,23 +1620,47 @@ export default function SpaceBattleScreen({ onReturn }) {
     }
   }, [runId, started])
 
-  const startBattle = () => { setWinner(null); setKills([]); setStats(null); setStarted(true); setRunId(k => k + 1) }
+  const startBattle = () => { setWinner(null); setKills([]); setStats(null); setCampResult(null); setStarted(true); setRunId(k => k + 1) }
   // restart the engagement immediately (fresh jump-in) without returning to the briefing
-  const restartCombat = () => { setWinner(null); setStats(null); setRunId(k => k + 1) }
+  const restartCombat = () => { setWinner(null); setStats(null); setCampResult(null); setRunId(k => k + 1) }
   // order the blue bomber wing to warp in (one-way; the loop picks up the ref)
   const callBombers = () => { callBombersRef.current = true; setBombersCalled(true) }
+
+  // shared post-battle breakdown (used by both the skirmish and campaign result panels)
+  const statsBlock = stats && (
+    <div className="sb-stats">
+      <div className="sb-stats-grid">
+        <span className="sb-stat-val sb-stat--blue">{stats.blueKills}</span>
+        <span className="sb-stat-mid">TOTAL KILLS</span>
+        <span className="sb-stat-val sb-stat--red">{stats.redKills}</span>
+        <span className="sb-stat-val sb-stat--blue">{stats.blueLeft}</span>
+        <span className="sb-stat-mid">SHIPS REMAINING</span>
+        <span className="sb-stat-val sb-stat--red">{stats.redLeft}</span>
+      </div>
+      <div className="sb-stat-caps">
+        <div className="sb-stat-cap">
+          <span className="sb-stat--blue">{stats.blueCap.name}</span>
+          <span className="sb-stat-cap-meta">{stats.blueCap.kills} KILLS · {stats.blueCap.alive ? 'SURVIVED' : 'DESTROYED'}</span>
+        </div>
+        <div className="sb-stat-cap">
+          <span className="sb-stat--red">{stats.redCap.name}</span>
+          <span className="sb-stat-cap-meta">{stats.redCap.kills} KILLS · {stats.redCap.alive ? 'SURVIVED' : 'DESTROYED'}</span>
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div id="battle-screen">
       <HudHeader
         onLogout={onReturn}
-        right={<span className="label">TAC-SIM / FLEET ENGAGEMENT</span>}
+        right={<span className="label">{isCampaign ? `OPERATION // ${campaign.nodeTitle}` : 'TAC-SIM / FLEET ENGAGEMENT'}</span>}
       />
 
       <div className="sb-stage">
         <div className="sb-canvas" ref={mountRef} />
 
-        {!started && (
+        {!started && !isCampaign && (
           <Briefing comp={comp} blueCapName={blueCapName} onCycleBlueName={cycleBlueName} onAdjust={adjustComp} onStart={startBattle} />
         )}
 
@@ -1620,7 +1670,7 @@ export default function SpaceBattleScreen({ onReturn }) {
           <div className="sb-cap-reserve" ref={blueReserveRef} style={{ display: 'none' }}></div>
         </div>
         <div className="sb-cap-label sb-cap-label--red" ref={redCapRef}>
-          <div className="sb-cap-name">{RED_CAP_NAME}</div>
+          <div className="sb-cap-name">{splitCapName(redCapName).name}</div>
           <div className="sb-cap-shield">SHIELD <span ref={redShieldRef}>100</span>%</div>
           <div className="sb-cap-reserve" ref={redReserveRef} style={{ display: 'none' }}></div>
         </div>
@@ -1634,9 +1684,9 @@ export default function SpaceBattleScreen({ onReturn }) {
             <span className="sb-score sb-score--red"><span ref={redCountRef} className="sb-count">{Math.min(FIELD_FIGHTER_CAP, comp.red.fighters) + comp.red.cruisers + 1}</span> RED FLEET</span>
           </div>
           <div className="sb-strength-row">
-            <span className="sb-strength sb-strength--blue">STRENGTH <span ref={blueStrengthRef}>{compStrength(comp.blue)}</span>/{FLEET_BUDGET}</span>
+            <span className="sb-strength sb-strength--blue">STRENGTH <span ref={blueStrengthRef}>{compStrength(comp.blue)}</span>{!isCampaign && `/${FLEET_BUDGET}`}</span>
             <div className="sb-power-bar"><div className="sb-power-bar-blue" ref={powerBarRef} /></div>
-            <span className="sb-strength sb-strength--red"><span ref={redStrengthRef}>{compStrength(comp.red)}</span>/{FLEET_BUDGET} STRENGTH</span>
+            <span className="sb-strength sb-strength--red"><span ref={redStrengthRef}>{compStrength(comp.red)}</span>{!isCampaign && `/${FLEET_BUDGET}`} STRENGTH</span>
           </div>
         </div>
 
@@ -1663,35 +1713,40 @@ export default function SpaceBattleScreen({ onReturn }) {
           </div>
         )}
 
-        {winner && (
+        {winner && isCampaign && (() => {
+          const won = winner === 'BLUE'
+          return (
+            <div className="sb-victory">
+              <div className="sb-victory-sub">{won ? 'SECTOR SECURED' : 'ENGAGEMENT LOST'}</div>
+              <div className={`sb-victory-title sb-victory-title--${won ? 'blue' : 'red'}`}>
+                {won ? 'VICTORY' : winner === 'DRAW' ? 'MUTUAL ANNIHILATION' : 'FLEET LOST'}
+              </div>
+              {statsBlock}
+              <div className="sb-reward-row">
+                {campResult && campResult.award > 0 && (
+                  <div className="sb-reward">
+                    <span className="sb-reward-val">+{campResult.award}</span>
+                    <span className="sb-reward-label">REQUISITION BANKED</span>
+                    {campResult.firstClear && <span className="sb-reward-unlock">▸ NEXT OPERATION UNLOCKED</span>}
+                  </div>
+                )}
+                <div className="sb-victory-btns">
+                  {!won && <button className="sb-restart sb-restart--ghost" onClick={() => campaign.onRetry()}>↻ RE-DEPLOY</button>}
+                  <button className="sb-restart" onClick={() => campaign.onExit()}>{won ? 'CONTINUE ▶' : '↩ WITHDRAW'}</button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
+        {winner && !isCampaign && (
           <div className="sb-victory">
             <div className="sb-victory-sub">ENGAGEMENT RESOLVED</div>
             <div className={`sb-victory-title sb-victory-title--${winner.toLowerCase()}`}>
               {winner === 'DRAW' ? 'MUTUAL ANNIHILATION' : `${winner} FLEET VICTORIOUS`}
             </div>
 
-            {stats && (
-              <div className="sb-stats">
-                <div className="sb-stats-grid">
-                  <span className="sb-stat-val sb-stat--blue">{stats.blueKills}</span>
-                  <span className="sb-stat-mid">TOTAL KILLS</span>
-                  <span className="sb-stat-val sb-stat--red">{stats.redKills}</span>
-                  <span className="sb-stat-val sb-stat--blue">{stats.blueLeft}</span>
-                  <span className="sb-stat-mid">SHIPS REMAINING</span>
-                  <span className="sb-stat-val sb-stat--red">{stats.redLeft}</span>
-                </div>
-                <div className="sb-stat-caps">
-                  <div className="sb-stat-cap">
-                    <span className="sb-stat--blue">{stats.blueCap.name}</span>
-                    <span className="sb-stat-cap-meta">{stats.blueCap.kills} KILLS · {stats.blueCap.alive ? 'SURVIVED' : 'DESTROYED'}</span>
-                  </div>
-                  <div className="sb-stat-cap">
-                    <span className="sb-stat--red">{stats.redCap.name}</span>
-                    <span className="sb-stat-cap-meta">{stats.redCap.kills} KILLS · {stats.redCap.alive ? 'SURVIVED' : 'DESTROYED'}</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {statsBlock}
 
             <button className="sb-restart" onClick={() => { setWinner(null); setKills([]); setStats(null); setComms(null); commsQueue.current = []; commsBusy.current = false; setStarted(false) }}>
               ⟳ NEW ENGAGEMENT

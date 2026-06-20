@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import { TEAMS } from '../../battle/constants'
-import { buildBlueModel, buildAleph } from '../../battle/geometry'
+import { buildBlueModel, buildAleph, makeGasGiant } from '../../battle/geometry'
 import { createFlagship, createBomberWing } from '../actors'
+import { asteroidField } from '../models'
 
 // The science vessel Cassiopeia warps in, pulls up alongside a mysterious gold
 // artifact (the Aleph) and scans it with a scout fighter — then is ambushed and
@@ -33,6 +34,10 @@ export default {
     const aleph = new THREE.Group(); aleph.add(alephInner)
     aleph.scale.setScalar(0.001); aleph.visible = false   // grows in when revealed
     scene.add(aleph)
+
+    // a dim gas giant far off, and a debris field strewn around the find
+    makeGasGiant(scene, [], new THREE.Vector3(-150, 50, -240), new THREE.Vector3(0.5, 0.4, 0.7).normalize())
+    const field = asteroidField(ctx, { count: 46, center: new THREE.Vector3(0, 0, 0), inner: 46, outer: 190, scaleMin: 0.6, scaleMax: 5.5 })
 
     const flagship = createFlagship(ctx, {
       deathDrift: 0,
@@ -85,6 +90,7 @@ export default {
     return (dt) => {
       T += dt
       const ship = flagship.ship
+      field.tick(dt)
 
       // artifact: slow tumble, grow in on reveal
       aleph.rotation.y += 0.28 * dt

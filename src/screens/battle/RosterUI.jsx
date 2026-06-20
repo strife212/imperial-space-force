@@ -353,4 +353,4 @@ function Briefing({ comp, blueCapName, onCycleBlueName, onAdjust, onStart }) {
   )
 }
 
-export { Briefing, TeamRoster, ShipSprite, renderCommsBody }
+export { Briefing, TeamRoster, ShipSprite, ShipInfoTip, renderCommsBody }

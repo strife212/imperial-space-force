@@ -405,4 +405,5 @@ export {
   NEBULA_VERT, NEBULA_FRAG,
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber,
   buildBlueCruiser, buildRedCruiser, buildAleph, makeShield, makeBackdrop,
+  makeGasGiant, makeRingedPlanet, makeBlackHole,
 }

@@ -9,6 +9,10 @@ const DEFAULTS = {
   seenSelene:           false, // set in App.jsx — on first mail overlay open
   mainPanelSeen:        false, // set in MainPanel.jsx — on mount
   lancecast:            false, // set in MainPanel.jsx — when PACKAGE AWAY fires
+  campaignProgress:     0,     // number of campaign nodes cleared (battle won) — gates the map
+  credits:              0,     // persistent requisition currency, spent in the shipyard
+  campaignFleet:        null,  // persistent player fleet { fighters, bombers, cruisers }; null → starting fleet
+  campaignFlagship:     '',    // persistent player flagship name; '' → rolled on first muster
 }
 
 export function getFlags() {

@@ -37,7 +37,7 @@ function makeBackdrop(scene) {
   const starGeo = new THREE.BufferGeometry(); starGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3))
   const starMat = new THREE.PointsMaterial({ size: 0.7, sizeAttenuation: true, color: 0x9fb4d8, transparent: true, opacity: 0.85 })
   scene.add(new THREE.Points(starGeo, starMat)); disposables.push(starGeo, starMat)
-  return disposables
+  return { disposables, starMat, nebMat }
 }
 
 // Boot a cutscene's three.js stage — renderer, scene, camera, bloom, lights,
@@ -53,7 +53,7 @@ export function createStage(mount, sceneDef, hooks) {
   renderer.setSize(w, h); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   mount.appendChild(renderer.domElement)
 
-  scene.add(new THREE.AmbientLight(0x4a5a80, 0.8))
+  const ambient = new THREE.AmbientLight(0x4a5a80, 0.8); scene.add(ambient)
   const keyLight = new THREE.DirectionalLight(0xcfe0ff, 0.85); keyLight.position.set(6, 12, 8); scene.add(keyLight)
   const rimLight = new THREE.DirectionalLight(0x4060a0, 0.4); rimLight.position.set(-10, -4, -12); scene.add(rimLight)
 
@@ -63,6 +63,8 @@ export function createStage(mount, sceneDef, hooks) {
   const tracked = []
   const ctx = {
     scene, camera, fx, orient, rimLight,
+    lights: { ambient, key: keyLight, rim: rimLight },
+    backdrop: { starMat: backdrop.starMat, nebMat: backdrop.nebMat },
     comms: hooks.comms,
     end: hooks.end,
     track: (...ds) => { for (const d of ds) tracked.push(d) },
@@ -93,7 +95,7 @@ export function createStage(mount, sceneDef, hooks) {
   return () => {
     cancelAnimationFrame(raf); ro.disconnect()
     fx.dispose()
-    backdrop.forEach(d => d.dispose && d.dispose())
+    backdrop.disposables.forEach(d => d.dispose && d.dispose())
     tracked.forEach(d => d.dispose && d.dispose())
     // catch-all: dispose every geometry/material still attached to the scene
     const seen = new Set()

@@ -521,6 +521,54 @@
   color: #eaf4ff;
   box-shadow: 0 0 18px rgba(80, 140, 220, 0.45);
 }
+/* campaign result: requisition reward + outcome buttons */
+.sb-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+}
+.sb-reward-val {
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #ffd24a;
+  text-shadow: 0 0 16px rgba(255, 200, 80, 0.55);
+}
+.sb-reward-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--c-ash-dim);
+}
+.sb-reward-unlock {
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #7df0c0;
+  text-shadow: 0 0 10px rgba(80, 220, 170, 0.5);
+}
+/* campaign: requisition value and outcome buttons share one row, so the
+   buttons sit to the right of the reward instead of below it (clear of the
+   comms dialogue box at the bottom of the screen) */
+.sb-reward-row { display: flex; align-items: center; justify-content: center; gap: 28px; margin-top: 4px; }
+.sb-victory-btns { display: flex; gap: 12px; }
+.sb-restart--ghost {
+  background: rgba(255, 120, 120, 0.06);
+  border-color: rgba(255, 130, 110, 0.5);
+  color: rgba(255, 190, 180, 0.95);
+}
+.sb-restart--ghost:hover {
+  background: rgba(255, 120, 120, 0.15);
+  border-color: rgba(255, 160, 140, 0.9);
+  color: #ffe6e0;
+  box-shadow: 0 0 18px rgba(220, 90, 70, 0.4);
+}
 .sb-hint {
   position: absolute;
   bottom: 14px; left: 0; right: 0;
