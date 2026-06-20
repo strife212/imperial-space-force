@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { buildAleph, makeGasGiant, makeRingedPlanet, makeBlackHole } from './geometry'
-import { buildStation, buildCathedra } from '../cutscene/models'
+import { buildStation, buildCathedra, buildWorldEngine } from '../cutscene/models'
 
 // ── Campaign battle backdrops ────────────────────────────────────────────────
 // Each node's engagement features the signature object from its cutscene in the
@@ -23,25 +23,6 @@ const NODE_BACKDROP = [
   { hero: 'blackhole'                },  // 9 The Lance      — a black hole
   { hero: 'ringed'                   },  // 10 Order Restored — a ringed planet
 ]
-
-// A World Engine: a deep-blue sphere girdled by glowing rings (matches the
-// cutscene / campaign-map motif).
-function buildWorldEngine() {
-  const g = new THREE.Group()
-  g.add(new THREE.Mesh(
-    new THREE.SphereGeometry(3, 48, 32),
-    new THREE.MeshStandardMaterial({ color: 0x3a4a8a, emissive: 0x141f44, emissiveIntensity: 0.6, metalness: 0.5, roughness: 0.6 }),
-  ))
-  for (const [rad, tilt] of [[4.6, -1.1], [5.4, 0.55]]) {
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(rad, 0.16, 8, 72),
-      new THREE.MeshBasicMaterial({ color: 0x6f86ff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }),
-    )
-    ring.rotation.set(tilt, 0.4, 0)
-    g.add(ring)
-  }
-  return g
-}
 
 // centre a built group and scale it so its bounding radius ≈ r
 function fit(group, r) {

@@ -14,7 +14,22 @@ import {
   NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital,
   buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, buildAleph, makeShield,
 } from './battle/geometry'
+import { buildStation, buildCathedra, buildRelay, buildWorldEngine } from './cutscene/models'
 import './battle/battle.css'
+
+// Faction-less cutscene props: each is a self-contained group (owns its
+// materials), shown on its own in the model viewer.
+const PROP_BUILD = {
+  aleph:       buildAleph,
+  worldengine: buildWorldEngine,
+  station:     buildStation,
+  cathedra:    buildCathedra,
+  relay:       buildRelay,
+}
+const PROP_LABEL = {
+  aleph: 'Aleph', worldengine: 'World Engine', station: 'Orbital Station', cathedra: 'Cathedra', relay: 'Sensor Relay',
+}
+const PROP_RIM = { aleph: 0xffcf5a, worldengine: 0x6f86ff, station: 0xffd28a, cathedra: 0xfff0c4, relay: 0x9fe0ff }
 
 const TYPES = ['fighter', 'bomber', 'cruiser', 'capital']
 const LABEL = { fighter: 'Fighter', bomber: 'Bomber', cruiser: 'Cruiser', capital: 'Capital' }
@@ -27,7 +42,7 @@ const buildGeo = (k, team) =>
 
 // Descriptive class name for the model-viewer list
 const CLASS_NAME = (k, team) =>
-  k === 'aleph' ? 'Aleph'
+  team === 'prop' ? PROP_LABEL[k]
   : k === 'capital' ? 'Capital Ship'
   : k === 'bomber' ? 'Heavy Bomber'
   : k === 'cruiser' ? 'Missile Cruiser'
@@ -35,7 +50,7 @@ const CLASS_NAME = (k, team) =>
 // Every model: each team's ships (grouped by class) plus faction-less cutscene props
 const MODELS = [
   ...TYPES.flatMap(kind => ['blue', 'red'].map(team => ({ kind, team }))),
-  { kind: 'aleph', team: 'prop' },
+  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay'].map(kind => ({ kind, team: 'prop' })),
 ]
 
 // A single large viewer that renders the selected ship on an orbitable turntable.
@@ -99,13 +114,13 @@ function ModelStage({ kind, team }) {
     }
     let radius
     if (team === 'prop') {
-      // self-contained gold prop (its own materials) — recentre via bounding box
-      const obj = buildAleph()
+      // self-contained cutscene prop (its own materials) — recentre via bounding box
+      const obj = (PROP_BUILD[kind] || buildAleph)()
       holder.add(obj)
       const box = new THREE.Box3().setFromObject(obj)
       obj.position.sub(box.getCenter(new THREE.Vector3()))
       radius = box.getSize(new THREE.Vector3()).length() / 2
-      rim.color.set(0xffcf5a)
+      rim.color.set(PROP_RIM[kind] ?? 0xffcf5a)
     } else {
       const geo = buildGeo(kind, team); geo.center(); geo.computeBoundingSphere()
       const mat = new THREE.MeshStandardMaterial({ color: TEAMS[team].color, emissive: TEAMS[team].color, emissiveIntensity: 0.34, metalness: 0.6, roughness: 0.4 })

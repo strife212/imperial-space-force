@@ -51,6 +51,24 @@ export function buildRelay() {
   return g
 }
 
+// The World Engine — a deep-blue core girdled by glowing rings (the Great Litany).
+export function buildWorldEngine() {
+  const g = new THREE.Group()
+  g.add(new THREE.Mesh(
+    new THREE.SphereGeometry(3, 48, 32),
+    new THREE.MeshStandardMaterial({ color: 0x3a4a8a, emissive: 0x141f44, emissiveIntensity: 0.6, metalness: 0.5, roughness: 0.6 }),
+  ))
+  for (const [rad, tilt] of [[4.6, -1.1], [5.4, 0.55]]) {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(rad, 0.16, 8, 72),
+      new THREE.MeshBasicMaterial({ color: 0x6f86ff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }),
+    )
+    ring.rotation.set(tilt, 0.4, 0)
+    g.add(ring)
+  }
+  return g
+}
+
 // One lumpy asteroid geometry (jittered icosahedron). Reused across a field.
 function buildAsteroid() {
   const geo = new THREE.IcosahedronGeometry(1, 1)
