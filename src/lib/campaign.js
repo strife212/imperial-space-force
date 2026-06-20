@@ -30,16 +30,16 @@ export const NODE_BATTLES = [
     brief: 'They came without signal or hail. Answer the silence in kind.' },
   { title: 'The Great Litany',  enemyName: 'Apostate Armada',       enemy: { fighters: 18, bombers: 2, cruisers: 2 }, reward: 1700,
     brief: 'Guard the relays of the Great Litany. Do not let the apostates break the chant.' },
-  { title: 'The Fall',          enemyName: 'Annunciator Escort',    enemy: { fighters: 22, bombers: 3, cruisers: 2 }, reward: 2000,
-    brief: 'The escort screens the Annunciator. Tear it away before the gun is loosed.' },
+  { title: 'The Fall',          enemyName: 'The Unsung Host',       enemy: { fighters: 22, bombers: 3, cruisers: 2 }, reward: 2000,
+    brief: 'The Unsung Host swarms out of the dark. Hold the line, whatever it costs.' },
   { title: 'The Final Hearing', enemyName: 'Inquisitorial Cordon',  enemy: { fighters: 26, bombers: 3, cruisers: 3 }, reward: 2400,
     brief: 'The cordon stands between you and the hearing. Force the judgement.' },
-  { title: 'The Annunciator',   enemyName: 'Annunciator Battle Fleet', enemy: { fighters: 30, bombers: 4, cruisers: 3 }, reward: 2800,
-    brief: 'The Annunciator turns toward the Throne. Its battle fleet must fall first.' },
+  { title: 'The Annunciator',   enemyName: 'Heralds of the Hush',   enemy: { fighters: 30, bombers: 4, cruisers: 3 }, reward: 2800,
+    brief: 'Her Annunciator is arming. Hold the Heralds of the Hush off the firing lane until the Lance can be cast.' },
   { title: 'The Lance',         enemyName: 'Throneward Blockade',    enemy: { fighters: 36, bombers: 5, cruisers: 4 }, reward: 3400,
     brief: 'Clear the blockade so the Lance can be cast. Everything rides on the lane.' },
-  { title: 'Order Restored',    enemyName: 'The Annunciator Prime',  enemy: { fighters: 50, bombers: 7, cruisers: 6 }, reward: 5000,
-    brief: 'The last fleet of the false order. Break it utterly and restore the Throne.' },
+  { title: 'Order Restored',    enemyName: "Discord's Last Stand",   enemy: { fighters: 50, bombers: 7, cruisers: 6 }, reward: 5000,
+    brief: "The Discord's last stand, laid bare at last. Break it utterly and the Song returns." },
 ]
 
 export const NODE_COUNT = NODE_BATTLES.length
