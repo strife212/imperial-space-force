@@ -209,11 +209,15 @@
   flex-direction: column;
   overflow: hidden;
 }
-/* Cutscene replay control (bottom-right of the stage) */
-.cut-replay {
+/* Cutscene controls (skip + replay, bottom-right of the stage) */
+.cut-controls {
   position: absolute;
   bottom: 18px; right: 18px;
   z-index: 6;
+  display: flex;
+  gap: 10px;
+}
+.cut-btn {
   background: rgba(2, 6, 18, 0.8);
   border: 1px solid rgba(120, 180, 255, 0.45);
   color: rgba(180, 212, 255, 0.9);
@@ -226,7 +230,7 @@
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
-.cut-replay:hover {
+.cut-btn:hover {
   border-color: rgba(160, 210, 255, 0.9);
   color: #fff;
   box-shadow: 0 0 12px rgba(60, 140, 255, 0.45);

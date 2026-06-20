@@ -1723,13 +1723,17 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
               </div>
               {statsBlock}
               <div className="sb-reward-row">
-                {campResult && campResult.award > 0 && (
+                {campResult && campResult.award > 0 ? (
                   <div className="sb-reward">
                     <span className="sb-reward-val">+{campResult.award}</span>
                     <span className="sb-reward-label">REQUISITION BANKED</span>
                     {campResult.firstClear && <span className="sb-reward-unlock">▸ NEXT OPERATION UNLOCKED</span>}
                   </div>
-                )}
+                ) : campResult && campResult.won ? (
+                  <div className="sb-reward">
+                    <span className="sb-reward-label">SECTOR ALREADY SECURED · NO REQUISITION</span>
+                  </div>
+                ) : null}
                 <div className="sb-victory-btns">
                   {!won && <button className="sb-restart sb-restart--ghost" onClick={() => campaign.onRetry()}>↻ RE-DEPLOY</button>}
                   <button className="sb-restart" onClick={() => campaign.onExit()}>{won ? 'CONTINUE ▶' : '↩ WITHDRAW'}</button>

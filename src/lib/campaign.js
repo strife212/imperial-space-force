@@ -76,14 +76,14 @@ export function fleetStrength(comp) { return compStrength(comp) }
 export const fleetBuyCost = (comp) =>
   comp.fighters * SHIP_COST.fighters + comp.bombers * SHIP_COST.bombers + comp.cruisers * SHIP_COST.cruisers
 
-// What a battle outcome is worth, without committing it. Full reward on the first
-// clear of a node, a reduced salvage on replay wins — and nothing at all for a
-// loss, so a player can't farm Requisition by deliberately throwing battles.
+// What a battle outcome is worth, without committing it. Requisition is paid out
+// only for the first clear of a node — replaying an already-cleared node (or
+// losing) banks nothing, so the currency can't be farmed.
 export function previewReward(nodeIndex, won) {
   const node = NODE_BATTLES[nodeIndex]
   if (!node || !won) return 0
   const firstClear = nodeIndex >= getProgress()
-  return firstClear ? node.reward : Math.round(node.reward * 0.3)
+  return firstClear ? node.reward : 0
 }
 
 // Commit a battle result: bank the Requisition and, on a first win, unlock the

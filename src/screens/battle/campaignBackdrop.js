@@ -12,10 +12,10 @@ import { buildStation, buildCathedra } from '../cutscene/models'
 // `hero` = the iconic structure/body, placed prominently; `body` = an optional
 // celestial body behind it for depth, matching the cutscene's second object.
 const NODE_BACKDROP = [
-  { hero: 'aleph',    body: 'gas'    },  // 1 First Contact  — the Aleph artifact
+  { hero: 'aleph'                    },  // 1 First Contact  — the Aleph artifact, alone
   { hero: 'station',  body: 'ringed' },  // 2 The Muster     — the muster drydock
   { hero: 'blackhole'                },  // 3 The Warfront   — a black hole
-  { hero: 'aleph',    body: 'gas'    },  // 4 The Hush       — the silent Aleph
+  { hero: 'aleph'                    },  // 4 The Hush       — the silent Aleph, alone
   { hero: 'engine',   body: 'gas'    },  // 5 The Great Litany — the World Engine
   { hero: 'ringed'                   },  // 6 The Fall       — a ringed planet
   { hero: 'cathedra', body: 'gas'    },  // 7 The Final Hearing — the Cathedra
@@ -89,19 +89,27 @@ export function makeCampaignBackdrop(scene, disposables, lightDir, camera, nodeI
 
   // a structure hero (Aleph / station / cathedra / world engine), scaled up to
   // megastructure size and parked well beyond the camera's reach
-  const addStructure = (build, r, ndcX, ndcY, spin) => {
+  const addStructure = (build, r, ndcX, ndcY, spin, faceCamera) => {
     const group = fit(build(), r)
     // keep the whole structure beyond the camera's max orbit (110) so it never clips
-    group.position.copy(placePos(ndcX, ndcY, r, 210, 125 + r))
-    group.rotation.y = Math.random() * Math.PI * 2
+    const pos = placePos(ndcX, ndcY, r, 210, 125 + r)
+    group.position.copy(pos)
+    if (faceCamera) {
+      // orient the bright front (+Z) toward the opening camera shot; the camera's
+      // slow auto-orbit then sweeps across it from there. (Object3D.lookAt points
+      // local +Z at the target.)
+      group.lookAt(camera.position)
+    } else {
+      group.rotation.y = Math.random() * Math.PI * 2
+      if (spin) { const base = group.rotation.y; ticks.push((t) => { group.rotation.y = base + t * spin }) }
+    }
     collect(group, disposables)
     scene.add(group)
-    if (spin) { const base = group.rotation.y; ticks.push((t) => { group.rotation.y = base + t * spin }) }
   }
 
   // hero
   switch (spec.hero) {
-    case 'aleph':     addStructure(buildAleph,       48, -0.32, 0.42, 0.04); break
+    case 'aleph':     addStructure(buildAleph,       48, -0.32, 0.42, 0, true); break
     case 'station':   addStructure(buildStation,     52,  0.40, 0.34, 0);    break
     case 'cathedra':  addStructure(buildCathedra,    54, -0.34, 0.30, 0);    break
     case 'engine':    addStructure(buildWorldEngine, 58, -0.30, 0.36, 0.05); break

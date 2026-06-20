@@ -17,7 +17,6 @@ const FADE_MS = 1300          // matches the .cut-fade transition before we reso
 //   ctx.end({ holdMs, overlay })   // overlay → urgent transmission, else advance
 export default function Cutscene({ scene, onReturn, onComplete }) {
   const mountRef = useRef(null)
-  const [resetKey, setResetKey] = useState(0)
   const [comms, setComms] = useState(null)
   const [commsText, setCommsText] = useState('')
   const commsSeq = useRef(0)
@@ -40,9 +39,6 @@ export default function Cutscene({ scene, onReturn, onComplete }) {
     }, 42)
     return () => { clearInterval(typer); clearTimeout(hide) }
   }, [comms?.id])
-
-  // reset on replay
-  useEffect(() => { setComms(null); setEnding(null); setFadeBlack(false); setUrgent(null); endedRef.current = false }, [resetKey])
 
   // ending → hold the final beat, then fade to black
   useEffect(() => {
@@ -77,7 +73,7 @@ export default function Cutscene({ scene, onReturn, onComplete }) {
     try { teardown = createStage(mount, scene, { comms: commsApi, end }) }
     catch (err) { console.error('Cutscene failed to initialise:', err) }
     return () => { try { teardown && teardown() } catch (_) { /* noop */ } }
-  }, [resetKey, scene])
+  }, [scene])
 
   return (
     <div id="cutscene-screen">
@@ -95,7 +91,11 @@ export default function Cutscene({ scene, onReturn, onComplete }) {
           </div>
         )}
 
-        {!urgent && <button className="cut-replay" onClick={() => setResetKey(k => k + 1)}>⟳ REPLAY</button>}
+        {!urgent && (
+          <div className="cut-controls">
+            <button className="cut-btn" onClick={advance}>SKIP ▸</button>
+          </div>
+        )}
       </div>
 
       <div className={`cut-fade${fadeBlack ? ' cut-fade--on' : ''}`} />
