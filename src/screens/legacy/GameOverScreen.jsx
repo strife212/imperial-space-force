@@ -150,7 +150,6 @@ export default function GameOverScreen({ initialFlagCount = 0, onEncyclopedia, f
   return (
     <div id="game-over-screen" className={fail && idGone ? 'go-fade-in' : ''}>
       <div className="go-fin">[ FIN. ]</div>
-      <div className="go-wip">WORK IN PROGRESS</div>
       {hasNewUnlocks && (
         <div className="go-unlocked" onClick={onEncyclopedia}>
           {currentFlagCount - initialFlagCount === 1

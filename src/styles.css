@@ -5208,14 +5208,6 @@ body {
   color: var(--c-ash);
   text-shadow: 0 0 60px rgba(180, 210, 255, 0.15);
 }
-.go-wip {
-  font-size: 13px;
-  letter-spacing: 0.35em;
-  color: rgba(255, 180, 60, 0.85);
-  text-shadow: 0 0 18px rgba(255, 150, 30, 0.45);
-  margin-bottom: -16px;
-  animation: go-pulse 2.8s ease-in-out infinite;
-}
 .go-unlocked {
   font-size: 12px;
   letter-spacing: 0.22em;

@@ -41,11 +41,11 @@ export default function StartScreen({ onCampaign, onSkirmish, onPlay, onDebug })
               <div className="start-section-label">Realtime Space Combat</div>
               <div className="start-section-sub">3D Battle Simulator</div>
             </div>
-            <button className="menu-btn menu-btn--primary menu-btn--pulse" onClick={playClick(onSkirmish)}>
-              SKIRMISH BATTLE
-            </button>
             <button className="menu-btn menu-btn--primary" onClick={playClick(onCampaign)}>
-              CAMPAIGN (WORK IN PROGRESS)
+              CAMPAIGN
+            </button>
+            <button className="menu-btn menu-btn--primary" onClick={playClick(onSkirmish)}>
+              SKIRMISH BATTLE
             </button>
 
             <button
