@@ -171,6 +171,19 @@ export default function App() {
     setCutsceneId(STORY[i]); setCutsceneSource('campaign'); setCutsceneChain(false); setScreen('cutscene')
   }
 
+  // ── Debug screen navigation (shared by the New and Legacy debug pages) ────────
+  const debugNavigate = (s) => {
+    // cutscenes: `campaign` plays the whole story chain; `cut:<id>` plays one scene
+    if (s === 'reset-campaign') { resetCampaign(); setScreen('campaign-map'); return }
+    if (s === 'shipyard') { setCampaignNode(Math.min(NODE_BATTLES.length - 1, getFlag('campaignProgress') || 0)); setScreen('shipyard'); return }
+    if (s === 'campaign') { setCutsceneSource('debug'); setCutsceneId(STORY[0]); setCutsceneChain(true); setScreen('cutscene'); return }
+    if (s.startsWith('cut:')) { setCutsceneSource('debug'); setCutsceneId(s.slice(4)); setCutsceneChain(false); setScreen('cutscene'); return }
+    if (s === 'targeting') setTargetingSource('debug'); if (s === 'reactor') setReactorSource('main'); if (s === 'blackhole') setBlackholeSource('debug'); if (s === 'power') setPowerSource('debug'); if (s === 'battle') setBattleSource('debug'); setGameOverFail(false); setUnderAttack(false); setScreen(s)
+  }
+  const debugMain   = () => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(false); setScreen('main') }
+  const debugAttack = () => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(true); setScreen('main') }
+  const debugFail   = () => { setGameOverFail(true); setScreen('gameover') }
+
   return (
     <>
       <div className="crt-overlay" />
@@ -184,13 +197,8 @@ export default function App() {
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}
       {screen === 'main'    && <MainPanel onLogout={() => setScreen('login')} onLaunchComplete={(pkg) => { setLaunchPackage(pkg); setCountdownSeconds(10); setScreen('monitor') }} onPower={() => { setPowerSource('main'); setScreen('power') }} onTargeting={() => { setTargetingSource('main'); setScreen('targeting') }} onAdjustAntenna={() => setScreen('antenna')} antennaAligned={antennaAligned} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} targetIdx={targetIdx} countdownSeconds={countdownSeconds} underAttack={underAttack} onRadioFreq={(f) => { setRadioFreq(f); if (f === 9.2 && antennaAligned) setUnderAttack(true) }} radioFreq={radioFreq} {...mailProps} />}
       {screen === 'monitor' && <LaunchMonitorScreen onReturn={() => { const imperial = !!TARGETS[targetIdx]?.system?.imperial; setGameOverFail(imperial); setScreen('gameover') }} onLogout={() => { const imperial = !!TARGETS[targetIdx]?.system?.imperial; setGameOverFail(imperial); setScreen('gameover') }} packageName={launchPackage} targetName={targetName} {...mailProps} />}
-      {screen === 'debug'     && <DebugScreen onNavigate={(s) => {
-          // cutscenes: `campaign` plays the whole story chain; `cut:<id>` plays one scene
-          if (s === 'reset-campaign') { resetCampaign(); setScreen('campaign-map'); return }
-          if (s === 'shipyard') { setCampaignNode(Math.min(NODE_BATTLES.length - 1, getFlag('campaignProgress') || 0)); setScreen('shipyard'); return }
-          if (s === 'campaign') { setCutsceneSource('debug'); setCutsceneId(STORY[0]); setCutsceneChain(true); setScreen('cutscene'); return }
-          if (s.startsWith('cut:')) { setCutsceneSource('debug'); setCutsceneId(s.slice(4)); setCutsceneChain(false); setScreen('cutscene'); return }
-          if (s === 'targeting') setTargetingSource('debug'); if (s === 'reactor') setReactorSource('main'); if (s === 'blackhole') setBlackholeSource('debug'); if (s === 'power') setPowerSource('debug'); if (s === 'battle') setBattleSource('debug'); setGameOverFail(false); setUnderAttack(false); setScreen(s) }} onDebugMain={() => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(false); setScreen('main') }} onDebugAttack={() => { setPlasmaLevel(75); setBhOutput(4.3); setBhYield(50); setTargetIdx(2); setCountdownSeconds(2); setUnderAttack(true); setScreen('main') }} onDebugFail={() => { setGameOverFail(true); setScreen('gameover') }} />}
+      {screen === 'debug'        && <DebugScreen variant="new"    onNavigate={debugNavigate} onDebugMain={debugMain} onDebugAttack={debugAttack} onDebugFail={debugFail} />}
+      {screen === 'debug-legacy' && <DebugScreen variant="legacy" onNavigate={debugNavigate} onDebugMain={debugMain} onDebugAttack={debugAttack} onDebugFail={debugFail} />}
       {screen === 'reactor'   && <ReactorScreen onReturn={(density) => { setPlasmaLevel(density); setScreen(reactorSource) }} onLogout={() => setScreen(reactorSource)} initialPlasma={plasmaLevel} {...mailProps} />}
       {screen === 'targeting' && <TargetingScreen onBack={(idx) => { setTargetIdx(idx); setScreen(targetingSource) }} initialSelectedIdx={targetIdx} {...mailProps} />}
       {screen === 'gameover'      && <GameOverScreen initialFlagCount={initialFlagCount} onEncyclopedia={() => goEncyclopedia('gameover')} fail={gameOverFail} targetName={targetName} />}

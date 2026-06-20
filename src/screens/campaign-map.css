@@ -93,3 +93,95 @@
   color: rgba(150, 180, 220, 0.55);
   pointer-events: none;
 }
+
+/* reset-progress control (bottom-right) */
+.cmap-reset {
+  position: absolute;
+  bottom: 16px; right: 18px;
+  background: rgba(255, 90, 70, 0.06);
+  border: 1px solid rgba(255, 110, 90, 0.4);
+  border-radius: 2px;
+  color: rgba(255, 170, 155, 0.85);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s;
+}
+.cmap-reset:hover {
+  background: rgba(255, 90, 70, 0.16);
+  border-color: rgba(255, 130, 110, 0.85);
+  color: #ffe6e0;
+  box-shadow: 0 0 16px rgba(220, 80, 60, 0.4);
+}
+
+/* confirmation dialog */
+.cmap-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(2, 6, 18, 0.55), rgba(1, 2, 6, 0.82));
+  font-family: var(--font-mono);
+  animation: cmap-confirm-in 0.18s ease both;
+}
+@keyframes cmap-confirm-in { from { opacity: 0; } to { opacity: 1; } }
+.cmap-confirm-box {
+  width: min(420px, 86vw);
+  border: 1px solid rgba(255, 110, 90, 0.5);
+  background: rgba(8, 6, 12, 0.95);
+  border-radius: 4px;
+  padding: 26px 28px 22px;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(200, 50, 30, 0.18);
+}
+.cmap-confirm-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--c-bad);
+  text-shadow: 0 0 14px rgba(255, 40, 0, 0.4);
+}
+.cmap-confirm-text {
+  margin: 14px 0 22px;
+  font-size: 12px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  color: var(--c-ash);
+}
+.cmap-confirm-btns { display: flex; gap: 12px; justify-content: center; }
+.cmap-confirm-cancel, .cmap-confirm-go {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 11px 24px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s;
+}
+.cmap-confirm-cancel {
+  background: rgba(120, 180, 255, 0.07);
+  border: 1px solid rgba(120, 180, 255, 0.5);
+  color: rgba(190, 222, 255, 0.95);
+}
+.cmap-confirm-cancel:hover {
+  background: rgba(120, 180, 255, 0.16);
+  border-color: rgba(150, 205, 255, 0.9);
+  color: #eaf4ff;
+}
+.cmap-confirm-go {
+  background: rgba(255, 90, 70, 0.1);
+  border: 1px solid rgba(255, 110, 90, 0.6);
+  color: rgba(255, 190, 180, 0.95);
+}
+.cmap-confirm-go:hover {
+  background: rgba(255, 90, 70, 0.2);
+  border-color: rgba(255, 140, 120, 0.95);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(220, 80, 60, 0.45);
+}

@@ -3585,6 +3585,29 @@ body {
   min-width: 70px;
 }
 
+/* large link to switch between the New and Legacy debug pages */
+.debug-switch {
+  margin-top: 6px;
+  background: rgba(180, 120, 255, 0.08);
+  border: 1px solid rgba(180, 120, 255, 0.5);
+  border-radius: 3px;
+  color: rgba(214, 188, 255, 0.95);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 14px 48px;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s;
+}
+.debug-switch:hover {
+  background: rgba(150, 60, 255, 0.16);
+  border-color: rgba(190, 130, 255, 0.95);
+  color: #f0e6ff;
+  box-shadow: 0 0 20px rgba(150, 70, 230, 0.4);
+}
+
 .debug-flags {
   display: flex;
   flex-direction: column;

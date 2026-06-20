@@ -5,7 +5,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import HudHeader from '../components/HudHeader'
 import { getFlag } from '../lib/store'
-import { getCredits, getFleet } from '../lib/campaign'
+import { getCredits, getFleet, resetCampaign } from '../lib/campaign'
 import { STORY } from './cutscene/scenes'
 import {
   NEBULA_VERT, NEBULA_FRAG,
@@ -102,10 +102,21 @@ function buildNode(model) {
 export default function CampaignMap({ onExit, onPlay }) {
   const mountRef = useRef(null)
   const labelRefs = useRef([])
-  const [completed] = useState(() => Math.min(NODES.length, getFlag('campaignProgress') || 0))
-  const [credits] = useState(getCredits)
-  const [fleet] = useState(getFleet)
+  const [completed, setCompleted] = useState(() => Math.min(NODES.length, getFlag('campaignProgress') || 0))
+  const [credits, setCredits] = useState(getCredits)
+  const [fleet, setFleet] = useState(getFleet)
+  const [confirmReset, setConfirmReset] = useState(false)
   const stateOf = (i) => (i < completed ? 'done' : i === completed ? 'active' : 'locked')
+
+  // wipe all campaign progress, currency and fleet back to the start, then
+  // rebuild the map (changing `completed` re-runs the scene effect)
+  const doReset = () => {
+    resetCampaign()
+    setCompleted(0)
+    setCredits(getCredits())
+    setFleet(getFleet())
+    setConfirmReset(false)
+  }
 
   useEffect(() => {
     const mount = mountRef.current
@@ -260,6 +271,23 @@ export default function CampaignMap({ onExit, onPlay }) {
           )
         })}
         <div className="cmap-hint">Select a system to begin the operation</div>
+
+        <button className="cmap-reset" onClick={() => setConfirmReset(true)}>⟲ RESET PROGRESS</button>
+
+        {confirmReset && (
+          <div className="cmap-confirm" onClick={() => setConfirmReset(false)}>
+            <div className="cmap-confirm-box" onClick={e => e.stopPropagation()}>
+              <div className="cmap-confirm-title">RESET CAMPAIGN?</div>
+              <div className="cmap-confirm-text">
+                This wipes all progress, Requisition and your standing fleet back to the start. This cannot be undone.
+              </div>
+              <div className="cmap-confirm-btns">
+                <button className="cmap-confirm-cancel" onClick={() => setConfirmReset(false)}>CANCEL</button>
+                <button className="cmap-confirm-go" onClick={doReset}>RESET PROGRESS</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
