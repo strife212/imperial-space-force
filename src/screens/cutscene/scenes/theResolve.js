@@ -10,6 +10,7 @@ const LINE2 = 'From the Cathedra high, to the listening below — falls the Lanc
 
 export default {
   label: 'CUTSCENE / THE FINAL HEARING',
+  establishing: { name: 'NOVARAYA', sub: 'Imperial Throneworld' },
   bloom: 0.7,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx

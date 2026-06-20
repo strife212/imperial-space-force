@@ -11,6 +11,7 @@ const MUZZLE = new THREE.Vector3(31, 0, 0)
 
 export default {
   label: 'CUTSCENE / THE ANNUNCIATOR',
+  establishing: { name: 'HER ANNUNCIATOR', sub: 'The Last Resort of the Empire' },
   bloom: 0.75,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx

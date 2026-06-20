@@ -81,6 +81,13 @@ export default function Cutscene({ scene, onReturn, onComplete }) {
       <div className="sb-stage">
         <div className="sb-canvas" ref={mountRef} />
 
+        {scene.establishing && !urgent && (
+          <div className="cut-establish">
+            <div className="cut-establish-name">{scene.establishing.name}</div>
+            {scene.establishing.sub && <div className="cut-establish-sub">{scene.establishing.sub}</div>}
+          </div>
+        )}
+
         {comms && (
           <div className={`sb-comms sb-comms--${comms.team}`} key={comms.id}>
             <img className="sb-comms-portrait" src={comms.portrait} alt="" />

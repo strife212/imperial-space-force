@@ -23,6 +23,7 @@ const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) 
 
 export default {
   label: 'CUTSCENE / FIRST CONTACT',
+  establishing: { name: 'UNCHARTED SPACE', sub: 'Source of the Unknown Signal' },
   bloom: 0.6,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx

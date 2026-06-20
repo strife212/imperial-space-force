@@ -12,6 +12,7 @@ const LINE2 = 'Fleet Polyhymnia — advance. Find what silenced the Cassiopeia.'
 
 export default {
   label: 'CUTSCENE / THE MUSTER',
+  establishing: { name: 'IMPERIAL FLEET DRYDOCK', sub: 'The First Muster in a Generation' },
   bloom: 0.6,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx

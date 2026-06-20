@@ -209,6 +209,43 @@
   flex-direction: column;
   overflow: hidden;
 }
+/* Cutscene establishing caption — a location title that fades in over the
+   opening shot, holds, then fades away */
+.cut-establish {
+  position: absolute;
+  left: 32px; bottom: 150px;
+  z-index: 5;
+  text-align: left;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  opacity: 0;
+  animation: cut-establish 5.6s ease both;
+}
+@keyframes cut-establish {
+  0%   { opacity: 0; }
+  11%  { opacity: 1; }
+  74%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.cut-establish-name {
+  display: inline-block;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #eaf2ff;
+  text-shadow: 0 0 20px rgba(120, 170, 255, 0.55);
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(140, 175, 235, 0.4);
+}
+.cut-establish-sub {
+  margin-top: 9px;
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(160, 190, 230, 0.82);
+}
+
 /* Cutscene controls (skip + replay, bottom-right of the stage) */
 .cut-controls {
   position: absolute;

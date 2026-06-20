@@ -11,6 +11,7 @@ const LINE2 = 'There is one instrument the Order has never used. The prophecy na
 
 export default {
   label: 'CUTSCENE / THE GREAT LITANY',
+  establishing: { name: 'LITANIA MAGNA', sub: 'The Great Litany · World Engine' },
   bloom: 0.7,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx
