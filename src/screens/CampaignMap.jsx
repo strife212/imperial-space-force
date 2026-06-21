@@ -9,7 +9,7 @@ import { getCredits, getFleet, resetCampaign } from '../lib/campaign'
 import { STORY } from './cutscene/scenes'
 import {
   NEBULA_VERT, NEBULA_FRAG,
-  buildAleph, buildBlueModel, buildRedModel, buildBlueCapital,
+  buildAleph, buildBlueModel, buildRedModel, buildBlueCapital2,
 } from './battle/geometry'
 import { buildStation, buildCathedra } from './cutscene/models'
 import './campaign-map.css'
@@ -54,7 +54,7 @@ function buildNode(model) {
     }
     case 'wreck': {
       const g = new THREE.Group()
-      const m = new THREE.Mesh(buildBlueCapital(), new THREE.MeshStandardMaterial({ color: 0x2b2e34, emissive: 0x451c06, emissiveIntensity: 0.7, metalness: 0.4, roughness: 0.92 }))
+      const m = new THREE.Mesh(buildBlueCapital2(), new THREE.MeshStandardMaterial({ color: 0x2b2e34, emissive: 0x451c06, emissiveIntensity: 0.7, metalness: 0.4, roughness: 0.92 }))
       m.scale.setScalar(0.75); g.add(m)
       for (let i = 0; i < 4; i++) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff7a30, opacity: 0.9, ...ADD })); e.position.set((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 5); g.add(e) }
       return g

@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { TEAMS } from '../../battle/constants'
-import { buildBlueModel, buildAleph, makeGasGiant } from '../../battle/geometry'
+import { buildBlueModel, buildAleph, makeGasGiant, buildBlueCapital } from '../../battle/geometry'
 import { createFlagship, createBomberWing } from '../actors'
 import { asteroidField } from '../models'
 
@@ -42,6 +42,8 @@ export default {
 
     const flagship = createFlagship(ctx, {
       deathDrift: 0,
+      model: buildBlueCapital,
+      glowPos: [[-0.45, -3.1], [0.45, -3.1]],   // Cassiopeia keeps the original capital hull
       onDestroyed: () => {
         comms.show(SHIP_NAME, DLG3, { persist: true })
         end({ holdMs: 4200, overlay: { sender: 'Admiralty Command', body: "We've had an urgent distress call from the Science Vessel Cassiopeia, on a classified mission. They've called for immediate assistance. Get ready to deploy the fleet.", dismissLabel: 'TO BATTLE' } })

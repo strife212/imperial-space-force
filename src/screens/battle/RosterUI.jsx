@@ -8,7 +8,7 @@ import {
   FLARES_BOMBER, FLARES_FLAGSHIP,
   RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, FIELD_FIGHTER_CAP, REINFORCE_INTERVAL,
 } from './constants'
-import { buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser } from './geometry'
+import { buildBlueModel, buildRedModel, buildBlueCapital2, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser } from './geometry'
 
 // Render the revealed slice of segmented body text, honouring \n line breaks
 // and per-segment colour classes (used for the typewriter effect).
@@ -72,7 +72,7 @@ const shipClass = (kind, team) =>
   : kind === 'cruiser' ? 'Missile Cruiser'
   : team === 'blue' ? 'Interceptor' : 'Marauder'
 const buildShipGeo = (kind, team) =>
-  kind === 'capital' ? (team === 'blue' ? buildBlueCapital() : buildRedCapital())
+  kind === 'capital' ? (team === 'blue' ? buildBlueCapital2() : buildRedCapital())
   : kind === 'bomber' ? (team === 'blue' ? buildBlueBomber() : buildRedBomber())
   : kind === 'cruiser' ? (team === 'blue' ? buildBlueCruiser() : buildRedCruiser())
   : (team === 'blue' ? buildBlueModel() : buildRedModel())

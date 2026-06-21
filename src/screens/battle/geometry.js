@@ -225,6 +225,64 @@ function buildRedCruiser() {
   return mergeGeometries(parts, false)
 }
 
+// The Cassiopeia-class science vessel — long and slender, about a capital's
+// length but unmistakably an instrument rather than a weapon: a probe spine
+// tipped with a sensor globe, encircled by collar rings, carrying a dorsal
+// survey dish and outrigger instrument booms in place of guns.
+function buildScienceVessel() {
+  const parts = []
+  let g = new THREE.CylinderGeometry(0.4, 0.46, 8.6, 10); g.rotateX(Math.PI / 2); parts.push(g)        // long slender spine
+  g = new THREE.SphereGeometry(0.72, 16, 12); g.translate(0, 0, 4.6); parts.push(g)                    // forward sensor globe
+  g = new THREE.ConeGeometry(0.28, 1.2, 8); g.rotateX(Math.PI / 2); g.translate(0, 0, 5.7); parts.push(g)  // fine probe spike
+  for (const z of [2.2, 3.0]) { g = new THREE.TorusGeometry(0.8, 0.1, 8, 24); g.translate(0, 0, z); parts.push(g) }  // sensor collar rings
+  g = new THREE.BoxGeometry(0.46, 0.4, 1.9); g.translate(0.74, 0, 0.1); parts.push(g)                  // laboratory pod R
+  g = new THREE.BoxGeometry(0.46, 0.4, 1.9); g.translate(-0.74, 0, 0.1); parts.push(g)                 // laboratory pod L
+  g = new THREE.BoxGeometry(3.4, 0.06, 0.16); g.translate(0, 0, 1.1); parts.push(g)                    // lateral sensor spar
+  g = new THREE.BoxGeometry(0.08, 1.2, 0.08); g.translate(0, 0.85, -0.4); parts.push(g)                // dorsal dish mast
+  g = new THREE.ConeGeometry(1.1, 0.42, 22); g.rotateX(-Math.PI / 2.3); g.translate(0, 1.48, 0.1); parts.push(g)  // parabolic survey dish
+  g = new THREE.BoxGeometry(0.07, 0.95, 0.07); g.translate(0, -0.85, 1.1); parts.push(g)               // ventral instrument boom
+  g = new THREE.BoxGeometry(0.6, 0.2, 0.6); g.translate(0, -1.3, 1.1); parts.push(g)                   // ventral sensor pod
+  g = new THREE.BoxGeometry(0.9, 0.74, 1.3); g.translate(0, 0, -4.0); parts.push(g)                    // aft reactor block
+  g = new THREE.CylinderGeometry(0.22, 0.3, 1.1, 8); g.rotateX(Math.PI / 2); g.translate(0.5, 0, -4.8); parts.push(g)   // nacelle R
+  g = new THREE.CylinderGeometry(0.22, 0.3, 1.1, 8); g.rotateX(Math.PI / 2); g.translate(-0.5, 0, -4.8); parts.push(g)  // nacelle L
+  return mergeGeometries(parts, false)
+}
+
+// An alternate blue capital — a long, angular frigate in the spirit of a UNSC
+// warship: an elevated main hull over a forward-projecting keel, a tall blocky
+// engine stern, a forward bridge tower, twin forward MAC cannons and flared aft
+// vanes.
+function buildBlueCapital2() {
+  const parts = []
+  // upper main hull
+  let g = new THREE.BoxGeometry(1.3, 1.0, 5.2); g.translate(0, 0.2, 0); parts.push(g)                 // long main hull
+  g = new THREE.BoxGeometry(1.0, 0.8, 1.4); g.translate(0, 0.1, 3.0); parts.push(g)                   // bow taper
+  g = new THREE.BoxGeometry(0.7, 0.6, 0.8); g.translate(0, 0.05, 3.9); parts.push(g)                  // blunt bow tip
+  // tall blocky engine stern
+  g = new THREE.BoxGeometry(1.45, 1.4, 1.5); g.translate(0, 0.3, -2.9); parts.push(g)                 // stern block
+  g = new THREE.BoxGeometry(1.1, 0.4, 0.6); g.translate(0, 1.1, -2.9); parts.push(g)                  // raised aft deck
+  // forward bridge / superstructure
+  g = new THREE.BoxGeometry(0.6, 0.55, 1.5); g.translate(0, 0.9, 1.1); parts.push(g)                  // bridge block
+  g = new THREE.BoxGeometry(0.45, 0.35, 0.6); g.translate(0, 1.2, 1.5); parts.push(g)                 // bridge step
+  g = new THREE.BoxGeometry(0.08, 0.6, 0.08); g.translate(0, 1.55, 1.7); parts.push(g)                // sensor mast
+  // lower keel, projecting forward under the bow
+  g = new THREE.BoxGeometry(0.7, 0.6, 3.0); g.translate(0, -0.35, 0.4); parts.push(g)                 // hull-to-keel connector
+  g = new THREE.BoxGeometry(0.95, 0.7, 4.4); g.translate(0, -0.95, 0.7); parts.push(g)                // ventral keel
+  g = new THREE.BoxGeometry(0.85, 0.6, 1.2); g.translate(0, -1.0, 3.0); parts.push(g)                 // forward gun housing
+  // twin forward MAC cannons
+  g = new THREE.CylinderGeometry(0.1, 0.13, 2.6, 8); g.rotateX(Math.PI / 2); g.translate(0.28, -1.05, 3.9); parts.push(g)   // barrel R
+  g = new THREE.CylinderGeometry(0.1, 0.13, 2.6, 8); g.rotateX(Math.PI / 2); g.translate(-0.28, -1.05, 3.9); parts.push(g)  // barrel L
+  // side sponsons / plating
+  g = new THREE.BoxGeometry(0.24, 0.5, 2.6); g.translate(0.78, 0.05, -0.2); parts.push(g)             // sponson R
+  g = new THREE.BoxGeometry(0.24, 0.5, 2.6); g.translate(-0.78, 0.05, -0.2); parts.push(g)            // sponson L
+  // flared aft vanes
+  g = new THREE.BoxGeometry(0.1, 1.3, 1.4); g.rotateZ(-0.4); g.translate(0.55, 0.55, -3.2); parts.push(g)   // vane R
+  g = new THREE.BoxGeometry(0.1, 1.3, 1.4); g.rotateZ(0.4); g.translate(-0.55, 0.55, -3.2); parts.push(g)   // vane L
+  // engine nozzles
+  for (const x of [-0.45, 0, 0.45]) { g = new THREE.CylinderGeometry(0.18, 0.22, 0.5, 8); g.rotateX(Math.PI / 2); g.translate(x, 0.25, -3.8); parts.push(g) }
+  return mergeGeometries(parts, false)
+}
+
 // ── Cutscene prop: the Aleph ─────────────────────────────────────────────────
 // A neutral, faction-less artefact in the spirit of the 2001 monolith — an
 // ornate golden arched tablet with a glowing halo emblem.
@@ -404,6 +462,6 @@ function makeBackdrop(scene, disposables, lightDir, camera) {
 export {
   NEBULA_VERT, NEBULA_FRAG,
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber,
-  buildBlueCruiser, buildRedCruiser, buildAleph, makeShield, makeBackdrop,
+  buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield, makeBackdrop,
   makeGasGiant, makeRingedPlanet, makeBlackHole,
 }

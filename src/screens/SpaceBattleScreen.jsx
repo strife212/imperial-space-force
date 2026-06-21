@@ -17,7 +17,7 @@ import {
   PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
-import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop } from './battle/geometry'
+import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital2, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop } from './battle/geometry'
 import { makeCampaignBackdrop } from './battle/campaignBackdrop'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
 import './battle/battle.css'
@@ -441,7 +441,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
 
       // ── Shared geometry ──────────────────────────────────────────────────────
       const teamGeo = { blue: buildBlueModel(), red: buildRedModel() }
-      const capGeo  = { blue: buildBlueCapital(), red: buildRedCapital() }
+      const capGeo  = { blue: buildBlueCapital2(), red: buildRedCapital() }
       const bomberGeo = { blue: buildBlueBomber(), red: buildRedBomber() }
       const cruiserGeo = { blue: buildBlueCruiser(), red: buildRedCruiser() }
       const boltGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.7, 6)
@@ -573,10 +573,11 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         const mesh = new THREE.Group()
         mesh.add(new THREE.Mesh(capGeo[team], mat))
         const glows = []
+        const glowZ = team === 'blue' ? -3.8 : -3.1   // blue capital's nozzles sit further aft
         for (const ex of [-0.45, 0.45]) {          // twin engine glows
           const glow = new THREE.Mesh(blastGeo, glowMat[team])
           glow.scale.setScalar(0.7)
-          glow.position.set(ex, 0, -3.1)
+          glow.position.set(ex, 0, glowZ)
           mesh.add(glow); glows.push(glow)
         }
         // damage-state hull fires — revealed progressively as the ship is worn down

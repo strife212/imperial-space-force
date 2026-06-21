@@ -1,9 +1,12 @@
 import * as THREE from 'three'
 import { TEAMS, BOMBER_SCALE } from '../battle/constants'
 import {
-  buildBlueCapital, buildRedCapital, buildBlueModel, buildRedModel,
+  buildBlueCapital2, buildRedCapital, buildBlueModel, buildRedModel,
   buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser,
 } from '../battle/geometry'
+
+export const CAP_GLOWS = [[-0.45, -3.1], [0.45, -3.1]]            // original capital's twin engine-glow [x, z] offsets
+const CAP2_GLOWS = [[-0.45, -3.8], [0, -3.8], [0.45, -3.8]]       // Capital Ship II's three aft nozzles
 
 const yAxis = new THREE.Vector3(0, 1, 0)
 const WRECK_DEATH_DUR = 1.8
@@ -13,14 +16,14 @@ const WRECK_DEATH_DUR = 1.8
 // ember-shedding hulk). The scene owns its position while it lives (set
 // `ship.pos`, then call `tick(dt)`); once destroyed, `tick` drifts the wreck.
 // Bombs call `damage(amount)`; `onDestroyed` fires at the final blast.
-export function createFlagship(ctx, { scale = 3.2, hp = 60, deathDrift = 0, onDestroyed } = {}) {
+export function createFlagship(ctx, { scale = 3.2, hp = 60, deathDrift = 0, onDestroyed, model = buildBlueCapital2, glowPos = CAP2_GLOWS } = {}) {
   const { scene, fx } = ctx
   const shipMat = new THREE.MeshStandardMaterial({ color: TEAMS.blue.color, emissive: TEAMS.blue.color, emissiveIntensity: 0.55, metalness: 0.65, roughness: 0.35 })
   const group = new THREE.Group()
-  group.add(new THREE.Mesh(buildBlueCapital(), shipMat))
+  group.add(new THREE.Mesh(model(), shipMat))
   const glows = []
-  for (const ex of [-0.45, 0.45]) {
-    const g = new THREE.Mesh(fx.blastGeo, fx.glowMat.blue); g.scale.setScalar(0.7); g.position.set(ex, 0, -3.1); group.add(g); glows.push(g)
+  for (const [gx, gz] of glowPos) {
+    const g = new THREE.Mesh(fx.blastGeo, fx.glowMat.blue); g.scale.setScalar(0.7); g.position.set(gx, 0, gz); group.add(g); glows.push(g)
   }
   const fires = []
   for (let i = 0; i < 6; i++) {
@@ -85,7 +88,7 @@ export function createFlagship(ctx, { scale = 3.2, hp = 60, deathDrift = 0, onDe
 export function buildFleet(ctx, { team = 'blue', fighters = 18, bombers = 0, cruisers = 0, capital = true, ringR = 20 } = {}) {
   const { scene, fx, orient } = ctx
   const blue = team === 'blue'
-  const geoCap = blue ? buildBlueCapital() : buildRedCapital()
+  const geoCap = blue ? buildBlueCapital2() : buildRedCapital()
   const geoFighter = blue ? buildBlueModel() : buildRedModel()
   const geoBomber = blue ? buildBlueBomber() : buildRedBomber()
   const geoCruiser = blue ? buildBlueCruiser() : buildRedCruiser()
@@ -98,7 +101,7 @@ export function buildFleet(ctx, { team = 'blue', fighters = 18, bombers = 0, cru
     const glow = new THREE.Mesh(fx.blastGeo, fx.glowMat[team]); glow.scale.setScalar(0.42); glow.position.set(0, 0, -rear); g.add(glow)
     g.scale.setScalar(scale); g.position.set(x, y, z); orient(g, FWD); group.add(g); ships.push(g)
   }
-  if (capital) add(geoCap, 3.2, 3.1, 0, 0, 0)
+  if (capital) add(geoCap, 3.2, blue ? 3.8 : 3.1, 0, 0, 0)
   for (let i = 0; i < fighters; i++) {
     const a = (i / Math.max(1, fighters)) * Math.PI * 2, r = ringR + (Math.random() - 0.5) * 6
     add(geoFighter, 1.0, 0.95, Math.cos(a) * r, (Math.random() - 0.5) * 8, Math.sin(a) * r)

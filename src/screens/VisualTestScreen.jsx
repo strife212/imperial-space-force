@@ -12,7 +12,7 @@ import {
 } from './battle/constants'
 import {
   NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital,
-  buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, buildAleph, makeShield,
+  buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield,
 } from './battle/geometry'
 import { buildStation, buildCathedra, buildRelay, buildWorldEngine } from './cutscene/models'
 import './battle/battle.css'
@@ -33,9 +33,11 @@ const PROP_RIM = { aleph: 0xffcf5a, worldengine: 0x6f86ff, station: 0xffd28a, ca
 
 const TYPES = ['fighter', 'bomber', 'cruiser', 'capital']
 const LABEL = { fighter: 'Fighter', bomber: 'Bomber', cruiser: 'Cruiser', capital: 'Capital' }
-const scaleFor = (k) => k === 'capital' ? 3.2 : k === 'bomber' ? BOMBER_SCALE : k === 'cruiser' ? CRUISER_SCALE : 1
+const scaleFor = (k) => k === 'capital' || k === 'capital2' || k === 'science' ? 3.2 : k === 'bomber' ? BOMBER_SCALE : k === 'cruiser' ? CRUISER_SCALE : 1
 const buildGeo = (k, team) =>
-  k === 'capital' ? (team === 'blue' ? buildBlueCapital() : buildRedCapital())
+  k === 'science' ? buildScienceVessel()
+  : k === 'capital2' ? buildBlueCapital2()
+  : k === 'capital' ? (team === 'blue' ? buildBlueCapital() : buildRedCapital())
   : k === 'bomber' ? (team === 'blue' ? buildBlueBomber() : buildRedBomber())
   : k === 'cruiser' ? (team === 'blue' ? buildBlueCruiser() : buildRedCruiser())
   : (team === 'blue' ? buildBlueModel() : buildRedModel())
@@ -43,6 +45,8 @@ const buildGeo = (k, team) =>
 // Descriptive class name for the model-viewer list
 const CLASS_NAME = (k, team) =>
   team === 'prop' ? PROP_LABEL[k]
+  : k === 'science' ? 'Science Vessel'
+  : k === 'capital2' ? 'Capital Ship II'
   : k === 'capital' ? 'Capital Ship'
   : k === 'bomber' ? 'Heavy Bomber'
   : k === 'cruiser' ? 'Missile Cruiser'
@@ -50,6 +54,8 @@ const CLASS_NAME = (k, team) =>
 // Every model: each team's ships (grouped by class) plus faction-less cutscene props
 const MODELS = [
   ...TYPES.flatMap(kind => ['blue', 'red'].map(team => ({ kind, team }))),
+  { kind: 'capital2', team: 'blue' },
+  { kind: 'science', team: 'blue' },
   ...['aleph', 'worldengine', 'station', 'cathedra', 'relay'].map(kind => ({ kind, team: 'prop' })),
 ]
 
