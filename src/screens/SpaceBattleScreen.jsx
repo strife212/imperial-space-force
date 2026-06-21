@@ -20,7 +20,7 @@ import {
 import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital2, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop } from './battle/geometry'
 import { makeCampaignBackdrop } from './battle/campaignBackdrop'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
-import { getFlag } from '../lib/store'
+import { getFlag, setFlag } from '../lib/store'
 import { playLanceCharge } from '../lib/lanceSfx'
 import './battle/battle.css'
 
@@ -80,7 +80,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   const [runId,  setRunId]  = useState(0)
   const [kills,  setKills]  = useState([])      // recent kill-feed entries
   const [stats,  setStats]  = useState(null)    // post-battle breakdown
-  const [muted,  setMuted]  = useState(true)    // sound off by default
+  const [muted,  setMuted]  = useState(() => getFlag('soundMuted') ?? false)   // persisted; sound on by default
   const [started, setStarted] = useState(isCampaign) // campaign auto-starts (the shipyard was the briefing)
   const [campResult, setCampResult] = useState(null) // campaign: banked outcome { award, won, firstClear, progress }
   // per-team fleet composition. Skirmish: customisable on the briefing within the
@@ -114,7 +114,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   const followBomberRef = useRef(null)          // follow-a-blue-bomber-by-index fn, wired up inside the scene
   const killSeq = useRef(0)
   const audioRef = useRef(null)
-  const mutedRef = useRef(true)   // mirror of `muted` readable inside the scene loop (lance sfx)
+  const mutedRef = useRef(getFlag('soundMuted') ?? false)  // mirror of `muted` readable inside the scene loop (lance sfx)
   const blueCapRef = useRef(null), blueShieldRef = useRef(null), blueReserveRef = useRef(null)
   const redCapRef  = useRef(null), redShieldRef  = useRef(null), redReserveRef  = useRef(null)
 
@@ -184,7 +184,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   useEffect(() => {
     let ctx
     try { ctx = new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return }
-    const TARGET_VOL = 0.42
+    const TARGET_VOL = 0.3
 
     // master bus: soft-clip saturation + compressor for glue and punch
     const master = ctx.createGain(); master.gain.value = 0   // ramp up on resume
@@ -211,7 +211,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
     const nd = noiseBuf.getChannelData(0)
     for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1
 
-    let mutedLocal = true, lastLaser = 0, lastBoom = 0   // sound off by default
+    let mutedLocal = true, lastLaser = 0, lastCapLaser = 0, lastBoom = 0   // separate laser rate-limits so capital fire isn't drowned by fighters
 
     // sample buffers — loaded from public/sfx/ when present; missing files are
     // ignored so each sound keeps its synthesised fallback below.
@@ -233,16 +233,20 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       src.start()
     }
 
-    const playLaser = (team) => {
+    // `big` → capital broadside (loud); otherwise a fighter/small laser, played
+    // quieter (0.5) so the capital guns stand out over the dogfight.
+    const playLaser = (team, big = false) => {
       if (mutedLocal) return
       const now = ctx.currentTime
-      if (now - lastLaser < 0.05) return         // rate-limit the crackle
-      lastLaser = now
+      if (now - (big ? lastCapLaser : lastLaser) < 0.05) return   // rate-limit each class separately
+      if (big) lastCapLaser = now; else lastLaser = now
+      const vol = big ? 0.9 : 0.5
       const lbuf = (team === 'blue' ? buffers.laserBlue : buffers.laserRed) || buffers.laser
-      if (lbuf) { playSample(lbuf, 0.9, 0.95 + Math.random() * 0.1, 0.1); return }
+      if (lbuf) { playSample(lbuf, vol, 0.95 + Math.random() * 0.1, 0.1); return }
+      const k = vol / 0.9   // scale the synth fallback to match
       const out = ctx.createGain()
       out.gain.setValueAtTime(0.0001, now)
-      out.gain.linearRampToValueAtTime(0.18, now + 0.005)
+      out.gain.linearRampToValueAtTime(0.18 * k, now + 0.005)
       out.gain.exponentialRampToValueAtTime(0.0001, now + 0.18)
       // warm tone body — resonant lowpass tames the harsh top end
       const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'
@@ -257,7 +261,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       // attack "crack" — short high-passed noise transient for punch
       const nb = ctx.createBufferSource(); nb.buffer = noiseBuf
       const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1500
-      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.22, now); ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.045)
+      const ng = ctx.createGain(); ng.gain.setValueAtTime(0.22 * k, now); ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.045)
       nb.connect(hp); hp.connect(ng); ng.connect(out); nb.start(now); nb.stop(now + 0.05)
       out.connect(dry); sendTo(out, 0.1)
     }
@@ -372,7 +376,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
     }
   }, [])
 
-  useEffect(() => { audioRef.current?.setMuted(muted); mutedRef.current = muted }, [muted])
+  useEffect(() => { audioRef.current?.setMuted(muted); mutedRef.current = muted; setFlag('soundMuted', muted) }, [muted])
 
   // ── Campaign: bank the outcome exactly once when the engagement resolves ──────
   useEffect(() => {
@@ -830,7 +834,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         mesh.quaternion.setFromUnitVectors(yAxis, dir)
         scene.add(mesh)
         bolts.push({ mesh, dir, target, willHit, life: 0, shooter, dmg: bomb ? BOMB_DMG : 1, bomb, maxLife: bomb ? BOMB_LIFE : 2.2, smokeCd: 0 })
-        audioRef.current?.playLaser(shooter.team)
+        audioRef.current?.playLaser(shooter.team, big)   // big = capital broadside → louder
       }
 
       // Cruiser ordnance: a guided missile that first drops from the launcher's

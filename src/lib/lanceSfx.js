@@ -14,7 +14,7 @@ const buffers = {}
 function init() {
   if (ctx) return ctx
   try { ctx = new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return null }
-  master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination)
+  master = ctx.createGain(); master.gain.value = 0.4; master.connect(ctx.destination)
   // a touch of synthetic reverb for a sense of space
   const conv = ctx.createConvolver()
   const len = Math.floor(ctx.sampleRate * 1.1), b = ctx.createBuffer(2, len, ctx.sampleRate)
