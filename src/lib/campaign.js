@@ -5,8 +5,8 @@
 //
 // The skirmish battle is untouched; campaign mode just feeds SpaceBattleScreen a
 // locked pair of fleet compositions plus a result callback.
-import { compStrength, randomBlueCapName } from '../screens/battle/constants'
-import { getFlag, setFlag } from './store'
+import { compStrength, randomBlueCapName } from '../screens/battle/constants.js'
+import { getFlag, setFlag } from './store.js'
 
 // Cost (in Requisition) to add one ship of each class to your standing fleet.
 export const SHIP_COST = { fighters: 100, bombers: 350, cruisers: 450 }
@@ -20,25 +20,25 @@ export const STARTING_FLEET = { fighters: 8, bombers: 0, cruisers: 0 }
 // (a flagship is always added on top by the battle). `reward` is the Requisition
 // granted the first time the node is cleared. Fleets escalate to a finale.
 export const NODE_BATTLES = [
-  { title: 'First Contact',     enemyName: 'Aleph Sentinels',       enemy: { fighters: 4,  bombers: 0, cruisers: 0 }, reward: 700,
+  { title: 'First Contact',     enemyName: 'Aleph Sentinels',       enemy: { fighters: 7,  bombers: 0, cruisers: 0 }, reward: 560,
     brief: 'Hostiles of unknown origin have swarmed the Cassiopeia. Break the ambush.' },
-  { title: 'The Muster',        enemyName: 'Rebel Vanguard',        enemy: { fighters: 8,  bombers: 1, cruisers: 0 }, reward: 900,
+  { title: 'The Muster',        enemyName: 'Rebel Vanguard',        enemy: { fighters: 9,  bombers: 1, cruisers: 0 }, reward: 720,
     brief: 'A rebel screen tests the mustering fleet. Hold the line and scatter them.' },
-  { title: 'The Warfront',      enemyName: 'Heretic Battlegroup',   enemy: { fighters: 12, bombers: 1, cruisers: 1 }, reward: 1100,
+  { title: 'The Warfront',      enemyName: 'Heretic Battlegroup',   enemy: { fighters: 11, bombers: 1, cruisers: 1 }, reward: 880,
     brief: 'The front is open. Punch through the heretic battlegroup and take the lane.' },
-  { title: 'The Hush',          enemyName: 'The Silent Fleet',      enemy: { fighters: 14, bombers: 2, cruisers: 1 }, reward: 1400,
+  { title: 'The Hush',          enemyName: 'The Silent Fleet',      enemy: { fighters: 17, bombers: 2, cruisers: 1 }, reward: 1000,
     brief: 'They came without signal or hail. Answer the silence in kind.' },
-  { title: 'The Great Litany',  enemyName: 'Apostate Armada',       enemy: { fighters: 18, bombers: 2, cruisers: 2 }, reward: 1700,
+  { title: 'The Great Litany',  enemyName: 'Apostate Armada',       enemy: { fighters: 22, bombers: 2, cruisers: 2 }, reward: 1220,
     brief: 'Guard the relays of the Great Litany. Do not let the apostates break the chant.' },
-  { title: 'The Fall',          enemyName: 'The Unsung Host',       enemy: { fighters: 22, bombers: 3, cruisers: 2 }, reward: 2000,
+  { title: 'The Fall',          enemyName: 'The Unsung Host',       enemy: { fighters: 29, bombers: 3, cruisers: 2 }, reward: 1440,
     brief: 'The Unsung Host swarms out of the dark. Hold the line, whatever it costs.' },
-  { title: 'The Final Hearing', enemyName: 'The Hush at the Gates', enemy: { fighters: 26, bombers: 3, cruisers: 3 }, reward: 2400,
+  { title: 'The Final Hearing', enemyName: 'The Hush at the Gates', enemy: { fighters: 39, bombers: 3, cruisers: 3 }, reward: 1730,
     brief: 'The Discord has reached the Throneworld itself. Hold the skies over Novaraya while the Empress renders the Final Hearing.' },
-  { title: 'The Annunciator',   enemyName: 'Heralds of the Hush',   enemy: { fighters: 30, bombers: 4, cruisers: 3 }, reward: 2800,
+  { title: 'The Annunciator',   enemyName: 'Heralds of the Hush',   enemy: { fighters: 51, bombers: 4, cruisers: 3 }, reward: 2020,
     brief: 'Her Annunciator is arming. Hold the Heralds of the Hush off the firing lane until the Lance can be cast.' },
-  { title: 'The Lance',         enemyName: 'Throneward Blockade',    enemy: { fighters: 36, bombers: 5, cruisers: 4 }, reward: 3400,
+  { title: 'The Lance',         enemyName: 'Throneward Blockade',    enemy: { fighters: 64, bombers: 5, cruisers: 4 }, reward: 2450,
     brief: 'Clear the blockade so the Lance can be cast. Everything rides on the lane.' },
-  { title: 'Order Restored',    enemyName: "Discord's Last Stand",   enemy: { fighters: 50, bombers: 7, cruisers: 6 }, reward: 5000,
+  { title: 'Order Restored',    enemyName: "Discord's Last Stand",   enemy: { fighters: 69, bombers: 7, cruisers: 6 }, reward: 3600,
     brief: "The Discord's last stand, laid bare at last. Break it utterly and the Song returns." },
 ]
 

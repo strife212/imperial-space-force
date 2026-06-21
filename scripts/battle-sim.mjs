@@ -11,6 +11,8 @@
 //   npm run sim -- --sweep3 --workers 12   # parallelise the sweep across 12 threads (default 16; 1 = sequential)
 //   npm run sim -- --sweep4           # CROSS-MATRIX: 25 blue × 25 red = 625 match-ups × 50 runs
 //   npm run sim -- --sweep4 --runs 200 --workers 16   # full-precision matrix (125,000 sims)
+//   npm run sim -- --campaign         # each campaign node: sensible all-requisition fleet vs its enemy, 20 runs
+//   npm run sim -- --campaign --runs 50
 //
 // All COMBAT VALUES (HP, damage, armour, speeds, ranges, point costs, morale
 // thresholds, …) are imported live from src/screens/battle/constants.js, so this
@@ -450,6 +452,55 @@ if (!isMainThread) {
   // Worker thread: run an assigned slice of battles and post the aggregates back.
   if (workerData.kind === 'matrix') parentPort.postMessage(runMatrixBatch(workerData.cells, workerData.runs, workerData.params))
   else parentPort.postMessage(runBuildsBatch(workerData.builds, workerData.runs, workerData.params))
+} else if (hasFlag('campaign')) {
+  // ── Campaign balance sim ──────────────────────────────────────────────────────
+  // For each campaign node, build a "sensible" player fleet that spends ALL the
+  // Requisition available by that point — the starting fleet plus the cumulative
+  // rewards from every earlier node (ships persist / can be re-spec'd freely, so
+  // we re-optimise per node) — then run RUNS battles vs that node's fixed enemy.
+  // Buy doctrine: match the enemy's cruisers then bombers (affordability-capped),
+  // pour every leftover point into fighters.
+  const { NODE_BATTLES, SHIP_COST, STARTING_FLEET } = await import('../src/lib/campaign.js')
+  const runsEach = hasFlag('runs') ? RUNS : 20
+
+  const buildFleet = (avail, enemy) => {
+    let rem = avail
+    const cruisers = Math.min(enemy.cruisers || 0, Math.floor(rem / SHIP_COST.cruisers)); rem -= cruisers * SHIP_COST.cruisers
+    const bombers  = Math.min(enemy.bombers  || 0, Math.floor(rem / SHIP_COST.bombers));  rem -= bombers  * SHIP_COST.bombers
+    const fighters = Math.floor(rem / SHIP_COST.fighters); rem -= fighters * SHIP_COST.fighters
+    return {
+      fighters: STARTING_FLEET.fighters + fighters,
+      bombers:  STARTING_FLEET.bombers  + bombers,
+      cruisers: STARTING_FLEET.cruisers + cruisers,
+      leftover: rem,
+    }
+  }
+
+  console.log(`\nCampaign balance sim — ${NODE_BATTLES.length} nodes × ${runsEach} runs each`)
+  console.log(`Player fleet = starting ${STARTING_FLEET.fighters}F/${STARTING_FLEET.bombers}B/${STARTING_FLEET.cruisers}C + all available Requisition (match enemy support, rest → fighters).`)
+  console.log(`Costs: fighter ${SHIP_COST.fighters} / bomber ${SHIP_COST.bombers} / cruiser ${SHIP_COST.cruisers}.  Blue bombers auto-launch ${BOMBER_AUTO_DISPATCH}s, red random.`)
+  console.log('\n  Node                   |   Req | Player fleet     | Enemy fleet     | Blue W | Draw | Avg t | Blue surv | cap surv')
+  console.log('  -----------------------+-------+------------------+-----------------+--------+------+-------+-----------+---------')
+
+  let avail = 0
+  NODE_BATTLES.forEach((node, idx) => {
+    const f = buildFleet(avail, node.enemy)
+    const cfg = {
+      blueFighters: f.fighters, redFighters: node.enemy.fighters,
+      blueBombers: f.bombers, redBombers: node.enemy.bombers,
+      blueCruisers: f.cruisers, redCruisers: node.enemy.cruisers,
+      blueLaunch: null, redLaunch: null,
+    }
+    const res = []
+    for (let i = 0; i < runsEach; i++) res.push(runBattle(cfg))
+    const w = (k) => res.filter(r => r.winner === k).length
+    const avg = (g) => res.reduce((a, r) => a + g(r), 0) / runsEach
+    const pf = `${String(f.fighters).padStart(3)}F ${f.bombers}B ${f.cruisers}C`
+    const ef = `${String(node.enemy.fighters).padStart(2)}F ${node.enemy.bombers}B ${node.enemy.cruisers}C`
+    const name = `${idx + 1}. ${node.title}`
+    console.log(`  ${name.padEnd(22)} | ${String(avail).padStart(5)} | ${pf.padEnd(16)} | ${ef.padEnd(15)} | ${String(w('BLUE')).padStart(2)}/${runsEach} | ${String(w('DRAW')).padStart(2)}/${runsEach} | ${avg(r => r.t).toFixed(0).padStart(4)}s | ${avg(r => r.blue.fighters + r.blue.bombers + r.blue.cruisers).toFixed(1).padStart(6)}    | ${String(res.filter(r => r.blue.cap).length).padStart(2)}/${runsEach}`)
+    avail += node.reward   // clearing this node funds the next
+  })
 } else if (hasFlag('sweep4')) {
   // ── Cross-matrix sweep ──────────────────────────────────────────────────────
   // The 25 curated builds played by BOTH sides: 25 blue × 25 red = 625 match-ups,

@@ -145,6 +145,7 @@ export default function CampaignMap({ onExit, onPlay }) {
 
       // node positions — a serpentine route across the sector
       const N = NODES.length
+      const complete = completed >= N   // every node cleared → victory state
       const positions = []
       for (let i = 0; i < N; i++) positions.push(new THREE.Vector3(-62 + (124 / (N - 1)) * i, Math.sin(i * 0.9) * 16, Math.cos(i * 0.6) * 8))
 
@@ -155,8 +156,9 @@ export default function CampaignMap({ onExit, onPlay }) {
       if (completed > 0) {
         const frac = Math.min(1, completed / (N - 1))
         const pts = []; for (let t = 0; t <= frac + 1e-4; t += frac / 80) pts.push(curve.getPoint(Math.min(frac, t)))
-        if (pts.length > 1) scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 120, 0.22, 6, false), new THREE.MeshBasicMaterial({ color: 0xff5bd0, opacity: 0.8, ...ADD })))
-        pulse = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff9be8, opacity: 0.95, ...ADD })); scene.add(pulse)
+        // travelled route is rose in-progress; the whole route turns gold on completion
+        if (pts.length > 1) scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 120, complete ? 0.3 : 0.22, 6, false), new THREE.MeshBasicMaterial({ color: complete ? 0xffd24a : 0xff5bd0, opacity: complete ? 0.9 : 0.8, ...ADD })))
+        pulse = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 12), new THREE.MeshBasicMaterial({ color: complete ? 0xffe9a8 : 0xff9be8, opacity: 0.95, ...ADD })); scene.add(pulse)
       }
 
       // nodes
@@ -166,7 +168,7 @@ export default function CampaignMap({ onExit, onPlay }) {
         const group = new THREE.Group(); group.position.copy(pos)
         const model = buildNode(NODES[i].model); group.add(model)
         if (st === 'locked') model.traverse(n => { if (n.material && n.material.emissive) { n.material.emissiveIntensity *= 0.25; n.material.color.multiplyScalar(0.4) } })
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(5.5, 0.14, 8, 56), new THREE.MeshBasicMaterial({ color: TEAM_RING[st], opacity: st === 'locked' ? 0.4 : 0.85, ...ADD }))
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(5.5, 0.14, 8, 56), new THREE.MeshBasicMaterial({ color: complete ? 0xffd24a : TEAM_RING[st], opacity: st === 'locked' ? 0.4 : 0.85, ...ADD }))
         group.add(ring)
         const hit = new THREE.Mesh(new THREE.SphereGeometry(6.6, 8, 8), new THREE.MeshBasicMaterial({ visible: false })); group.add(hit)
         scene.add(group)
@@ -260,6 +262,15 @@ export default function CampaignMap({ onExit, onPlay }) {
             </span>
           </div>
         </div>
+
+        {completed >= NODES.length && (
+          <div className="cmap-complete">
+            <div className="cmap-complete-sub">✦ Campaign Complete ✦</div>
+            <div className="cmap-complete-title">ORDER RESTORED</div>
+            <div className="cmap-complete-motto">Caelum canit, illa audit</div>
+          </div>
+        )}
+
         {NODES.map((node, i) => {
           const st = stateOf(i)
           return (
@@ -270,7 +281,7 @@ export default function CampaignMap({ onExit, onPlay }) {
             </div>
           )
         })}
-        <div className="cmap-hint">Select a system to begin the operation</div>
+        <div className="cmap-hint">{completed >= NODES.length ? 'The Order is restored — select a system to revisit' : 'Select a system to begin the operation'}</div>
 
         <button className="cmap-reset" onClick={() => setConfirmReset(true)}>⟲ RESET PROGRESS</button>
 

@@ -94,6 +94,42 @@
   pointer-events: none;
 }
 
+/* campaign-complete capstone banner (top-centre) */
+.cmap-complete {
+  position: absolute;
+  top: 22px; left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  animation: cmap-complete-in 0.9s ease both;
+}
+@keyframes cmap-complete-in {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+.cmap-complete-sub {
+  font-size: 11px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(255, 212, 120, 0.9);
+}
+.cmap-complete-title {
+  margin-top: 6px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: #ffd24a;
+  text-shadow: 0 0 24px rgba(255, 200, 80, 0.6);
+}
+.cmap-complete-motto {
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  font-style: italic;
+  color: rgba(230, 210, 160, 0.75);
+}
+
 /* reset-progress control (bottom-right) */
 .cmap-reset {
   position: absolute;
