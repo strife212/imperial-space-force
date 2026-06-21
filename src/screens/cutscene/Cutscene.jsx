@@ -24,7 +24,7 @@ const CHAR_PORTRAIT = {
 // dialogue and the ending through the ctx passed to their `create()`:
 //   ctx.comms.show(name, text, { persist, team, portrait, segments })
 //   ctx.end({ holdMs, overlay })   // overlay → urgent transmission, else advance
-export default function Cutscene({ scene, onReturn, onComplete }) {
+export default function Cutscene({ scene, onReturn, onComplete, canSkip = true }) {
   const mountRef = useRef(null)
   const [comms, setComms] = useState(null)
   const [commsText, setCommsText] = useState('')
@@ -107,7 +107,7 @@ export default function Cutscene({ scene, onReturn, onComplete }) {
           </div>
         )}
 
-        {!urgent && (
+        {!urgent && canSkip && (
           <div className="cut-controls">
             <button className="cut-btn" onClick={advance}>SKIP ▸</button>
           </div>

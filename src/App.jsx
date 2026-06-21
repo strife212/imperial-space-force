@@ -174,12 +174,10 @@ export default function App() {
     if (cutsceneChain && i >= 0 && i < STORY.length - 1) { setCutsceneId(STORY[i + 1]); setScreen('cutscene'); return }
     setScreen(cutsceneSource)
   }
-  // Enter a campaign node from the map: replays skip straight to the shipyard;
-  // a first run plays the story cutscene first.
+  // Enter a campaign node from the map: always play the story cutscene. A first
+  // run must watch it; a replay of a cleared node may skip (see canSkip below).
   const playCampaignNode = (i) => {
     setCampaignNode(i)
-    const completed = getFlag('campaignProgress') || 0
-    if (i < completed) { setScreen('shipyard'); return }
     setCutsceneId(STORY[i]); setCutsceneSource('campaign'); setCutsceneChain(false); setScreen('cutscene')
   }
 
@@ -224,11 +222,18 @@ export default function App() {
         ? <SpaceBattleScreen key={`camp-${campaignNode}`} campaign={campaignBattle(campaignNode)} onReturn={exitCampaign} />
         : <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />)}
       {screen === 'vistest'         && <VisualTestScreen onReturn={() => setScreen('debug')} />}
-      {screen === 'cutscene'        && <Cutscene key={cutsceneId} scene={SCENES[cutsceneId]} onReturn={() => setScreen(cutsceneSource === 'campaign' ? 'campaign-map' : cutsceneSource)} onComplete={() => {
-          // First Contact ends on its urgent transmission → pick your operator first
-          if (cutsceneId === 'firstContact') { setScreen('character-select'); return }
-          afterCutscene(cutsceneId)
-        }} />}
+      {screen === 'cutscene'        && (() => {
+          // A campaign replay (re-watching a cleared node) may be skipped; a
+          // first run of the current node must be watched. Debug always skippable.
+          const isCampaignReplay = cutsceneSource === 'campaign' && campaignNode !== null && campaignNode < (getFlag('campaignProgress') || 0)
+          const canSkip = cutsceneSource !== 'campaign' || isCampaignReplay
+          return <Cutscene key={cutsceneId} scene={SCENES[cutsceneId]} canSkip={canSkip} onReturn={() => setScreen(cutsceneSource === 'campaign' ? 'campaign-map' : cutsceneSource)} onComplete={() => {
+            // First Contact picks the operator — but only if one hasn't been
+            // chosen yet; once selected, go straight from the cutscene to the shipyard
+            if (cutsceneId === 'firstContact' && !getFlag('operator')) { setScreen('character-select'); return }
+            afterCutscene(cutsceneId)
+          }} />
+        })()}
       {screen === 'character-select' && <CharacterSelect
           onComplete={(op) => { if (op) { setFlag('operator', op.name); setFlag('operatorPortrait', op.portrait); setFlag('fleetName', op.fleet); setFlag('campaignFlagship', `HMSS ${op.flagship}`) } setScreen('fleet-boot') }}
           onBack={() => setScreen(campaignNode !== null ? 'campaign-map' : (cutsceneSource === 'debug' ? 'debug' : 'home'))} />}
