@@ -45,8 +45,8 @@ export default {
 
       for (const o of flybys) { o.x += o.spd * dt; o.g.position.set(fleet.group.position.x + o.x, o.y, o.z); orient(o.g, FWD); o.trail(o.g.position); if (o.x > 110) reseedFly(o) }
 
-      if (!c1 && T >= 2.2) { c1 = true; comms.show('Princess Astraia', LINE1) }
-      if (!c2 && T >= 7.5) { c2 = true; comms.show('The Empress', LINE2, { persist: true }) }
+      if (!c1 && T >= 2.2) { c1 = true; comms.show('The Empress', LINE1) }
+      if (!c2 && T >= 7.5) { c2 = true; comms.show('Princess Astraia', LINE2, { persist: true }) }
       if (!ended && T >= 16) { ended = true; end() }
     }
   },

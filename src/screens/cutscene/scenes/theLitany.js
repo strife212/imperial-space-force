@@ -8,6 +8,7 @@ import { buildRelay } from '../models'
 // in to commune.
 const LINE1 = 'I have modelled the silence. It propagates. The Song fails in ninety days.'
 const LINE2 = 'There is one instrument the Order has never used. The prophecy names it. So do I.'
+const LINE3 = 'Then it is to be in my reign. I had hoped otherwise.'
 
 export default {
   label: 'CUTSCENE / THE GREAT LITANY',
@@ -48,7 +49,7 @@ export default {
     const trail = fx.makeTrail(TEAMS.blue.bolt, 5)
     const _d = new THREE.Vector3()
 
-    let T = 0, c1 = false, c2 = false, ended = false
+    let T = 0, c1 = false, c2 = false, c3 = false, ended = false
     return (dt) => {
       T += dt
       ring.rotation.z += 0.05 * dt; ring2.rotation.z -= 0.03 * dt; sats.rotation.z += 0.05 * dt
@@ -65,7 +66,8 @@ export default {
       camera.position.set(Math.cos(az) * d, 34, Math.sin(az) * d); camera.lookAt(0, 6, 0)
       if (!c1 && T >= 2.0) { c1 = true; comms.show('Litania Magna', LINE1) }
       if (!c2 && T >= 8.0) { c2 = true; comms.show('Litania Magna', LINE2, { persist: true }) }
-      if (!ended && T >= 15) { ended = true; end() }
+      if (!c3 && T >= 14.5) { c3 = true; comms.show('The Empress', LINE3, { persist: true }) }
+      if (!ended && T >= 20.5) { ended = true; end() }
     }
   },
 }

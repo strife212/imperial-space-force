@@ -9,6 +9,15 @@ import '../battle/battle.css'
 const COMMS_DWELL_MS = 4200   // how long a line lingers after it's fully typed
 const FADE_MS = 1300          // matches the .cut-fade transition before we resolve
 
+// Per-character comms portraits, keyed by speaker name. These are cropped from
+// the encyclopedia art and override the generic team portrait when that speaker
+// has the comms. (BASE_URL mirrors constants.js so it works under a sub-path.)
+const BASE_URL = import.meta.env?.BASE_URL ?? '/'
+const CHAR_PORTRAIT = {
+  'The Empress':   `${BASE_URL}empress_portrait.jpg`,
+  'Litania Magna': `${BASE_URL}worldengine_portrait.jpg`,
+}
+
 // Generic cutscene shell. Owns the screen chrome — comms typewriter box, replay,
 // fade-to-black, and the ending (auto-advance, or an urgent-transmission overlay)
 // — and runs the supplied `scene` definition on a three.js stage. Scenes drive
@@ -60,7 +69,7 @@ export default function Cutscene({ scene, onReturn, onComplete }) {
     const commsApi = {
       show: (name, text, opts = {}) => {
         const team = opts.team || 'blue'
-        setComms({ id: ++commsSeq.current, team, name, portrait: opts.portrait || COMMS_PORTRAIT[team], text, segments: opts.segments || [{ text }], persist: !!opts.persist })
+        setComms({ id: ++commsSeq.current, team, name, portrait: opts.portrait || CHAR_PORTRAIT[name] || COMMS_PORTRAIT[team], text, segments: opts.segments || [{ text }], persist: !!opts.persist })
       },
       hide: () => setComms(null),
     }
