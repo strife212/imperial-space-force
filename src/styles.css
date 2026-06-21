@@ -529,8 +529,14 @@
   height: 180px;
   margin: 0 auto 18px;
 }
-/* Fleet boot (muster): centre the header to match the operator-select screen */
+/* Fleet boot (muster): centre the header to match the operator-select screen.
+   Sizing is handled by the shared useScreenScale design height (same scale
+   factor as select), so the full-size header renders consistently. */
 .fleet-boot .boot-header { text-align: center; margin-bottom: 26px; }
+/* Content-height inner (scaled to fit by useScreenScale) so the muster lines
+   all show at once instead of scrolling in place within a fixed-height area. */
+.fleet-boot .boot-inner { transform-origin: top center; height: auto; }
+.fleet-boot .boot-lines-outer { flex: 0 0 auto; overflow: visible; }
 .boot-title {
   font-size: clamp(18px, 5vw, 32px);
   font-weight: 700;

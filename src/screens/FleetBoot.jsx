@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { getFlag } from '../lib/store'
+import { useScreenScale, SCREEN_DESIGN_HEIGHT } from '../hooks/useScreenScale'
 
 // A copy of the legacy boot/loading screen, repurposed as a fleet-muster
 // sequence shown after the operator is chosen. Same chrome and styling as the
@@ -30,6 +31,7 @@ export default function FleetBoot({ onComplete }) {
   const [motto2,      setMotto2]      = useState(false)
   const processingSfx = useRef(null)
   const linesOuterRef = useRef(null)
+  const innerRef = useScreenScale(SCREEN_DESIGN_HEIGHT)
   const onCompleteRef = useRef(onComplete)
   useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
 
@@ -87,7 +89,7 @@ export default function FleetBoot({ onComplete }) {
 
   return (
     <div id="boot-screen" className={`fleet-boot${exiting ? ' fade-out' : ''}`}>
-      <div className="boot-inner">
+      <div className="boot-inner" ref={innerRef}>
         <div className="boot-header">
           <img className="boot-emblem" src={`${import.meta.env.BASE_URL}logo.png`} alt="Imperial Space Force Emblem" />
           <div className="boot-title">IMPERIAL SPACE FORCE</div>
