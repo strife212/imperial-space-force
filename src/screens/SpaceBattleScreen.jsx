@@ -391,10 +391,13 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
     pipRef.current = null; setPipCaption(null)                           // no event highlight yet
     setSkillsUsed([false, false, false])                                 // special skills refresh each engagement
 
+    // blue flagship comms wear the chosen operator's portrait in campaign battles;
+    // a custom speaker (e.g. the Gold Ace) keeps the generic team portrait.
+    const commsPortrait = (team) => (team === 'blue' && isCampaign && getFlag('operatorPortrait')) || COMMS_PORTRAIT[team]
     // surface a capital broadcast (queued, typewriter + chirp), driven by battle events
     const showComms = (team, text, persist = false, speaker = null) => {
       const name = speaker || (team === 'blue' ? blueCapNameRef.current : redCapNameRef.current)
-      enqueueComms({ id: ++commsSeq.current, team, name, portrait: COMMS_PORTRAIT[team], text, segments: [{ text }], persist })
+      enqueueComms({ id: ++commsSeq.current, team, name, portrait: speaker ? COMMS_PORTRAIT[team] : commsPortrait(team), text, segments: [{ text }], persist })
     }
 
     try {
@@ -1771,7 +1774,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           // clear any pending battle chatter and broadcast the victor's line (persists until restart)
           const wTeam = c.blue > 0 ? 'blue' : c.red > 0 ? 'red' : null
           commsQueue.current = []; commsBusy.current = true
-          if (wTeam) { const segs = VICTORY_SEGMENTS[wTeam]; const wName = wTeam === 'blue' ? blueCapNameRef.current : redCapNameRef.current; setComms({ id: ++commsSeq.current, team: wTeam, name: wName, portrait: COMMS_PORTRAIT[wTeam], text: segs.map(s => s.text).join(''), segments: segs, persist: true }) }
+          if (wTeam) { const segs = VICTORY_SEGMENTS[wTeam]; const wName = wTeam === 'blue' ? blueCapNameRef.current : redCapNameRef.current; setComms({ id: ++commsSeq.current, team: wTeam, name: wName, portrait: commsPortrait(wTeam), text: segs.map(s => s.text).join(''), segments: segs, persist: true }) }
           else setComms(null)
           const sumKills = team => ships.filter(s => s.team === team).reduce((a, s) => a + (s.kills || 0), 0)
           const cap = team => { const k = ships.find(s => s.isCapital && s.team === team); return { name: k.name, kills: k.kills || 0, alive: k.alive } }
