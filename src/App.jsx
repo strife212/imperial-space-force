@@ -202,8 +202,8 @@ export default function App() {
       <div className="vignette" />
       {screen === 'home'    && <StartScreen onCampaign={() => setScreen('campaign-map')} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
       {screen === 'campaign-map' && <CampaignMap onExit={() => setScreen('home')} onPlay={playCampaignNode} onReviewFleet={() => { setFleetReviewSource('campaign-map'); setScreen('fleet-review') }} />}
-      {screen === 'fleet-review' && <FleetReview onExit={() => setScreen(fleetReviewSource)} />}
-      {screen === 'shipyard'     && <ShipyardScreen nodeIndex={campaignNode ?? 0} onDeploy={() => setScreen('battle')} onExit={exitCampaign} />}
+      {screen === 'fleet-review' && <FleetReview onExit={() => setScreen(fleetReviewSource)} backLabel={fleetReviewSource === 'shipyard' ? '◂ BACK TO BATTLE' : '◂ RETURN TO MAP'} />}
+      {screen === 'shipyard'     && <ShipyardScreen nodeIndex={campaignNode ?? 0} onDeploy={() => setScreen('battle')} onExit={exitCampaign} onPreview={() => { setFleetReviewSource('shipyard'); setScreen('fleet-review') }} />}
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onBack={() => setScreen('home')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}
       {screen === 'boot'    && <BootScreen  onComplete={() => setScreen('main')} />}

@@ -31,7 +31,7 @@ const SKILL_PREVIEW_MS = { lance: 2700, ace: 6800, nano: 3300 }
 // A 3D parade of the player's standing fleet that doubles as a fleet editor:
 // add / remove ships at their proper Requisition cost (full refund on removal,
 // matching the shipyard) and watch the formation rebuild in real time.
-export default function FleetReview({ onExit }) {
+export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' }) {
   const mountRef = useRef(null)
   const [fleet, setFleet] = useState(getFleet)
   const [credits, setCredits] = useState(getCredits)
@@ -297,7 +297,7 @@ export default function FleetReview({ onExit }) {
           )}
         </div>
 
-        <button className="fr-back" onClick={onExit}>◂ RETURN TO MAP</button>
+        <button className="fr-back" onClick={onExit}>{backLabel}</button>
       </div>
     </div>
   )

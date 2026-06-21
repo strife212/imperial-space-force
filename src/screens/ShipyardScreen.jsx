@@ -27,7 +27,7 @@ function SpriteRow({ team, kind, count, max = 16 }) {
   )
 }
 
-export default function ShipyardScreen({ nodeIndex, onDeploy, onExit }) {
+export default function ShipyardScreen({ nodeIndex, onDeploy, onExit, onPreview }) {
   const node = NODE_BATTLES[nodeIndex] || NODE_BATTLES[0]
   const [fleet,   setFleetState]   = useState(getFleet)
   const [credits, setCreditsState] = useState(getCredits)
@@ -150,7 +150,10 @@ export default function ShipyardScreen({ nodeIndex, onDeploy, onExit }) {
 
         <div className="sy-actions">
           <button className="sy-back" onClick={onExit}>↩ RETURN TO MAP</button>
-          <button className="sy-deploy" onClick={() => onDeploy(fleet)}>DEPLOY FLEET ▶</button>
+          <div className="sy-actions-right">
+            {onPreview && <button className="sy-preview" onClick={onPreview}>◉ PREVIEW FLEET</button>}
+            <button className="sy-deploy" onClick={() => onDeploy(fleet)}>DEPLOY FLEET ▶</button>
+          </div>
         </div>
        </div>
       </div>

@@ -176,6 +176,23 @@
   padding: 11px 20px; border-radius: 2px; cursor: pointer; transition: color 0.15s, border-color 0.15s;
 }
 .sy-back:hover { color: var(--c-ash); border-color: var(--c-rose); }
+.sy-actions-right { display: flex; align-items: center; gap: 14px; }
+.sy-preview {
+  flex: 0 0 auto;
+  background: none;
+  border: 1px solid rgba(120, 180, 255, 0.45);
+  color: rgba(190, 222, 255, 0.92);
+  font-family: var(--font-mono);
+  font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 12px 22px; border-radius: 2px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.sy-preview:hover {
+  background: rgba(120, 180, 255, 0.14);
+  border-color: rgba(160, 210, 255, 0.9);
+  color: #eaf4ff;
+  box-shadow: 0 0 14px rgba(80, 150, 230, 0.35);
+}
 .sy-deploy {
   flex: 0 0 auto;
   background: rgba(120, 180, 255, 0.1);
