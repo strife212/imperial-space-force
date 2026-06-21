@@ -38,8 +38,9 @@ export function buildReviewFleet(ctx, { fighters = 0, bombers = 0, cruisers = 0 
   }
 
   // ── Flagship: centre, with its three aft nozzles lit ──
+  const geoFlag = buildBlueCapital2()
   const flag = new THREE.Group()
-  flag.add(new THREE.Mesh(buildBlueCapital2(), hullMat))
+  flag.add(new THREE.Mesh(geoFlag, hullMat))
   for (const gx of [-0.45, 0, 0.45]) {
     const glow = new THREE.Mesh(fx.blastGeo, fx.glowMat.blue)
     glow.scale.setScalar(0.5); glow.position.set(gx, 0, -3.8); flag.add(glow)
@@ -76,5 +77,15 @@ export function buildReviewFleet(ctx, { fighters = 0, bombers = 0, cruisers = 0 
   }
 
   const sphere = new THREE.Box3().setFromObject(group).getBoundingSphere(new THREE.Sphere())
-  return { group, center: sphere.center, radius: sphere.radius }
+
+  // Tear down everything this fleet owns (so it can be rebuilt live as the
+  // player edits the roster). Shared FX (glow geo/material) are owned by the
+  // stage, not disposed here.
+  const dispose = () => {
+    scene.remove(group)
+    hullMat.dispose()
+    geoFighter.dispose(); geoBomber.dispose(); geoCruiser.dispose(); geoFlag.dispose()
+  }
+
+  return { group, center: sphere.center, radius: sphere.radius, dispose }
 }
