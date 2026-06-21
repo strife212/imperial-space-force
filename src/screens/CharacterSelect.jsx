@@ -34,7 +34,7 @@ const OPERATORS = [
       ['POSTING', 'FLEET CONCORDIA'],
       ['STATUS', 'ACTIVE · VERIFIED', true],
     ],
-    body: 'Decorated for the relief of the Outer Marches. Aggressive, cruiser-forward; trades ships for ground.',
+    body: 'Decorated for the relief of the Outer Marches. One of the most decorated fighter pilots in the navy.',
   },
   {
     portrait: `${BASE}portrait3.jpg`,
@@ -48,7 +48,7 @@ const OPERATORS = [
       ['POSTING', 'FLEET POLYHYMNIA'],
       ['STATUS', 'ACTIVE · VERIFIED', true],
     ],
-    body: 'Princess of the cadet branch. Voidborne since childhood; favours fast carriers and closer odds.',
+    body: 'Princess of the cadet branch. Voidborne since childhood; expert in field repairs and logistics.',
   },
 ]
 
