@@ -22,6 +22,7 @@ import CampaignMap from './screens/CampaignMap'
 import ShipyardScreen from './screens/ShipyardScreen'
 import CharacterSelect from './screens/CharacterSelect'
 import FleetReview from './screens/FleetReview'
+import FleetBoot from './screens/FleetBoot'
 import { NODE_BATTLES, getFleet, getFlagshipName, recordBattle, resetCampaign } from './lib/campaign'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
@@ -229,8 +230,9 @@ export default function App() {
           afterCutscene(cutsceneId)
         }} />}
       {screen === 'character-select' && <CharacterSelect
-          onComplete={(op) => { if (op) { setFlag('operator', op.name); setFlag('operatorPortrait', op.portrait) } afterCutscene('firstContact') }}
+          onComplete={(op) => { if (op) { setFlag('operator', op.name); setFlag('operatorPortrait', op.portrait) } setScreen('fleet-boot') }}
           onBack={() => setScreen(campaignNode !== null ? 'campaign-map' : (cutsceneSource === 'debug' ? 'debug' : 'home'))} />}
+      {screen === 'fleet-boot' && <FleetBoot onComplete={() => afterCutscene('firstContact')} />}
       {screen === 'power'           && <PowerManagementScreen onReactor={() => { setReactorSource('power'); setScreen('reactor') }} onBlackHole={() => { setBlackholeSource('power'); setScreen('blackhole') }} onReturn={() => setScreen(powerSource)} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} {...mailProps} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
 

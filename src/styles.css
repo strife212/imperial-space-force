@@ -529,6 +529,8 @@
   height: 180px;
   margin: 0 auto 18px;
 }
+/* Fleet boot (muster): centre the header to match the operator-select screen */
+.fleet-boot .boot-header { text-align: center; margin-bottom: 26px; }
 .boot-title {
   font-size: clamp(18px, 5vw, 32px);
   font-weight: 700;
