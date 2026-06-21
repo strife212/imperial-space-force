@@ -106,6 +106,8 @@ export default function CampaignMap({ onExit, onPlay }) {
   const [credits, setCredits] = useState(getCredits)
   const [fleet, setFleet] = useState(getFleet)
   const [confirmReset, setConfirmReset] = useState(false)
+  const operatorPortrait = getFlag('operatorPortrait')   // set once an operator is chosen
+  const operatorName = getFlag('operator')
   const stateOf = (i) => (i < completed ? 'done' : i === completed ? 'active' : 'locked')
 
   // wipe all campaign progress, currency and fleet back to the start, then
@@ -250,18 +252,29 @@ export default function CampaignMap({ onExit, onPlay }) {
       <HudHeader onLogout={onExit} right={<span className="label">URSU EUBULEUS SECTOR // CAMPAIGN</span>} />
       <div className="cmap-stage">
         <div className="cmap-canvas" ref={mountRef} />
-        <div className="cmap-hud">
-          <div className="cmap-hud-credits">
-            <span className="cmap-hud-val">{credits.toLocaleString()}</span>
-            <span className="cmap-hud-label">REQUISITION</span>
+        {/* the whole readout — portrait + requisition/fleet — only makes sense
+            once an operator has been chosen, so hide it until then */}
+        {operatorName && (
+          <div className="cmap-hud">
+            {operatorPortrait && (
+              <div className="cmap-hud-portrait" title={operatorName}>
+                <img src={operatorPortrait} alt={operatorName} />
+              </div>
+            )}
+            <div className="cmap-hud-stats">
+              <div className="cmap-hud-credits">
+                <span className="cmap-hud-val">{credits.toLocaleString()}</span>
+                <span className="cmap-hud-label">REQUISITION</span>
+              </div>
+              <div className="cmap-hud-fleet">
+                <span className="cmap-hud-fleet-title">STANDING FLEET</span>
+                <span className="cmap-hud-fleet-line">
+                  ⬢1 FLAGSHIP · {fleet.fighters} INT · {fleet.bombers} BMR · {fleet.cruisers} CRU
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="cmap-hud-fleet">
-            <span className="cmap-hud-fleet-title">STANDING FLEET</span>
-            <span className="cmap-hud-fleet-line">
-              ⬢1 FLAGSHIP · {fleet.fighters} INT · {fleet.bombers} BMR · {fleet.cruisers} CRU
-            </span>
-          </div>
-        </div>
+        )}
 
         {completed >= NODES.length && (
           <div className="cmap-complete">

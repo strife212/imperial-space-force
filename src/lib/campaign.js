@@ -101,4 +101,6 @@ export function resetCampaign() {
   setFlag('credits', 0)
   setFlag('campaignFleet', { ...STARTING_FLEET })
   setFlag('campaignFlagship', '')
+  setFlag('operator', '')          // clear the chosen operator so the
+  setFlag('operatorPortrait', '')  // campaign-map portrait hides again
 }

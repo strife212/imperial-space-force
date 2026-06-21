@@ -20,6 +20,7 @@ import Cutscene from './screens/cutscene/Cutscene'
 import { SCENES, STORY } from './screens/cutscene/scenes'
 import CampaignMap from './screens/CampaignMap'
 import ShipyardScreen from './screens/ShipyardScreen'
+import CharacterSelect from './screens/CharacterSelect'
 import { NODE_BATTLES, getFleet, getFlagshipName, recordBattle, resetCampaign } from './lib/campaign'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
@@ -162,6 +163,14 @@ export default function App() {
     onExit:     exitCampaign,
     onRetry:    () => setScreen('shipyard'),      // rebuild the fleet, then re-deploy
   })
+  // Where a finished cutscene goes next: campaign → muster the fleet (shipyard);
+  // a debug playthrough → the next story beat; a single scene → back to source.
+  const afterCutscene = (id) => {
+    if (cutsceneSource === 'campaign') { setScreen('shipyard'); return }
+    const i = STORY.indexOf(id)
+    if (cutsceneChain && i >= 0 && i < STORY.length - 1) { setCutsceneId(STORY[i + 1]); setScreen('cutscene'); return }
+    setScreen(cutsceneSource)
+  }
   // Enter a campaign node from the map: replays skip straight to the shipyard;
   // a first run plays the story cutscene first.
   const playCampaignNode = (i) => {
@@ -211,11 +220,13 @@ export default function App() {
         : <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />)}
       {screen === 'vistest'         && <VisualTestScreen onReturn={() => setScreen('debug')} />}
       {screen === 'cutscene'        && <Cutscene key={cutsceneId} scene={SCENES[cutsceneId]} onReturn={() => setScreen(cutsceneSource === 'campaign' ? 'campaign-map' : cutsceneSource)} onComplete={() => {
-          if (cutsceneSource === 'campaign') { setScreen('shipyard'); return }                // a campaign node: muster the fleet, then deploy
-          const i = STORY.indexOf(cutsceneId)
-          if (cutsceneChain && i >= 0 && i < STORY.length - 1) setCutsceneId(STORY[i + 1])   // next beat of the story (debug playthrough)
-          else setScreen(cutsceneSource)                                                      // single scene
+          // First Contact ends on its urgent transmission → pick your operator first
+          if (cutsceneId === 'firstContact') { setScreen('character-select'); return }
+          afterCutscene(cutsceneId)
         }} />}
+      {screen === 'character-select' && <CharacterSelect
+          onComplete={(op) => { if (op) { setFlag('operator', op.name); setFlag('operatorPortrait', op.portrait) } afterCutscene('firstContact') }}
+          onBack={() => setScreen(campaignNode !== null ? 'campaign-map' : (cutsceneSource === 'debug' ? 'debug' : 'home'))} />}
       {screen === 'power'           && <PowerManagementScreen onReactor={() => { setReactorSource('power'); setScreen('reactor') }} onBlackHole={() => { setBlackholeSource('power'); setScreen('blackhole') }} onReturn={() => setScreen(powerSource)} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} {...mailProps} />}
       {mailOpen && <MailOverlay messages={messages} onRead={markRead} onClose={() => setMailOpen(false)} repliedIds={repliedIds} onReply={markReplied} />}
 
