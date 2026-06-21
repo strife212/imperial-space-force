@@ -17,7 +17,6 @@ const OPERATORS = [
     elite: { name: 'LANCE STRIKE', desc: 'Turns the flagship onto the enemy capital, charges the spinal lance and looses a single beam for 20 damage.' },
     rows: [
       ['RANK', 'O-10 · ADMIRAL'],
-      ['CLEARANCE', 'CLR-Ω · IMPERIAL'],
       ['POSTING', 'FLEET BERENIKE'],
       ['STATUS', 'ACTIVE · VERIFIED', true],
     ],
@@ -32,7 +31,6 @@ const OPERATORS = [
     elite: { name: 'FIGHTER ACE', desc: 'Warps in an elite gold fighter — double hull, 1.5× speed and twice the rate of fire.' },
     rows: [
       ['RANK', 'O-9 · VICE ADMIRAL'],
-      ['CLEARANCE', 'CLR-IX · CROWN'],
       ['POSTING', 'FLEET CONCORDIA'],
       ['STATUS', 'ACTIVE · VERIFIED', true],
     ],
@@ -47,7 +45,6 @@ const OPERATORS = [
     elite: { name: 'NANO REPAIR', desc: 'Releases a nanite swarm that repairs the fleet — +1 hull to every ship and +20 to the flagship.' },
     rows: [
       ['RANK', 'O-7 · COMMODORE'],
-      ['CLEARANCE', 'CLR-VII · CROWN'],
       ['POSTING', 'FLEET POLYHYMNIA'],
       ['STATUS', 'ACTIVE · VERIFIED', true],
     ],

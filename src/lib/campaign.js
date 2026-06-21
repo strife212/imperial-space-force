@@ -106,19 +106,27 @@ export function resetCampaign() {
   setFlag('fleetName', '')
 }
 
+// Selectable operators, in carousel order. Mirrors the roster in CharacterSelect
+// so the debug unlock can assign / cycle them (name, portrait, fleet, flagship).
+const OPERATOR_ROSTER = [
+  { name: 'PRINCESS V. ASTRAIA',  portrait: 'portrait.png',  fleet: 'Fleet Berenike',   flagship: "HMSS Saint Berenike's Lance" },
+  { name: 'PRINCESS T. SEVERINE', portrait: 'portrait2.jpg', fleet: 'Fleet Concordia',   flagship: 'HMSS Saint Concordia Heard First' },
+  { name: 'PRINCESS C. LUCIA',    portrait: 'portrait3.jpg', fleet: 'Fleet Polyhymnia',  flagship: 'HMSS The Empress Remembers Saint Polyhymnia' },
+]
+
 // Debug shortcut: mark every node cleared and grant the full Requisition you'd
-// have earned from completing the whole campaign. Also assigns a default
-// operator if none is chosen yet (the picker is otherwise only reachable via
-// the First Contact flow), so the HUD and Fleet Review are usable.
+// have earned from completing the whole campaign. Also assigns an operator: the
+// first one if none is chosen yet, otherwise CYCLES to the next on each press —
+// so different operators (and their elite skills) are easy to test.
 export function unlockAllCampaign() {
   const total = NODE_BATTLES.reduce((sum, n) => sum + n.reward, 0)
   setFlag('campaignProgress', NODE_COUNT)
   setFlag('credits', total)
-  if (!getFlag('operator')) {
-    const base = import.meta.env?.BASE_URL ?? '/'
-    setFlag('operator', 'PRINCESS V. ASTRAIA')
-    setFlag('operatorPortrait', `${base}portrait.png`)
-    setFlag('fleetName', 'Fleet Berenike')
-    setFlag('campaignFlagship', "HMSS Saint Berenike's Lance")
-  }
+  const base = import.meta.env?.BASE_URL ?? '/'
+  const idx = OPERATOR_ROSTER.findIndex(o => o.name === getFlag('operator'))
+  const next = OPERATOR_ROSTER[idx < 0 ? 0 : (idx + 1) % OPERATOR_ROSTER.length]
+  setFlag('operator', next.name)
+  setFlag('operatorPortrait', `${base}${next.portrait}`)
+  setFlag('fleetName', next.fleet)
+  setFlag('campaignFlagship', next.flagship)
 }

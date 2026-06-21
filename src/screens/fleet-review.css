@@ -114,6 +114,47 @@
 }
 .fr-btn:disabled { opacity: 0.3; cursor: default; }
 
+/* operator elite-skill preview — sits beneath the ship shop */
+.fr-elite {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 3px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(120, 180, 255, 0.18);
+}
+.fr-elite-label {
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  color: #9fb0d4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}
+.fr-elite-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: rgba(20, 96, 208, 0.12);
+  border: 1px solid rgba(120, 180, 255, 0.55);
+  border-radius: 2px;
+  padding: 8px 11px;
+  color: #eaf4ff;
+  font-family: var(--font-mono);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(20, 96, 208, 0.25);
+  transition: background 0.13s, border-color 0.13s, color 0.13s, box-shadow 0.13s;
+}
+.fr-elite-btn:hover:not(:disabled) {
+  background: rgba(20, 96, 208, 0.26);
+  border-color: rgba(150, 205, 255, 0.95);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(20, 96, 208, 0.5);
+}
+.fr-elite-btn:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+.fr-elite-name { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.fr-elite-hint { font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: #9fb0d4; }
+
 /* return control — bottom-left */
 .fr-back {
   position: absolute;
