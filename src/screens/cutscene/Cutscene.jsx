@@ -4,7 +4,11 @@ import { COMMS_PORTRAIT } from '../battle/constants'
 import { renderCommsBody } from '../battle/RosterUI'
 import UrgentMessageOverlay from '../battle/UrgentMessageOverlay'
 import { createStage } from './stage'
+import { getFlag } from '../../lib/store'
 import '../battle/battle.css'
+
+// "PRINCESS V. ASTRAIA" → "Princess V. Astraia"
+const titleCase = (s) => s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
 
 const COMMS_DWELL_MS = 4200   // how long a line lingers after it's fully typed
 const FADE_MS = 1300          // matches the .cut-fade transition before we resolve
@@ -69,7 +73,14 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true }
     const commsApi = {
       show: (name, text, opts = {}) => {
         const team = opts.team || 'blue'
-        setComms({ id: ++commsSeq.current, team, name, portrait: opts.portrait || CHAR_PORTRAIT[name] || COMMS_PORTRAIT[team], text, segments: opts.segments || [{ text }], persist: !!opts.persist })
+        // 'Princess Astraia' stands in for the player's chosen operator, so all
+        // her cutscene lines use the selected princess's name and portrait.
+        let displayName = name, portrait = opts.portrait
+        if (name === 'Princess Astraia') {
+          const op = getFlag('operator')
+          if (op) { displayName = titleCase(op); portrait = portrait || getFlag('operatorPortrait') }
+        }
+        setComms({ id: ++commsSeq.current, team, name: displayName, portrait: portrait || CHAR_PORTRAIT[displayName] || COMMS_PORTRAIT[team], text, segments: opts.segments || [{ text }], persist: !!opts.persist })
       },
       hide: () => setComms(null),
     }

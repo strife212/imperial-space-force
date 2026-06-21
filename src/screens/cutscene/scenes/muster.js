@@ -3,12 +3,13 @@ import { TEAMS } from '../../battle/constants'
 import { buildBlueModel, makeRingedPlanet } from '../../battle/geometry'
 import { buildFleet } from '../actors'
 import { buildStation, asteroidField } from '../models'
+import { getFlag } from '../../../lib/store'
 
 // The Empire answers the Cassiopeia's distress: the first true muster in a
 // generation, the fleet gathering at a drydock before it advances — stragglers
 // still warping in.
 const LINE1 = 'Every ship the Throne could spare. The first true muster in a generation.'
-const LINE2 = 'Fleet Polyhymnia — advance. Find what silenced the Cassiopeia.'
+// LINE2 names the player's chosen fleet, e.g. "Fleet Concordia — advance. …"
 
 export default {
   label: 'CUTSCENE / THE MUSTER',
@@ -16,6 +17,8 @@ export default {
   bloom: 0.6,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx
+    const fleetName = getFlag('fleetName') || 'Fleet Polyhymnia'
+    const LINE2 = `${fleetName} — advance. Find what silenced the Cassiopeia.`
     const fleet = buildFleet(ctx, { team: 'blue', fighters: 34, bombers: 14, cruisers: 6 })
 
     // the muster point: a drydock station the fleet forms up around, and a quiet
