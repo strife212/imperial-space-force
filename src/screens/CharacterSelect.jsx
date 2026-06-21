@@ -44,7 +44,7 @@ const OPERATORS = [
     fleet: 'Fleet Polyhymnia',
     elite: { name: 'NANO REPAIR', desc: 'Releases a nanite swarm that repairs the fleet — +1 hull to every ship and +20 to the flagship.' },
     rows: [
-      ['RANK', 'O-7 · COMMODORE'],
+      ['RANK', 'O-8 · REAR ADMIRAL'],
       ['POSTING', 'FLEET POLYHYMNIA'],
       ['STATUS', 'ACTIVE · VERIFIED', true],
     ],
@@ -185,8 +185,10 @@ export default function CharacterSelect({ onComplete, onBack }) {
                   </div>
                   <div className="cs-divider" />
                   <div className="cs-flagship"><span className="cs-flagship-label">FLAGSHIP:</span> <span className="cs-flagship-name">{op.flagship}</span></div>
-                  <div className="cs-elite"><span className="cs-elite-label">ELITE SKILL:</span> <span className="cs-elite-name">{op.elite.name}</span></div>
-                  <div className="cs-elite-desc">{op.elite.desc}</div>
+                  <div className="cs-elite-box">
+                    <div className="cs-elite"><span className="cs-elite-label">ELITE SKILL</span> <span className="cs-elite-name">{op.elite.name}</span></div>
+                    <div className="cs-elite-desc">{op.elite.desc}</div>
+                  </div>
                   <div className="cs-body">{op.body}</div>
                 </div>
               </div>

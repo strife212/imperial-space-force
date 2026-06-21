@@ -225,8 +225,11 @@ export default function App() {
       {screen === 'cutscene'        && (() => {
           // A campaign replay (re-watching a cleared node) may be skipped; a
           // first run of the current node must be watched. Debug always skippable.
+          // Special case: once the player has *ever* chosen an operator, node 1's
+          // intro is always skippable — even after a campaign-progress reset.
           const isCampaignReplay = cutsceneSource === 'campaign' && campaignNode !== null && campaignNode < (getFlag('campaignProgress') || 0)
-          const canSkip = cutsceneSource !== 'campaign' || isCampaignReplay
+          const node1Veteran = cutsceneSource === 'campaign' && campaignNode === 0 && !!getFlag('everSelectedOperator')
+          const canSkip = cutsceneSource !== 'campaign' || isCampaignReplay || node1Veteran
           return <Cutscene key={cutsceneId} scene={SCENES[cutsceneId]} canSkip={canSkip} onReturn={() => setScreen(cutsceneSource === 'campaign' ? 'campaign-map' : cutsceneSource)} onComplete={() => {
             // First Contact picks the operator — but only if one hasn't been
             // chosen yet; once selected, go straight from the cutscene to the shipyard
@@ -235,7 +238,7 @@ export default function App() {
           }} />
         })()}
       {screen === 'character-select' && <CharacterSelect
-          onComplete={(op) => { if (op) { setFlag('operator', op.name); setFlag('operatorPortrait', op.portrait); setFlag('fleetName', op.fleet); setFlag('campaignFlagship', `HMSS ${op.flagship}`) } setScreen('fleet-boot') }}
+          onComplete={(op) => { if (op) { setFlag('operator', op.name); setFlag('operatorPortrait', op.portrait); setFlag('fleetName', op.fleet); setFlag('campaignFlagship', `HMSS ${op.flagship}`); setFlag('everSelectedOperator', true) } setScreen('fleet-boot') }}
           onBack={() => setScreen(campaignNode !== null ? 'campaign-map' : (cutsceneSource === 'debug' ? 'debug' : 'home'))} />}
       {screen === 'fleet-boot' && <FleetBoot onComplete={() => afterCutscene('firstContact')} />}
       {screen === 'power'           && <PowerManagementScreen onReactor={() => { setReactorSource('power'); setScreen('reactor') }} onBlackHole={() => { setBlackholeSource('power'); setScreen('blackhole') }} onReturn={() => setScreen(powerSource)} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} {...mailProps} />}

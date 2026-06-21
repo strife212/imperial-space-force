@@ -203,20 +203,28 @@
 }
 .cs-flagship-label { color: var(--c-ash-dim); letter-spacing: 0.18em; }
 .cs-flagship-name { color: var(--c-rose); }
+.cs-elite-box {
+  margin-top: 9px;
+  padding: 9px 11px;
+  background: linear-gradient(150deg, rgba(26, 100, 255, 0.16), rgba(20, 96, 208, 0.05));
+  border: 1px solid rgba(120, 180, 255, 0.4);
+  border-left: 2px solid var(--c-rose);
+  border-radius: 3px;
+  box-shadow: 0 0 14px rgba(20, 96, 208, 0.22);
+}
 .cs-elite {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  margin-top: 7px;
 }
-.cs-elite-label { color: var(--c-ash-dim); letter-spacing: 0.18em; }
-.cs-elite-name { color: var(--c-rose); }
+.cs-elite-label { color: #9fb0d4; letter-spacing: 0.18em; }
+.cs-elite-name { color: var(--c-pink); font-weight: 700; }
 .cs-elite-desc {
   font-size: 11px;
-  color: var(--c-ash-dim);
+  color: var(--c-ash);
   letter-spacing: 0.04em;
-  line-height: 1.55;
-  margin-top: 3px;
+  line-height: 1.5;
+  margin-top: 4px;
 }
 .cs-body {
   font-size: 12.5px;

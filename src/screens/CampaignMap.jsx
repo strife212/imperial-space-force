@@ -106,6 +106,7 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet }) {
   const [credits, setCredits] = useState(getCredits)
   const [fleet, setFleet] = useState(getFleet)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [showDebug, setShowDebug] = useState(false)      // debug unlock hidden until Z is pressed
   const operatorPortrait = getFlag('operatorPortrait')   // set once an operator is chosen
   const operatorName = getFlag('operator')
   const fleetName = getFlag('fleetName') || 'Fleet Polyhymnia'
@@ -120,6 +121,13 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet }) {
     setFleet(getFleet())
     setConfirmReset(false)
   }
+
+  // the Z key toggles the hidden debug controls
+  useEffect(() => {
+    const onKey = (e) => { if (e.code === 'KeyZ') setShowDebug(v => !v) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // debug: clear every node and grant the matching Requisition
   const doUnlockAll = () => {
@@ -312,7 +320,7 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet }) {
         })}
         <div className="cmap-hint">{completed >= NODES.length ? 'The Order is restored — select a system to revisit' : 'Select a system to begin the operation'}</div>
 
-        <button className="cmap-unlock" onClick={doUnlockAll}>⚡ DEBUG · UNLOCK ALL</button>
+        {showDebug && <button className="cmap-unlock" onClick={doUnlockAll}>⚡ DEBUG · UNLOCK ALL</button>}
         <button className="cmap-reset" onClick={() => setConfirmReset(true)}>⟲ RESET PROGRESS</button>
 
         {confirmReset && (

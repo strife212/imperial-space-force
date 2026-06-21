@@ -129,4 +129,5 @@ export function unlockAllCampaign() {
   setFlag('operatorPortrait', `${base}${next.portrait}`)
   setFlag('fleetName', next.fleet)
   setFlag('campaignFlagship', next.flagship)
+  setFlag('everSelectedOperator', true)   // persists through resets → node 1 stays skippable
 }
