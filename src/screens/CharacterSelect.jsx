@@ -12,10 +12,12 @@ const OPERATORS = [
     portrait: `${BASE}portrait.png`,
     name: 'PRINCESS V. ASTRAIA',
     code: 'IMPERIAL-CLEARANCE-OMEGA',
+    flagship: "Saint Berenike's Lance",
+    fleet: 'Fleet Berenike',
     rows: [
       ['RANK', 'O-10 · ADMIRAL'],
       ['CLEARANCE', 'CLR-Ω · IMPERIAL'],
-      ['POSTING', 'HMSS HER ANNUNCIATOR'],
+      ['POSTING', 'FLEET BERENIKE'],
       ['STATUS', 'ACTIVE · VERIFIED', true],
     ],
     body: 'Imperial Princess — 11th in line to the Royal and Imperial Throne. Steady hand, line-of-battle doctrine.',
@@ -24,10 +26,12 @@ const OPERATORS = [
     portrait: `${BASE}portrait2.jpg`,
     name: 'PRINCESS T. SEVERINE',
     code: 'CROWN-CLEARANCE-NINE',
+    flagship: 'Saint Concordia Heard First',
+    fleet: 'Fleet Concordia',
     rows: [
       ['RANK', 'O-9 · VICE ADMIRAL'],
       ['CLEARANCE', 'CLR-IX · CROWN'],
-      ['POSTING', 'FLEET CALLIOPE'],
+      ['POSTING', 'FLEET CONCORDIA'],
       ['STATUS', 'ACTIVE · VERIFIED', true],
     ],
     body: 'Decorated for the relief of the Outer Marches. Aggressive, cruiser-forward; trades ships for ground.',
@@ -36,6 +40,8 @@ const OPERATORS = [
     portrait: `${BASE}portrait3.jpg`,
     name: 'PRINCESS C. LUCIA',
     code: 'CROWN-CLEARANCE-SEVEN',
+    flagship: 'The Empress Remembers Saint Polyhymnia',
+    fleet: 'Fleet Polyhymnia',
     rows: [
       ['RANK', 'O-7 · COMMODORE'],
       ['CLEARANCE', 'CLR-VII · CROWN'],
@@ -59,13 +65,17 @@ export default function CharacterSelect({ onComplete, onBack }) {
   const [authDone, setAuthDone] = useState(false)
   const innerRef = useScreenScale(SCREEN_DESIGN_HEIGHT)
   const clickSfx = useRef(null)
+  const beepSfx = useRef(null)
   const timers = useRef([])
 
   useEffect(() => {
     const a = new Audio(`${BASE}click.wav`); a.preload = 'auto'; clickSfx.current = a
+    const b = new Audio(`${BASE}beep.mp3`); b.preload = 'auto'; beepSfx.current = b
     return () => timers.current.forEach(clearTimeout)
   }, [])
   const ping = () => { const a = clickSfx.current; if (a) { a.currentTime = 0; a.play().catch(() => {}) } }
+  // cloneNode so rapid flashes can overlap (matches the legacy crypto module)
+  const beep = () => { const b = beepSfx.current; if (b) b.cloneNode().play().catch(() => {}) }
 
   const go = (d) => { ping(); setDir(d); setIdx(i => (i + d + OPERATORS.length) % OPERATORS.length) }
 
@@ -78,7 +88,10 @@ export default function CharacterSelect({ onComplete, onBack }) {
     pw.split('').forEach((_, i) => timers.current.push(setTimeout(() => setPasswordText(pw.slice(0, i + 1)), pwStart + i * PW_SPEED)))
     const grantAt = pwStart + pw.length * PW_SPEED + 260
     timers.current.push(setTimeout(() => setAuthDone(true), grantAt))
-    timers.current.push(setTimeout(() => onComplete?.(op), grantAt + 850))
+    // flash "ACCESS GRANTED" a few times with a beep on each flash, then go
+    const FLASH = 800, FLASHES = 3
+    for (let i = 0; i < FLASHES; i++) timers.current.push(setTimeout(beep, grantAt + i * FLASH))
+    timers.current.push(setTimeout(() => onComplete?.(op), grantAt + FLASHES * FLASH + 400))
   }
   const confirm = () => {
     if (phase !== 'select') return
@@ -171,6 +184,7 @@ export default function CharacterSelect({ onComplete, onBack }) {
                     ))}
                   </div>
                   <div className="cs-divider" />
+                  <div className="cs-flagship"><span className="cs-flagship-label">FLAGSHIP:</span> <span className="cs-flagship-name">{op.flagship}</span></div>
                   <div className="cs-body">{op.body}</div>
                 </div>
               </div>

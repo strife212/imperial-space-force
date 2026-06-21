@@ -230,7 +230,7 @@ export default function App() {
           afterCutscene(cutsceneId)
         }} />}
       {screen === 'character-select' && <CharacterSelect
-          onComplete={(op) => { if (op) { setFlag('operator', op.name); setFlag('operatorPortrait', op.portrait) } setScreen('fleet-boot') }}
+          onComplete={(op) => { if (op) { setFlag('operator', op.name); setFlag('operatorPortrait', op.portrait); setFlag('fleetName', op.fleet); setFlag('campaignFlagship', `HMSS ${op.flagship}`) } setScreen('fleet-boot') }}
           onBack={() => setScreen(campaignNode !== null ? 'campaign-map' : (cutsceneSource === 'debug' ? 'debug' : 'home'))} />}
       {screen === 'fleet-boot' && <FleetBoot onComplete={() => afterCutscene('firstContact')} />}
       {screen === 'power'           && <PowerManagementScreen onReactor={() => { setReactorSource('power'); setScreen('reactor') }} onBlackHole={() => { setBlackholeSource('power'); setScreen('blackhole') }} onReturn={() => setScreen(powerSource)} reactorPlasma={plasmaLevel} bhOutput={bhOutput} bhYield={bhYield} {...mailProps} />}

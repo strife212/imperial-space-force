@@ -69,7 +69,21 @@
   color: var(--c-ash-dim);
   transition: color 0.2s;
 }
-.cs-auth-status--ok { color: var(--c-rose); text-shadow: 0 0 10px rgba(255, 91, 208, 0.4); }
+.cs-auth-status--ok {
+  color: var(--c-rose);
+  text-shadow: 0 0 10px rgba(255, 91, 208, 0.4);
+  /* Three flashes over 2.4s (lit ~0.5s, gap ~0.3s), ending LIT — a single
+     timeline rather than 3 iterations, so there's no end-of-animation snap
+     back to the base opacity (which read as an extra, beep-less 4th flash). */
+  animation: cs-grant-flash 2.4s linear forwards;
+}
+@keyframes cs-grant-flash {
+  0%,     20.8% { opacity: 1; }    /* flash 1 (beep @0.0s) */
+  21.5%,  33.3% { opacity: 0.12; } /* gap */
+  34%,    54.2% { opacity: 1; }    /* flash 2 (beep @0.8s) */
+  54.9%,  66.7% { opacity: 0.12; } /* gap */
+  67.4%,  100%  { opacity: 1; }    /* flash 3 (beep @1.6s) → holds lit */
+}
 
 /* carousel row: arrow · card · arrow */
 .cs-stage {
@@ -182,6 +196,13 @@
 .cs-row-label { letter-spacing: 0.18em; text-transform: uppercase; color: var(--c-ash-dim); white-space: nowrap; }
 .cs-row-value { letter-spacing: 0.08em; color: var(--c-ash); text-align: right; }
 .cs-row-value--ok { color: var(--c-rose); }
+.cs-flagship {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.cs-flagship-label { color: var(--c-ash-dim); letter-spacing: 0.18em; }
+.cs-flagship-name { color: var(--c-rose); }
 .cs-body {
   font-size: 12.5px;
   color: var(--c-ash-dim);

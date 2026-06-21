@@ -2,6 +2,7 @@ import { useState } from 'react'
 import HudHeader from '../components/HudHeader'
 import HudFooter from '../components/HudFooter'
 import { ShipSprite, ShipInfoTip } from './battle/RosterUI'
+import { useFitScale } from '../hooks/useScreenScale'
 import { splitCapName } from './battle/constants'
 import {
   NODE_BATTLES, SHIP_COST, getFleet, setFleet, getCredits, spendCredits, addCredits,
@@ -31,6 +32,7 @@ export default function ShipyardScreen({ nodeIndex, onDeploy, onExit }) {
   const [fleet,   setFleetState]   = useState(getFleet)
   const [credits, setCreditsState] = useState(getCredits)
   const flagship = splitCapName(getFlagshipName())
+  const fitRef = useFitScale()   // scale the body to fit between header/footer
 
   // Buy / sell persist to the store immediately so the map HUD and the deploy
   // both read true state. Selling refunds the full cost — the shipyard is a
@@ -64,6 +66,7 @@ export default function ShipyardScreen({ nodeIndex, onDeploy, onExit }) {
       <HudHeader onLogout={onExit} right={<span className="label">FLEET COMMAND // SHIPYARD</span>} />
 
       <div className="sy-body">
+       <div className="sy-fit" ref={fitRef}>
         <div className="sy-opbar">
           <div className="sy-op">
             <span className="sy-op-num">OPERATION {String(nodeIndex + 1).padStart(2, '0')}</span>
@@ -149,6 +152,7 @@ export default function ShipyardScreen({ nodeIndex, onDeploy, onExit }) {
           <button className="sy-back" onClick={onExit}>↩ RETURN TO MAP</button>
           <button className="sy-deploy" onClick={() => onDeploy(fleet)}>DEPLOY FLEET ▶</button>
         </div>
+       </div>
       </div>
 
       <HudFooter>

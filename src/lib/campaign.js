@@ -103,6 +103,7 @@ export function resetCampaign() {
   setFlag('campaignFlagship', '')
   setFlag('operator', '')          // clear the chosen operator so the
   setFlag('operatorPortrait', '')  // campaign-map portrait hides again
+  setFlag('fleetName', '')
 }
 
 // Debug shortcut: mark every node cleared and grant the full Requisition you'd
@@ -117,5 +118,7 @@ export function unlockAllCampaign() {
     const base = import.meta.env?.BASE_URL ?? '/'
     setFlag('operator', 'PRINCESS V. ASTRAIA')
     setFlag('operatorPortrait', `${base}portrait.png`)
+    setFlag('fleetName', 'Fleet Berenike')
+    setFlag('campaignFlagship', "HMSS Saint Berenike's Lance")
   }
 }
