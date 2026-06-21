@@ -21,6 +21,7 @@ import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapit
 import { makeCampaignBackdrop } from './battle/campaignBackdrop'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
 import { getFlag } from '../lib/store'
+import { playLanceCharge } from '../lib/lanceSfx'
 import './battle/battle.css'
 
 // Player special skills — one-shot battle abilities. In the skirmish all three
@@ -113,6 +114,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   const followBomberRef = useRef(null)          // follow-a-blue-bomber-by-index fn, wired up inside the scene
   const killSeq = useRef(0)
   const audioRef = useRef(null)
+  const mutedRef = useRef(true)   // mirror of `muted` readable inside the scene loop (lance sfx)
   const blueCapRef = useRef(null), blueShieldRef = useRef(null), blueReserveRef = useRef(null)
   const redCapRef  = useRef(null), redShieldRef  = useRef(null), redReserveRef  = useRef(null)
 
@@ -348,6 +350,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       blip(1080, 0.085, 0.12)
     }
 
+
     // subtle ambient drone (two detuned low sines)
     const droneG = ctx.createGain(); droneG.gain.value = 0.03; droneG.connect(dry)
     const d1 = ctx.createOscillator(); d1.type = 'sine'; d1.frequency.value = 54;   d1.connect(droneG); d1.start()
@@ -369,7 +372,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
     }
   }, [])
 
-  useEffect(() => { audioRef.current?.setMuted(muted) }, [muted])
+  useEffect(() => { audioRef.current?.setMuted(muted); mutedRef.current = muted }, [muted])
 
   // ── Campaign: bank the outcome exactly once when the engagement resolves ──────
   useEffect(() => {
@@ -999,7 +1002,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       // The blue flagship halts, swings its bow onto the enemy flagship, charges a
       // spinal lance, then looses one devastating beam (20 dmg) with a big show.
       let bloomPass = null   // assigned with the composer; pumped during the lance
-      const lance = { active: false, phase: '', t: 0, beamCore: null, beamGlow: null, targetPos: null }
+      const lance = { active: false, phase: '', t: 0, beamCore: null, beamGlow: null, targetPos: null, discharge: null }
       const lanceAimAt = new THREE.Vector3()
       const lanceFX = []     // { mesh, mat } — charge orb + beam cylinders, cleaned up together
       let lanceOrb = null
@@ -1046,11 +1049,11 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         spawnBlast(_tmp.copy(tp).add(_lz.set(4, 2, -3)).clone(), false)
         spawnBlast(_tmp.copy(tp).add(_lz.set(-3, -2, 3)).clone(), false)
         for (let i = 0; i < 16; i++) spawnEmber(_tmp.copy(tp).add(_lz.set((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7)).clone(), i % 2 ? 0xbfe2ff : 0x9fd4ff)
-        audioRef.current?.playExplosion(true)
+        if (lance.discharge) { lance.discharge(); lance.discharge = null }   // cut the charge tone + fire the boom
         showComms('blue', 'Lance away — strike true!')
         if (!gameOver) showPip('blue', 'LANCE STRIKE — IMPACT', () => (lance.targetPos || tp), new THREE.Vector3(0.6, 0.34, 0.6), 26, 8, LANCE_FIRE + 0.4)
       }
-      const endLance = () => { clearLanceFX(); lance.active = false; lance.phase = ''; lance.beamCore = null; lance.beamGlow = null; lance.targetPos = null; if (bloomPass) bloomPass.strength = 0.9 }
+      const endLance = () => { if (lance.discharge) { lance.discharge(false); lance.discharge = null }; clearLanceFX(); lance.active = false; lance.phase = ''; lance.beamCore = null; lance.beamGlow = null; lance.targetPos = null; if (bloomPass) bloomPass.strength = 0.9 }
       const updateLance = (dt) => {
         if (!lance.active) return
         if (gameOver || !blueCapital || !blueCapital.alive) { endLance(); return }
@@ -1095,6 +1098,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         if (!blueCapital || !blueCapital.alive || !redCapital || !redCapital.alive) return false
         if (introT < INTRO_TOTAL) return false   // not until both fleets have jumped in
         lance.active = true; lance.phase = 'aim'; lance.t = 0
+        lance.discharge = playLanceCharge({ muted: mutedRef.current })   // shared charge → cut → boom
         lanceAimAt.copy(redCapital.pos)
         const orbMat = new THREE.MeshBasicMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
         lanceOrb = new THREE.Mesh(blastGeo, orbMat)

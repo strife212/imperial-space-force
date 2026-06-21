@@ -6,6 +6,7 @@ import { buildReviewFleet } from './buildReviewFleet'
 import { buildBlueModel } from './battle/geometry'
 import { SHIP_COST, getFleet, setFleet as storeSetFleet, getCredits, spendCredits, addCredits, getFlagshipName } from '../lib/campaign'
 import { getFlag } from '../lib/store'
+import { playLanceCharge } from '../lib/lanceSfx'
 import './fleet-review.css'
 
 const KINDS = [
@@ -75,6 +76,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' })
         const trackMesh = (m) => { scene.add(m); skillFX.meshes.push(m); return m }
         const trackDisp = (...ds) => { for (const d of ds) skillFX.disp.push(d) }
         const clearSkill = () => {
+          if (skillFX.state && skillFX.state.discharge) { skillFX.state.discharge(false); skillFX.state.discharge = null }  // cut charge if it never fired
           for (const m of skillFX.meshes) scene.remove(m)
           for (const d of skillFX.disp) d && d.dispose && d.dispose()
           skillFX.meshes.length = 0; skillFX.disp.length = 0; skillFX.kind = null; skillFX.state = null
@@ -88,7 +90,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' })
           const orb = new THREE.Mesh(fx.blastGeo, orbMat); orb.scale.setScalar(0.6); orb.position.copy(muzzle)
           trackMesh(orb); trackDisp(orbMat)
           skillFX.kind = 'lance'; skillFX.t = 0; skillFX.dur = 2.6
-          skillFX.state = { muzzle, orb, orbMat, fired: false, core: null, glow: null }
+          skillFX.state = { muzzle, orb, orbMat, fired: false, core: null, glow: null, discharge: playLanceCharge() }
         }
         const fireLance = (st) => {
           const len = 175, mid = st.muzzle.clone().addScaledVector(FWD, len / 2)
@@ -100,6 +102,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' })
           }
           st.glow = beam(0x8fc6ff, 3.6, 0.75)
           st.core = beam(0xffffff, 1.3, 1)
+          if (st.discharge) { st.discharge(); st.discharge = null }   // cut the charge tone + fire the boom
           fx.blast(st.muzzle, true)
           for (let i = 0; i < 12; i++) fx.ember(st.muzzle.clone().add(_b.set((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5)), i % 2 ? 0xbfe2ff : 0x9fd4ff)
         }
