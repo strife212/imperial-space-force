@@ -265,9 +265,10 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet }) {
             makes sense once an operator has been chosen, so hide it until then.
             Clicking it opens the Fleet Review. */}
         {operatorName && (
-          <div className="cmap-hud" onClick={onReviewFleet} title="Review fleet" role="button" tabIndex={0}>
+          <div className="cmap-hud" onClick={onReviewFleet} title="Manage fleet" role="button" tabIndex={0}>
             <div className="cmap-hud-fleetname">
-              {fleetName}<span className="cmap-hud-review">VIEW ▸</span>
+              {fleetName}
+              <span className="cmap-hud-manage">MANAGE ▸</span>
             </div>
             <div className="cmap-hud-row">
               {operatorPortrait && (
