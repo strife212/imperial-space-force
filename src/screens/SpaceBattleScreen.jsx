@@ -20,7 +20,30 @@ import {
 import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital2, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop } from './battle/geometry'
 import { makeCampaignBackdrop } from './battle/campaignBackdrop'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
+import { getFlag } from '../lib/store'
 import './battle/battle.css'
+
+// Player special skills — one-shot battle abilities. In the skirmish all three
+// are offered as tactical-command buttons; in the campaign the player gets only
+// their chosen operator's single "elite skill" (see OPERATOR_SKILL).
+const SKILLS = [
+  { key: 'lance', name: 'LANCE STRIKE', hint: 'Spinal cannon · 20 dmg to flagship', ready: true },
+  { key: 'ace',   name: 'FIGHTER ACE',  hint: 'Warp in an elite gold fighter', ready: true },
+  { key: 'nano',  name: 'NANO REPAIR',  hint: 'Heal the fleet · +1 hp, +20 flagship', ready: true },
+]
+
+// Each campaign operator commands one elite skill (matched on the operator name).
+const OPERATOR_SKILL = [
+  { match: 'ASTRAIA',  skill: 0 },   // Lance Strike
+  { match: 'SEVERINE', skill: 1 },   // Fighter Ace
+  { match: 'LUCIA',    skill: 2 },   // Nano Repair
+]
+const operatorEliteSkill = (name) => {
+  if (!name) return null
+  const up = name.toUpperCase()
+  const m = OPERATOR_SKILL.find(o => up.includes(o.match))
+  return m ? m.skill : null
+}
 
 // `campaign` (optional) turns this into a campaign engagement: both fleets are
 // locked (built in the shipyard beforehand), the flagship/enemy names are the
@@ -105,6 +128,26 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   const fighterControlRef = useRef(fighterControl)
   useEffect(() => { capTacticRef.current = capTactic }, [capTactic])
   useEffect(() => { fighterControlRef.current = fighterControl }, [fighterControl])
+
+  // ── Once-per-battle special skills (blue fleet) ───────────────────────────
+  // Each refreshes at the start of every engagement. Only the first (capital
+  // lance) is implemented; the scene wires lanceStrikeRef so the button fires it.
+  const [skillsUsed, setSkillsUsed] = useState([false, false, false])
+  const lanceStrikeRef = useRef(null)   // skill 0 — capital lance
+  const aceWarpRef = useRef(null)        // skill 1 — fighter ace
+  const nanoRepairRef = useRef(null)     // skill 2 — nano repair
+  const triggerSkill = (i) => {
+    if (skillsUsed[i] || !SKILLS[i].ready) return
+    const fired = i === 0 ? lanceStrikeRef.current?.()
+      : i === 1 ? aceWarpRef.current?.()
+      : i === 2 ? nanoRepairRef.current?.()
+      : false
+    if (fired) setSkillsUsed(u => u.map((v, k) => (k === i ? true : v)))
+  }
+  // Campaign: the chosen operator grants exactly one elite skill, shown with
+  // their portrait. Skirmish leaves this null (all three skills are offered).
+  const eliteSkill = isCampaign ? operatorEliteSkill(getFlag('operator')) : null
+  const operatorPortrait = isCampaign ? getFlag('operatorPortrait') : null
 
   // Enqueue a broadcast; show it now if the box is free, otherwise queue it so
   // simultaneous lines play one after another rather than overlapping.
@@ -346,10 +389,11 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
     callBombersRef.current = false; setBombersCalled(false); setBlueBomberAlive(Array(compRef.current.blue.bombers).fill(true))  // bomber wing in reserve
     simSpeedRef.current = 1; setSimSpeed(1)                               // every battle starts running at 1×
     pipRef.current = null; setPipCaption(null)                           // no event highlight yet
+    setSkillsUsed([false, false, false])                                 // special skills refresh each engagement
 
     // surface a capital broadcast (queued, typewriter + chirp), driven by battle events
-    const showComms = (team, text, persist = false) => {
-      const name = team === 'blue' ? blueCapNameRef.current : redCapNameRef.current
+    const showComms = (team, text, persist = false, speaker = null) => {
+      const name = speaker || (team === 'blue' ? blueCapNameRef.current : redCapNameRef.current)
       enqueueComms({ id: ++commsSeq.current, team, name, portrait: COMMS_PORTRAIT[team], text, segments: [{ text }], persist })
     }
 
@@ -821,8 +865,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         killer.kills = (killer.kills || 0) + 1
         setKills(prev => [...prev, {
           id: killSeq.current++,
-          kName: killer.name, kTeam: killer.team,
-          vName: victim.name, vTeam: victim.team,
+          kName: killer.name, kTeam: killer.team, kAce: !!killer.isAce,
+          vName: victim.name, vTeam: victim.team, vAce: !!victim.isAce,
         }].slice(-7))
       }
 
@@ -847,6 +891,19 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           showComms(ship.team, 'Critical damage sustained!')
         }
         if (ship.hp <= 0 && ship.alive) {
+          // The Gold Ace never dies on the field — at zero hull it warps out
+          // (kept nominally "alive" through the jump so it can't be re-killed mid-warp).
+          if (ship.isAce) {
+            if (!ship.warpOut) {
+              ship.warpOut = true; ship.warpT = 0; ship.warpDur = 0.85; ship.hp = 1
+              ship.warpFrom = ship.pos.clone()
+              ship.warpTo = ship.pos.clone().addScaledVector(jumpAxis.blue, 95)
+              audioRef.current?.playJump()
+              showComms('blue', 'Hull breached — breaking off! Gold Ace, warping out.', false, 'GOLD ACE')
+              if (!gameOver) showPip('blue', 'GOLD ACE — WITHDRAWING', () => ship.pos, new THREE.Vector3(0.5, 0.3, 0.8), 18, 6, 2.4)
+            }
+            return
+          }
           ship.alive = false
           ship.lost = true              // destroyed — drops the team's fleet strength
           if (killer) addKill(killer, ship)
@@ -935,6 +992,223 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       })
       const hideTargetLines = () => targetLines.forEach(t => (t.line.visible = false))
 
+      // ── Capital "Lance Strike" — once-per-battle spinal-cannon special ─────────
+      // The blue flagship halts, swings its bow onto the enemy flagship, charges a
+      // spinal lance, then looses one devastating beam (20 dmg) with a big show.
+      let bloomPass = null   // assigned with the composer; pumped during the lance
+      const lance = { active: false, phase: '', t: 0, beamCore: null, beamGlow: null, targetPos: null }
+      const lanceAimAt = new THREE.Vector3()
+      const lanceFX = []     // { mesh, mat } — charge orb + beam cylinders, cleaned up together
+      let lanceOrb = null
+      const LANCE_AIM = 1.4, LANCE_CHARGE = 1.9, LANCE_FIRE = 1.0, LANCE_RECOVER = 0.7
+      const _lz = new THREE.Vector3(), _lmz = new THREE.Vector3()
+      const lanceMuzzle = () => {   // a point just ahead of the blue flagship's bow
+        _lz.set(0, 0, 1).applyQuaternion(blueCapital.mesh.quaternion).normalize()
+        return _lmz.copy(blueCapital.pos).addScaledVector(_lz, 16)
+      }
+      const addLanceFX = (mesh, mat) => { scene.add(mesh); lanceFX.push({ mesh, mat }); return mesh }
+      const clearLanceFX = () => { for (const f of lanceFX) { scene.remove(f.mesh); f.mat.dispose && f.mat.dispose() } lanceFX.length = 0; lanceOrb = null }
+      // a bright spark drawn inward toward the muzzle while the lance charges
+      const spawnLanceSpark = (from, to) => {
+        const mat = new THREE.MeshBasicMaterial({ color: 0x9fd4ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
+        const m = new THREE.Mesh(blastGeo, mat)
+        m.position.copy(from); m.scale.setScalar(0.16 + Math.random() * 0.18)
+        scene.add(m)
+        embers.push({ mesh: m, mat, vel: _tmp.subVectors(to, from).multiplyScalar(2.4 + Math.random() * 1.4).clone(), life: 0, max: 0.3 + Math.random() * 0.2 })
+      }
+      // span the beam cylinders from the muzzle to the target each frame
+      const positionLanceBeam = (mz, tgt) => {
+        _dir.subVectors(tgt, mz); const L = _dir.length() || 1; _dir.divideScalar(L)
+        for (const m of [lance.beamGlow, lance.beamCore]) {
+          if (!m) continue
+          m.position.copy(mz).addScaledVector(_dir, L * 0.5)
+          m.quaternion.setFromUnitVectors(yAxis, _dir)
+          m.scale.set(m.userData.w, L, m.userData.w)
+        }
+      }
+      const fireLanceBeam = (mz) => {
+        const tgt = (redCapital && redCapital.alive) ? redCapital.pos : lanceAimAt
+        lance.targetPos = tgt
+        const glow = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }))
+        const core = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }))
+        glow.userData.w = 3.2; core.userData.w = 1.2
+        addLanceFX(glow, glow.material); addLanceFX(core, core.material)
+        lance.beamGlow = glow; lance.beamCore = core
+        positionLanceBeam(mz, tgt)
+        // one heavy hit (bomb=true → ignores flagship armour), then a grand impact
+        damage(redCapital, blueCapital, 20, true)
+        const tp = tgt.clone()
+        spawnBlast(mz.clone(), true)
+        spawnBlast(tp, true)
+        spawnBlast(_tmp.copy(tp).add(_lz.set(4, 2, -3)).clone(), false)
+        spawnBlast(_tmp.copy(tp).add(_lz.set(-3, -2, 3)).clone(), false)
+        for (let i = 0; i < 16; i++) spawnEmber(_tmp.copy(tp).add(_lz.set((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7)).clone(), i % 2 ? 0xbfe2ff : 0x9fd4ff)
+        audioRef.current?.playExplosion(true)
+        showComms('blue', 'Lance away — strike true!')
+        if (!gameOver) showPip('blue', 'LANCE STRIKE — IMPACT', () => (lance.targetPos || tp), new THREE.Vector3(0.6, 0.34, 0.6), 26, 8, LANCE_FIRE + 0.4)
+      }
+      const endLance = () => { clearLanceFX(); lance.active = false; lance.phase = ''; lance.beamCore = null; lance.beamGlow = null; lance.targetPos = null; if (bloomPass) bloomPass.strength = 0.9 }
+      const updateLance = (dt) => {
+        if (!lance.active) return
+        if (gameOver || !blueCapital || !blueCapital.alive) { endLance(); return }
+        lance.t += dt
+        const mz = lanceMuzzle()
+        if (lanceOrb) lanceOrb.position.copy(mz)
+        if (lance.phase === 'aim') {
+          const p = Math.min(1, lance.t / LANCE_AIM)
+          if (lanceOrb) { lanceOrb.material.opacity = 0.5 * p; lanceOrb.scale.setScalar(0.5 + p * 0.9) }
+          if (lance.t >= LANCE_AIM) { lance.phase = 'charge'; lance.t = 0 }
+        } else if (lance.phase === 'charge') {
+          const p = Math.min(1, lance.t / LANCE_CHARGE)
+          const pulse = 1 + 0.14 * Math.sin(lance.t * 36) * p
+          if (lanceOrb) { lanceOrb.scale.setScalar((1.1 + p * 3.2) * pulse); lanceOrb.material.opacity = 0.5 + 0.5 * p }
+          if (bloomPass) bloomPass.strength = 0.9 + 0.9 * p
+          if (Math.random() < 0.25 + p * 0.7) spawnLanceSpark(_lz.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(7 + Math.random() * 7).add(mz).clone(), mz)
+          if (lance.t >= LANCE_CHARGE) { lance.phase = 'fire'; lance.t = 0; fireLanceBeam(mz) }
+        } else if (lance.phase === 'fire') {
+          const p = Math.min(1, lance.t / LANCE_FIRE)
+          const fade = Math.max(0, 1 - p), flick = 0.78 + 0.22 * Math.sin(lance.t * 64)
+          if (lanceOrb) { lanceOrb.material.opacity = fade; lanceOrb.scale.setScalar(Math.max(0.2, 4.3 * fade)) }
+          if (lance.beamCore) { lance.beamCore.material.opacity = fade * flick; lance.beamCore.userData.w = 1.2 * (0.6 + 0.6 * fade) }
+          if (lance.beamGlow) { lance.beamGlow.material.opacity = 0.75 * fade; lance.beamGlow.userData.w = 3.2 * (0.5 + 0.7 * fade) }
+          if (bloomPass) bloomPass.strength = 0.9 + 1.7 * fade
+          positionLanceBeam(mz, lance.targetPos || mz)
+          if (lance.t >= LANCE_FIRE) {
+            for (let k = lanceFX.length - 1; k >= 0; k--) {
+              if (lanceFX[k].mesh === lance.beamCore || lanceFX[k].mesh === lance.beamGlow) {
+                scene.remove(lanceFX[k].mesh); lanceFX[k].mat.dispose && lanceFX[k].mat.dispose(); lanceFX.splice(k, 1)
+              }
+            }
+            lance.beamCore = null; lance.beamGlow = null; lance.phase = 'recover'; lance.t = 0
+          }
+        } else if (lance.phase === 'recover') {
+          if (lanceOrb) lanceOrb.material.opacity = Math.max(0, lanceOrb.material.opacity - dt * 2.5)
+          if (lance.t >= LANCE_RECOVER) endLance()
+        }
+      }
+      // wired to the SKILL button: kicks off the sequence if the flagships are live
+      const startLance = () => {
+        if (lance.active || gameOver) return false
+        if (!blueCapital || !blueCapital.alive || !redCapital || !redCapital.alive) return false
+        if (introT < INTRO_TOTAL) return false   // not until both fleets have jumped in
+        lance.active = true; lance.phase = 'aim'; lance.t = 0
+        lanceAimAt.copy(redCapital.pos)
+        const orbMat = new THREE.MeshBasicMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+        lanceOrb = new THREE.Mesh(blastGeo, orbMat)
+        lanceOrb.scale.setScalar(0.5); lanceOrb.position.copy(lanceMuzzle())
+        addLanceFX(lanceOrb, orbMat)
+        showComms('blue', 'All power to the spinal lance. Charging.')
+        if (!gameOver) showPip('blue', 'LANCE STRIKE — CHARGING', () => blueCapital.pos, new THREE.Vector3(0.5, 0.3, 0.72), 42, 11, LANCE_AIM + LANCE_CHARGE)
+        return true
+      }
+      lanceStrikeRef.current = startLance
+
+      // ── "Fighter Ace" — once-per-battle elite reinforcement special ───────────
+      // Warps a single gold fighter onto the blue flank: double HP, 1.5× speed,
+      // twice a normal fighter's rate of fire, and two flares. Wired to skill 1.
+      let aceWarped = false
+      const warpInAce = () => {
+        if (aceWarped || gameOver) return false
+        if (introT < INTRO_TOTAL) return false       // not until the fleets have jumped in
+        if (retreatTeam === 'blue') return false      // not while the blue fleet is breaking
+        aceWarped = true
+        const mat = new THREE.MeshStandardMaterial({ color: 0xffc63a, emissive: 0xffae1f, emissiveIntensity: 0.85, metalness: 0.7, roughness: 0.3 })
+        const goldGlow = new THREE.MeshBasicMaterial({ color: 0xffd56a, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
+        disposables.push(mat, goldGlow)
+        const mesh = new THREE.Group()
+        mesh.add(new THREE.Mesh(teamGeo.blue, mat))
+        const glow = new THREE.Mesh(blastGeo, goldGlow); glow.scale.setScalar(0.36); glow.position.set(0, 0, -0.95); mesh.add(glow)
+        const home = new THREE.Vector3(-18 + (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 12)
+        const jumpFrom = home.clone().addScaledVector(jumpAxis.blue, 95)
+        const baseScale = 1.3
+        mesh.position.copy(jumpFrom); mesh.scale.setScalar(baseScale)
+        scene.add(mesh)
+        const ace = {
+          mesh, mat, team: 'blue', hp: SHIP_HP * 2, maxHp: SHIP_HP * 2, alive: true, pos: jumpFrom.clone(), vel: new THREE.Vector3(),
+          name: 'Gold Ace', isCapital: false, isBomber: false, isCruiser: false, isAce: true,
+          kills: 0, weapons: 1, armor: ARMOR_FIGHTER, flares: 2,
+          maxSpeed: MAX_SPEED * 1.5, minSpeed: MIN_SPEED * 1.5, radius: 0.5, turn: TURN_RATE,
+          standoff: STANDOFF, bound: BOUND_R, baseScale,
+          fireCd: 0.3 + Math.random() * 0.6, fireMul: 0.5, flash: 0,
+          home, jumpFrom, warping: true, entered: false, warpT: 0, warpDur: 0.7,
+        }
+        ships.push(ace)
+        audioRef.current?.playJump()
+        showComms('blue', 'Ace on station — clear the lane.')
+        if (!gameOver) showPip('blue', 'FIGHTER ACE — INBOUND', () => ace.pos, new THREE.Vector3(0.5, 0.3, 0.8), 16, 5, 3.4)
+        return true
+      }
+      aceWarpRef.current = warpInAce
+
+      // ── "Nano Repair" — once-per-battle fleet heal special ────────────────────
+      // Heals the casting (blue) fleet — 1 hp per ship, 20 for the flagship — and
+      // wraps every blue ship in a green nanite glow with orbiting motes for 3s.
+      const NANO_DUR = 3, NANO_GREEN = 0x49ff9c
+      const nano = { active: false, t: 0, items: [] }   // items: { ship, aura, auraMat, parts: [{mesh, mat, u, v, ang, rad, speed}] }
+      const _nv = new THREE.Vector3()
+      const shipMaxHp = (s) => s.maxHp ?? (s.isCapital ? CAP_HP : s.isBomber ? BOMBER_HP : s.isCruiser ? CRUISER_HP : SHIP_HP)
+      const nanoMoteR = (s) => s.isCapital ? 16 : s.isCruiser ? 4 : s.isBomber ? 3.2 : 2.4   // mote orbit (around the hull)
+      const nanoAuraR = (s) => s.isCapital ? 9 : s.isCruiser ? 2.2 : s.isBomber ? 2 : 1.5     // small core glow, well inside the motes
+      const clearNano = () => {
+        for (const it of nano.items) {
+          scene.remove(it.aura); it.auraMat.dispose()
+          for (const p of it.parts) { scene.remove(p.mesh); p.mat.dispose() }
+        }
+        nano.items.length = 0
+      }
+      const startNano = () => {
+        if (nano.active || gameOver) return false
+        if (introT < INTRO_TOTAL) return false
+        const fleet = ships.filter(s => s.alive && s.team === 'blue')
+        if (!fleet.length) return false
+        // heal first (capped at each ship's max hull)
+        for (const s of fleet) { const heal = s.isCapital ? 20 : 1; s.hp = Math.min(shipMaxHp(s), s.hp + heal) }
+        // then the green nanite glow + orbiting motes
+        nano.active = true; nano.t = 0
+        for (const s of fleet) {
+          const R = nanoMoteR(s)
+          const auraMat = new THREE.MeshBasicMaterial({ color: NANO_GREEN, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+          const aura = new THREE.Mesh(blastGeo, auraMat); aura.scale.setScalar(nanoAuraR(s)); aura.position.copy(s.pos); scene.add(aura)
+          const parts = []
+          const nParts = s.isCapital ? 10 : 4
+          for (let i = 0; i < nParts; i++) {
+            const axis = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize()
+            const u = new THREE.Vector3().crossVectors(axis, Math.abs(axis.y) < 0.9 ? UP : new THREE.Vector3(1, 0, 0)).normalize()
+            const v = new THREE.Vector3().crossVectors(axis, u).normalize()
+            const mat = new THREE.MeshBasicMaterial({ color: 0x9dffc8, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+            const mesh = new THREE.Mesh(blastGeo, mat); mesh.scale.setScalar(s.isCapital ? 0.7 : 0.26); scene.add(mesh)
+            parts.push({ mesh, mat, u, v, ang: Math.random() * Math.PI * 2, rad: R * (0.9 + Math.random() * 0.35), speed: (1.6 + Math.random() * 1.8) * (Math.random() < 0.5 ? 1 : -1) })
+          }
+          nano.items.push({ ship: s, aura, auraMat, parts })
+        }
+        audioRef.current?.playComms()
+        showComms('blue', 'Nanite swarm deployed — repairing the fleet.')
+        return true
+      }
+      nanoRepairRef.current = startNano
+
+      const updateNano = (dt) => {
+        if (!nano.active) return
+        nano.t += dt
+        const p = nano.t / NANO_DUR
+        const env = Math.max(0, Math.min(1, p * 5, (1 - p) * 5))   // quick fade in, hold, fade out
+        const pulse = 0.9 + 0.12 * Math.sin(nano.t * 9)
+        for (const it of nano.items) {
+          const s = it.ship, show = s.alive
+          it.aura.visible = show
+          if (show) { it.aura.position.copy(s.pos); it.aura.scale.setScalar(nanoAuraR(s) * pulse); it.auraMat.opacity = env * 0.14 }
+          for (const pt of it.parts) {
+            pt.mesh.visible = show
+            if (!show) continue
+            pt.ang += pt.speed * dt
+            _nv.copy(s.pos).addScaledVector(pt.u, pt.rad * Math.cos(pt.ang)).addScaledVector(pt.v, pt.rad * Math.sin(pt.ang))
+            pt.mesh.position.copy(_nv)
+            pt.mat.opacity = env
+          }
+        }
+        if (nano.t >= NANO_DUR) { clearNano(); nano.active = false }
+      }
+
       // ── Frame loop ───────────────────────────────────────────────────────────
       const clock = new THREE.Clock()
       let simT = 0, battleSimT = 0
@@ -984,6 +1258,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         // ── Ships: steer (seek nearest enemy + separation + bounds), then fire ──
         for (const s of ships) {
           if (!s.alive) continue
+          const lancing = lance.active && s === blueCapital   // mid spinal-lance special
 
           // retreat: streak away in a hyperspace jump, then vanish from the field
           if (s.warpOut) {
@@ -1052,22 +1327,29 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           else s.attackTarget = target
 
           if (s.route) {
-            // capitals cruise toward their patrol-slot on the circle (smooth,
-            // predictable). The blue flagship can be ordered to leave the patrol
-            // and push to the centre, then later make its way back to the route.
             const rt = s.route
-            rt.angle += rt.omega * dt
-            let tx = Math.cos(rt.angle) * rt.R, ty = rt.y, tz = Math.sin(rt.angle) * rt.R
-            if (s.team === 'blue' && capTacticRef.current === 'engage') { tx = 0; ty = 0; tz = 0 }
-            const dx = tx - s.pos.x, dy = ty - s.pos.y, dz = tz - s.pos.z
-            const dist = Math.hypot(dx, dy, dz)
-            const step = CAP_SPEED * dt
-            if (dist > 1e-4) {
-              const f = Math.min(step, dist) / dist
-              s.pos.x += dx * f; s.pos.y += dy * f; s.pos.z += dz * f
-              orient(s.mesh, _dir.set(dx, dy, dz), 1 - Math.exp(-1.5 * dt))
+            if (lancing) {
+              // Lance Strike: hold station and swing the bow onto the enemy flagship
+              if (redCapital && redCapital.alive) lanceAimAt.copy(redCapital.pos)
+              orient(s.mesh, _dir.subVectors(lanceAimAt, s.pos), 1 - Math.exp(-3.5 * dt))
+              s.mesh.position.copy(s.pos)
+            } else {
+              // capitals cruise toward their patrol-slot on the circle (smooth,
+              // predictable). The blue flagship can be ordered to leave the patrol
+              // and push to the centre, then later make its way back to the route.
+              rt.angle += rt.omega * dt
+              let tx = Math.cos(rt.angle) * rt.R, ty = rt.y, tz = Math.sin(rt.angle) * rt.R
+              if (s.team === 'blue' && capTacticRef.current === 'engage') { tx = 0; ty = 0; tz = 0 }
+              const dx = tx - s.pos.x, dy = ty - s.pos.y, dz = tz - s.pos.z
+              const dist = Math.hypot(dx, dy, dz)
+              const step = CAP_SPEED * dt
+              if (dist > 1e-4) {
+                const f = Math.min(step, dist) / dist
+                s.pos.x += dx * f; s.pos.y += dy * f; s.pos.z += dz * f
+                orient(s.mesh, _dir.set(dx, dy, dz), 1 - Math.exp(-1.5 * dt))
+              }
+              s.mesh.position.copy(s.pos)
             }
-            s.mesh.position.copy(s.pos)
           } else if (s.isCruiser) {
             // ponderous turning-circle movement: cruise forward at constant speed and
             // steer the heading slowly toward an orbit of the nearest enemy — it banks
@@ -1186,7 +1468,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
               }
             }
           }
-          if (!gameOver && s.team !== retreatTeam) {
+          if (!gameOver && s.team !== retreatTeam && !lancing) {
             // bomber point-defence laser: a purely defensive laser (no chasing) that fires
             // at the nearest enemy fighter only while one strays within range
             if (s.isBomber) {
@@ -1227,11 +1509,15 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
                 }
               } else if (target && s.pos.distanceToSquared(target.pos) < FIGHTER_RANGE * FIGHTER_RANGE) {
                 fireBolt(s, target)   // fighters hold fire until the target is within range
-                s.fireCd = 1.2 + Math.random() * 2.8
+                s.fireCd = (1.2 + Math.random() * 2.8) * (s.fireMul || 1)   // fireMul < 1 → elite ace shoots faster
               }
             }
           }
         }
+
+        // advance the capital lance + nano-repair specials (after ships have moved)
+        updateLance(dt)
+        updateNano(dt)
 
         // ── Bolts: home gently toward target (hits), or streak straight (misses)
         for (let i = bolts.length - 1; i >= 0; i--) {
@@ -1510,7 +1796,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           _lookAt.copy(follow.pos).addScaledVector(_fwd, follow.isCapital ? 12 : 4)
           camera.lookAt(_lookAt)
           // live hull readout under screen-centre for the tracked ship
-          const maxHp = follow.isCapital ? CAP_HP : follow.isBomber ? BOMBER_HP : follow.isCruiser ? CRUISER_HP : SHIP_HP
+          const maxHp = follow.maxHp ?? (follow.isCapital ? CAP_HP : follow.isBomber ? BOMBER_HP : follow.isCruiser ? CRUISER_HP : SHIP_HP)
           const hp = Math.max(0, follow.hp)
           if (followHpRef.current) followHpRef.current.textContent = `${Math.ceil(hp)} / ${maxHp}`
           if (followBarRef.current) followBarRef.current.style.width = (hp / maxHp * 100) + '%'
@@ -1581,7 +1867,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       // ── Bloom ────────────────────────────────────────────────────────────────
       composer = new EffectComposer(renderer)
       composer.addPass(new RenderPass(scene, camera))
-      composer.addPass(new UnrealBloomPass(new THREE.Vector2(w, h), 0.9, 0.6, 0.2))
+      bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 0.9, 0.6, 0.2)
+      composer.addPass(bloomPass)
 
       frame()
 
@@ -1604,6 +1891,11 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         renderer.domElement.removeEventListener('pointerup', onUp)
         exitFollowRef.current = null
         followBomberRef.current = null
+        lanceStrikeRef.current = null
+        aceWarpRef.current = null
+        nanoRepairRef.current = null
+        for (const f of lanceFX) { scene.remove(f.mesh); f.mat.dispose && f.mat.dispose() }
+        clearNano()
         controls.dispose()
         disposables.forEach(d => d.dispose && d.dispose())
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
@@ -1762,9 +2054,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         <div className="sb-killfeed">
           {kills.map(k => (
             <div key={k.id} className="sb-kill">
-              <span className={`sb-kill-name sb-kill-name--${k.kTeam}`}>{k.kName}</span>
+              <span className={`sb-kill-name sb-kill-name--${k.kAce ? 'ace' : k.kTeam}`}>{k.kName}</span>
               <span className="sb-kill-verb"> destroyed </span>
-              <span className={`sb-kill-name sb-kill-name--${k.vTeam}`}>{k.vName}</span>
+              <span className={`sb-kill-name sb-kill-name--${k.vAce ? 'ace' : k.vTeam}`}>{k.vName}</span>
             </div>
           ))}
         </div>
@@ -1797,6 +2089,42 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
               <button className={`sb-tac-btn${fighterControl === 'capital' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('capital')}>ATTACK CAPITAL SHIP</button>
             </div>
           </div>
+
+          {eliteSkill !== null ? (
+            <div className="sb-tac-group">
+              <div className="sb-tac-label">ADMIRAL ELITE SKILL</div>
+              <div className="sb-elite">
+                {operatorPortrait && <img className="sb-elite-portrait" src={operatorPortrait} alt="" />}
+                <button
+                  className={`sb-skill-btn${skillsUsed[eliteSkill] ? ' sb-skill-btn--used' : ''}`}
+                  onClick={() => triggerSkill(eliteSkill)}
+                  disabled={skillsUsed[eliteSkill]}
+                  title={SKILLS[eliteSkill].hint}
+                >
+                  <span className="sb-skill-name">{skillsUsed[eliteSkill] ? 'EXPENDED' : SKILLS[eliteSkill].name}</span>
+                  <span className="sb-skill-hint">{SKILLS[eliteSkill].hint}</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="sb-tac-group">
+              <div className="sb-tac-label">SPECIAL ORDNANCE · ONCE PER BATTLE</div>
+              <div className="sb-skill-btns">
+                {SKILLS.map((sk, i) => (
+                  <button
+                    key={sk.key}
+                    className={`sb-skill-btn${skillsUsed[i] ? ' sb-skill-btn--used' : ''}${sk.ready ? '' : ' sb-skill-btn--locked'}`}
+                    onClick={() => triggerSkill(i)}
+                    disabled={!sk.ready || skillsUsed[i]}
+                    title={sk.ready ? sk.hint : 'Authorisation pending'}
+                  >
+                    <span className="sb-skill-name">{skillsUsed[i] ? 'EXPENDED' : sk.name}</span>
+                    <span className="sb-skill-hint">{sk.ready ? sk.hint : 'LOCKED'}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {comp.blue.bombers > 0 && (
             <div className="sb-dispatch">

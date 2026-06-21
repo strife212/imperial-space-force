@@ -1275,6 +1275,7 @@
 }
 .sb-kill-name--blue { color: var(--c-scarlet); text-shadow: 0 0 6px rgba(26, 128, 255, 0.5); }
 .sb-kill-name--red  { color: var(--c-bad);     text-shadow: 0 0 6px rgba(255, 36, 0, 0.45); }
+.sb-kill-name--ace  { color: #ffc63a;          text-shadow: 0 0 6px rgba(255, 184, 31, 0.6); }
 .sb-kill-verb { color: var(--c-ash-dim); }
 
 /* capital ship name + shield labels (projected above each flagship) */
@@ -1367,8 +1368,9 @@
 .sb-tac-label {
   font-size: 8.5px;
   letter-spacing: 0.2em;
-  color: var(--c-ash-dim);
+  color: #9fb0d4;        /* brighter than ash-dim, legible over the nebula */
   text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
 .sb-tac-btns { display: flex; gap: 5px; flex-wrap: wrap; }
 .sb-tac-btn {
@@ -1485,6 +1487,58 @@
   text-align: center;
   min-height: 12px;
 }
+
+/* ── Special skills — three once-per-battle ability buttons ─────────────────── */
+.sb-skill-btns { display: flex; gap: 6px; }
+.sb-skill-btn {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 104px;
+  background: rgba(2, 6, 18, 0.6);
+  border: 1px solid var(--c-line-2);
+  color: var(--c-ash-dim);
+  font-family: var(--font-mono);
+  text-align: left;
+  padding: 6px 9px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+}
+.sb-skill-name { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.sb-skill-hint { font-size: 7.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-ash-dim); opacity: 0.8; }
+/* ready (available this battle) — armed, gently glowing */
+.sb-skill-btn:not(:disabled) {
+  border-color: var(--c-scarlet);
+  color: #eaf4ff;
+  box-shadow: 0 0 8px rgba(26, 128, 255, 0.28);
+}
+.sb-skill-btn:not(:disabled):hover {
+  background: rgba(26, 100, 255, 0.22);
+  border-color: rgba(150, 205, 255, 0.95);
+  color: #fff;
+}
+.sb-skill-btn:not(:disabled) .sb-skill-hint { color: var(--c-rose); opacity: 1; }
+/* expended this engagement */
+.sb-skill-btn--used { opacity: 0.5; cursor: default; box-shadow: none; }
+/* reserved placeholder — locked */
+.sb-skill-btn--locked { cursor: default; opacity: 0.65; }
+
+/* ── Campaign: the operator's single elite skill (portrait + one button) ─────── */
+.sb-elite { display: flex; align-items: stretch; gap: 8px; pointer-events: none; }
+.sb-elite-portrait {
+  width: 46px;
+  height: 46px;
+  object-fit: cover;
+  border: 1px solid var(--c-scarlet);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(26, 128, 255, 0.3);
+  background: rgba(2, 6, 18, 0.6);
+  flex: 0 0 auto;
+}
+.sb-elite .sb-skill-btn { justify-content: center; min-width: 132px; }
 
 
 /* =====================================================================
