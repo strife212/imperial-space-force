@@ -16,6 +16,7 @@ const NEW_SCREENS = [
   { key: 'vistest',        label: 'Combat Visual Test'       },
   { key: 'campaign-map',   label: 'Campaign Map'             },
   { key: 'shipyard',       label: 'Shipyard (Fleet Command)' },
+  { key: 'fleet-review',   label: 'Fleet Review'             },
   { key: 'campaign',       label: 'Story Campaign (1 → 10)'  },
   { key: 'character-select', label: 'Character Select'        },
   { key: 'reset-campaign', label: 'Reset Campaign Progress'  },

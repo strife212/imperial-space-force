@@ -5,7 +5,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import HudHeader from '../components/HudHeader'
 import { getFlag } from '../lib/store'
-import { getCredits, getFleet, resetCampaign } from '../lib/campaign'
+import { getCredits, getFleet, resetCampaign, unlockAllCampaign } from '../lib/campaign'
 import { STORY } from './cutscene/scenes'
 import {
   NEBULA_VERT, NEBULA_FRAG,
@@ -99,7 +99,7 @@ function buildNode(model) {
   }
 }
 
-export default function CampaignMap({ onExit, onPlay }) {
+export default function CampaignMap({ onExit, onPlay, onReviewFleet }) {
   const mountRef = useRef(null)
   const labelRefs = useRef([])
   const [completed, setCompleted] = useState(() => Math.min(NODES.length, getFlag('campaignProgress') || 0))
@@ -108,6 +108,7 @@ export default function CampaignMap({ onExit, onPlay }) {
   const [confirmReset, setConfirmReset] = useState(false)
   const operatorPortrait = getFlag('operatorPortrait')   // set once an operator is chosen
   const operatorName = getFlag('operator')
+  const fleetName = getFlag('fleetName') || 'Fleet Polyhymnia'
   const stateOf = (i) => (i < completed ? 'done' : i === completed ? 'active' : 'locked')
 
   // wipe all campaign progress, currency and fleet back to the start, then
@@ -118,6 +119,14 @@ export default function CampaignMap({ onExit, onPlay }) {
     setCredits(getCredits())
     setFleet(getFleet())
     setConfirmReset(false)
+  }
+
+  // debug: clear every node and grant the matching Requisition
+  const doUnlockAll = () => {
+    unlockAllCampaign()
+    setCompleted(NODES.length)
+    setCredits(getCredits())
+    setFleet(getFleet())
   }
 
   useEffect(() => {
@@ -252,25 +261,31 @@ export default function CampaignMap({ onExit, onPlay }) {
       <HudHeader onLogout={onExit} right={<span className="label">URSU EUBULEUS SECTOR // CAMPAIGN</span>} />
       <div className="cmap-stage">
         <div className="cmap-canvas" ref={mountRef} />
-        {/* the whole readout — portrait + requisition/fleet — only makes sense
-            once an operator has been chosen, so hide it until then */}
+        {/* the whole readout — fleet name + portrait + requisition/fleet — only
+            makes sense once an operator has been chosen, so hide it until then.
+            Clicking it opens the Fleet Review. */}
         {operatorName && (
-          <div className="cmap-hud">
-            {operatorPortrait && (
-              <div className="cmap-hud-portrait" title={operatorName}>
-                <img src={operatorPortrait} alt={operatorName} />
-              </div>
-            )}
-            <div className="cmap-hud-stats">
-              <div className="cmap-hud-credits">
-                <span className="cmap-hud-val">{credits.toLocaleString()}</span>
-                <span className="cmap-hud-label">REQUISITION</span>
-              </div>
-              <div className="cmap-hud-fleet">
-                <span className="cmap-hud-fleet-title">STANDING FLEET</span>
-                <span className="cmap-hud-fleet-line">
-                  ⬢1 FLAGSHIP · {fleet.fighters} INT · {fleet.bombers} BMR · {fleet.cruisers} CRU
-                </span>
+          <div className="cmap-hud" onClick={onReviewFleet} title="Review fleet" role="button" tabIndex={0}>
+            <div className="cmap-hud-fleetname">
+              {fleetName}<span className="cmap-hud-review">VIEW ▸</span>
+            </div>
+            <div className="cmap-hud-row">
+              {operatorPortrait && (
+                <div className="cmap-hud-portrait">
+                  <img src={operatorPortrait} alt={operatorName} />
+                </div>
+              )}
+              <div className="cmap-hud-stats">
+                <div className="cmap-hud-credits">
+                  <span className="cmap-hud-val">{credits.toLocaleString()}</span>
+                  <span className="cmap-hud-label">REQUISITION</span>
+                </div>
+                <div className="cmap-hud-fleet">
+                  <span className="cmap-hud-fleet-title">STANDING FLEET</span>
+                  <span className="cmap-hud-fleet-line">
+                    ⬢1 FLAGSHIP · {fleet.fighters} INT · {fleet.bombers} BMR · {fleet.cruisers} CRU
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -296,6 +311,7 @@ export default function CampaignMap({ onExit, onPlay }) {
         })}
         <div className="cmap-hint">{completed >= NODES.length ? 'The Order is restored — select a system to revisit' : 'Select a system to begin the operation'}</div>
 
+        <button className="cmap-unlock" onClick={doUnlockAll}>⚡ DEBUG · UNLOCK ALL</button>
         <button className="cmap-reset" onClick={() => setConfirmReset(true)}>⟲ RESET PROGRESS</button>
 
         {confirmReset && (

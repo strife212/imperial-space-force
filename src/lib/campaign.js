@@ -104,3 +104,18 @@ export function resetCampaign() {
   setFlag('operator', '')          // clear the chosen operator so the
   setFlag('operatorPortrait', '')  // campaign-map portrait hides again
 }
+
+// Debug shortcut: mark every node cleared and grant the full Requisition you'd
+// have earned from completing the whole campaign. Also assigns a default
+// operator if none is chosen yet (the picker is otherwise only reachable via
+// the First Contact flow), so the HUD and Fleet Review are usable.
+export function unlockAllCampaign() {
+  const total = NODE_BATTLES.reduce((sum, n) => sum + n.reward, 0)
+  setFlag('campaignProgress', NODE_COUNT)
+  setFlag('credits', total)
+  if (!getFlag('operator')) {
+    const base = import.meta.env?.BASE_URL ?? '/'
+    setFlag('operator', 'PRINCESS V. ASTRAIA')
+    setFlag('operatorPortrait', `${base}portrait.png`)
+  }
+}

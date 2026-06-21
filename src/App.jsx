@@ -21,6 +21,7 @@ import { SCENES, STORY } from './screens/cutscene/scenes'
 import CampaignMap from './screens/CampaignMap'
 import ShipyardScreen from './screens/ShipyardScreen'
 import CharacterSelect from './screens/CharacterSelect'
+import FleetReview from './screens/FleetReview'
 import { NODE_BATTLES, getFleet, getFlagshipName, recordBattle, resetCampaign } from './lib/campaign'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
@@ -72,6 +73,7 @@ export default function App() {
   const [cutsceneId,        setCutsceneId]        = useState('firstContact')   // which cutscene is showing
   const [cutsceneChain,     setCutsceneChain]     = useState(false)            // advance through STORY on complete
   const [campaignNode,      setCampaignNode]      = useState(null)             // active campaign node: cutscene → shipyard → battle (null = not in campaign flow)
+  const [fleetReviewSource, setFleetReviewSource] = useState('campaign-map')   // where the Fleet Review screen returns to
   const [bhOutput,          setBhOutput]          = useState(0)
   const [bhYield,           setBhYield]           = useState(0)
   const [messages,          setMessages]          = useState([])   // inbox fills on first main-panel visit
@@ -185,6 +187,7 @@ export default function App() {
     // cutscenes: `campaign` plays the whole story chain; `cut:<id>` plays one scene
     if (s === 'reset-campaign') { resetCampaign(); setScreen('campaign-map'); return }
     if (s === 'shipyard') { setCampaignNode(Math.min(NODE_BATTLES.length - 1, getFlag('campaignProgress') || 0)); setScreen('shipyard'); return }
+    if (s === 'fleet-review') { setFleetReviewSource('debug'); setScreen('fleet-review'); return }
     if (s === 'campaign') { setCutsceneSource('debug'); setCutsceneId(STORY[0]); setCutsceneChain(true); setScreen('cutscene'); return }
     if (s.startsWith('cut:')) { setCutsceneSource('debug'); setCutsceneId(s.slice(4)); setCutsceneChain(false); setScreen('cutscene'); return }
     if (s === 'targeting') setTargetingSource('debug'); if (s === 'reactor') setReactorSource('main'); if (s === 'blackhole') setBlackholeSource('debug'); if (s === 'power') setPowerSource('debug'); if (s === 'battle') setBattleSource('debug'); setGameOverFail(false); setUnderAttack(false); setScreen(s)
@@ -199,7 +202,8 @@ export default function App() {
       <div className="scanlines" />
       <div className="vignette" />
       {screen === 'home'    && <StartScreen onCampaign={() => setScreen('campaign-map')} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
-      {screen === 'campaign-map' && <CampaignMap onExit={() => setScreen('home')} onPlay={playCampaignNode} />}
+      {screen === 'campaign-map' && <CampaignMap onExit={() => setScreen('home')} onPlay={playCampaignNode} onReviewFleet={() => { setFleetReviewSource('campaign-map'); setScreen('fleet-review') }} />}
+      {screen === 'fleet-review' && <FleetReview onExit={() => setScreen(fleetReviewSource)} />}
       {screen === 'shipyard'     && <ShipyardScreen nodeIndex={campaignNode ?? 0} onDeploy={() => setScreen('battle')} onExit={exitCampaign} />}
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onBack={() => setScreen('home')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}

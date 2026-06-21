@@ -58,17 +58,48 @@
 .cmap-label--locked .cmap-state { color: var(--c-ash-dim); }
 @keyframes cmap-blink { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0.45; } }
 
-/* persistent campaign economy readout (top-left of the map) */
+/* persistent campaign economy readout (top-left of the map) — clickable, opens
+   the Fleet Review */
 .cmap-hud {
   position: absolute;
   top: 16px; left: 18px;
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 13px;
+  flex-direction: column;
+  gap: 8px;
   font-family: var(--font-mono);
-  pointer-events: none;
+  cursor: pointer;
+  padding: 8px 12px 10px;
+  margin: -8px -12px -10px;            /* keep visual position; padding is just hit-area/hover */
+  border: 1px solid transparent;
+  border-radius: 3px;
+  transition: background 0.14s, border-color 0.14s, box-shadow 0.14s;
 }
+.cmap-hud:hover {
+  background: rgba(20, 96, 208, 0.08);
+  border-color: rgba(120, 180, 255, 0.4);
+  box-shadow: 0 0 16px rgba(20, 96, 208, 0.22);
+}
+.cmap-hud:focus-visible { outline: 1px solid rgba(150, 205, 255, 0.8); }
+.cmap-hud-fleetname {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--c-pink);
+  text-shadow: 0 0 14px rgba(20, 96, 208, 0.45);
+}
+.cmap-hud-review {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(150, 190, 245, 0.55);
+  opacity: 0;
+  transition: opacity 0.14s;
+}
+.cmap-hud:hover .cmap-hud-review { opacity: 1; }
+.cmap-hud-row { display: flex; flex-direction: row; align-items: center; gap: 13px; }
 .cmap-hud-stats { display: flex; flex-direction: column; gap: 8px; }
 /* chosen-operator portrait — appears left of the stats once selected */
 .cmap-hud-portrait {
@@ -147,6 +178,29 @@
   letter-spacing: 0.22em;
   font-style: italic;
   color: rgba(230, 210, 160, 0.75);
+}
+
+/* debug unlock-all control (bottom-left) */
+.cmap-unlock {
+  position: absolute;
+  bottom: 16px; left: 18px;
+  background: rgba(20, 96, 208, 0.08);
+  border: 1px solid rgba(120, 180, 255, 0.4);
+  border-radius: 2px;
+  color: rgba(190, 222, 255, 0.85);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s;
+}
+.cmap-unlock:hover {
+  background: rgba(20, 96, 208, 0.18);
+  border-color: rgba(150, 205, 255, 0.85);
+  color: #eaf4ff;
+  box-shadow: 0 0 16px rgba(20, 96, 208, 0.4);
 }
 
 /* reset-progress control (bottom-right) */

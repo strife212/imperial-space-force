@@ -1,0 +1,75 @@
+/* ── Fleet Review ─────────────────────────────────────────────────────────── */
+#fleet-review {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #02040a;
+}
+.fr-stage { position: relative; flex: 1 1 auto; min-height: 0; }
+.fr-canvas { position: absolute; inset: 0; }
+
+/* fleet dossier — top-left */
+.fr-hud {
+  position: absolute;
+  top: 18px; left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
+.fr-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--c-pink);
+  text-shadow: 0 0 18px rgba(20, 96, 208, 0.5);
+}
+.fr-flagship {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--c-rose);
+}
+.fr-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  border-left: 2px solid rgba(80, 130, 210, 0.5);
+  padding-left: 10px;
+}
+.fr-counts span {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--c-ash-dim);
+}
+.fr-counts b {
+  color: var(--c-ash);
+  font-size: 13px;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+/* return control — bottom-left */
+.fr-back {
+  position: absolute;
+  bottom: 18px; left: 20px;
+  background: rgba(20, 96, 208, 0.08);
+  border: 1px solid rgba(120, 180, 255, 0.45);
+  border-radius: 2px;
+  color: rgba(190, 222, 255, 0.92);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s;
+}
+.fr-back:hover {
+  background: rgba(20, 96, 208, 0.18);
+  border-color: rgba(150, 205, 255, 0.9);
+  color: #eaf4ff;
+  box-shadow: 0 0 16px rgba(20, 96, 208, 0.4);
+}
