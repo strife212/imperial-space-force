@@ -24,7 +24,7 @@ import CharacterSelect from './screens/CharacterSelect'
 import FleetReview from './screens/FleetReview'
 import UpgradeScreen from './screens/UpgradeScreen'
 import FleetBoot from './screens/FleetBoot'
-import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
+import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, hasMacroMissile, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import UrgentMessageOverlay from './components/UrgentMessageOverlay'
@@ -163,6 +163,7 @@ export default function App() {
     playerComp: getDeployFleet(),                 // buyable fleet + permanent (unsellable) fighters
     capMaxHp:   getCapMaxHp(),                     // flagship hull upgrades
     capMissile: hasCapMissile(),                  // flagship missile-launcher upgrade
+    macroMissile: hasMacroMissile(),              // 2nd admiral skill: macro-missile barrage
     flagshipName: getFlagshipName(),
     reward:     NODE_BATTLES[i].reward,
     onResolve:  (won) => recordBattle(i, won),    // banks Requisition + unlocks next node (once)

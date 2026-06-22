@@ -32,6 +32,10 @@ const SKILLS = [
   { key: 'ace',   name: 'FIGHTER ACE',  hint: 'Warp in an elite gold fighter', ready: true },
   { key: 'nano',  name: 'NANO REPAIR',  hint: 'Heal the fleet · +1 hp, +20 flagship', ready: true },
 ]
+// Bonus admiral skill (skill index 3) granted by the legendary Macro-Missile
+// Barrage upgrade — available alongside the operator's elite in the campaign.
+const MACRO_SKILL = { key: 'macro', name: 'MACRO-MISSILE BARRAGE', hint: 'Lock 10 targets · a missile each', ready: true }
+const skillMeta = (i) => (i === 3 ? MACRO_SKILL : SKILLS[i])
 
 // Each campaign operator commands one elite skill (matched on the operator name).
 const OPERATOR_SKILL = [
@@ -115,6 +119,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   const killSeq = useRef(0)
   const audioRef = useRef(null)
   const mutedRef = useRef(getFlag('soundMuted') ?? false)  // mirror of `muted` readable inside the scene loop (lance sfx)
+  const codeTickRef = useRef(null)   // target-lock blip for the macro-missile barrage
+  const missileTrailRef = useRef(null)   // sustained whoosh while the barrage missiles fly
+  const barrageLayerRef = useRef(null)   // DOM layer for macro-barrage crosshairs
   const blueCapRef = useRef(null), blueShieldRef = useRef(null), blueReserveRef = useRef(null)
   const redCapRef  = useRef(null), redShieldRef  = useRef(null), redReserveRef  = useRef(null)
 
@@ -134,24 +141,28 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   // ── Once-per-battle special skills (blue fleet) ───────────────────────────
   // Each refreshes at the start of every engagement. Only the first (capital
   // lance) is implemented; the scene wires lanceStrikeRef so the button fires it.
-  const [skillsUsed, setSkillsUsed] = useState([false, false, false])
+  const [skillsUsed, setSkillsUsed] = useState([false, false, false, false])   // [lance, ace, nano, macro]
   const lanceStrikeRef = useRef(null)   // skill 0 — capital lance
   const aceWarpRef = useRef(null)        // skill 1 — fighter ace
   const nanoRepairRef = useRef(null)     // skill 2 — nano repair
+  const macroBarrageRef = useRef(null)   // skill 3 — macro-missile barrage (upgrade)
   const triggerSkill = (i) => {
-    if (skillsUsed[i] || !SKILLS[i].ready) return
+    if (skillsUsed[i] || !skillMeta(i)?.ready) return
     if (!isCampaign && skillsUsed.some(Boolean)) return   // skirmish: only one ability per battle
     const fired = i === 0 ? lanceStrikeRef.current?.()
       : i === 1 ? aceWarpRef.current?.()
       : i === 2 ? nanoRepairRef.current?.()
+      : i === 3 ? macroBarrageRef.current?.()
       : false
     if (fired) setSkillsUsed(u => u.map((v, k) => (k === i ? true : v)))
   }
   // Skirmish only: once any ability is fired, the rest lock out for the battle.
   const skillsLockedOut = !isCampaign && skillsUsed.some(Boolean)
-  // Campaign: the chosen operator grants exactly one elite skill, shown with
-  // their portrait. Skirmish leaves this null (all three skills are offered).
+  // Campaign: the chosen operator grants one elite skill (+ the macro-missile
+  // barrage if that legendary upgrade is owned). Skirmish leaves this null.
   const eliteSkill = isCampaign ? operatorEliteSkill(getFlag('operator')) : null
+  const hasMacroMissile = isCampaign && !!campaign.macroMissile
+  const campaignSkillIdxs = eliteSkill !== null ? [eliteSkill, ...(hasMacroMissile ? [3] : [])] : []
   const operatorPortrait = isCampaign ? getFlag('operatorPortrait') : null
   // Preload the lance sound on entry whenever the lance is available — always in
   // skirmish (it's one of the three skills), in campaign only if it's the elite.
@@ -383,6 +394,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   }, [])
 
   useEffect(() => { audioRef.current?.setMuted(muted); mutedRef.current = muted; setFlag('soundMuted', muted) }, [muted])
+  useEffect(() => { const a = new Audio(`${import.meta.env.BASE_URL}codetick.wav`); a.preload = 'auto'; codeTickRef.current = a }, [])
+  useEffect(() => { const a = new Audio(`${import.meta.env.BASE_URL}sfx/missiletrail.mp3`); a.preload = 'auto'; missileTrailRef.current = a }, [])
 
   // ── Campaign: bank the outcome exactly once when the engagement resolves ──────
   useEffect(() => {
@@ -402,7 +415,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
     callBombersRef.current = false; setBombersCalled(false); setBlueBomberAlive(Array(compRef.current.blue.bombers).fill(true))  // bomber wing in reserve
     simSpeedRef.current = 1; setSimSpeed(1)                               // every battle starts running at 1×
     pipRef.current = null; setPipCaption(null)                           // no event highlight yet
-    setSkillsUsed([false, false, false])                                 // special skills refresh each engagement
+    setSkillsUsed([false, false, false, false])                          // special skills refresh each engagement
 
     // blue flagship comms wear the chosen operator's portrait in campaign battles;
     // a custom speaker (e.g. the Gold Ace) keeps the generic team portrait.
@@ -823,13 +836,13 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
 
       // grey smoke puffs that trail behind a bomb and expand/fade
       const puffs = []
-      const spawnSmoke = (pos) => {
+      const spawnSmoke = (pos, big = false) => {
         const mat = smokeMatProto.clone()
         const m = new THREE.Mesh(blastGeo, mat)
         m.position.copy(pos)
-        m.scale.setScalar(0.22 + Math.random() * 0.16)
+        m.scale.setScalar((0.22 + Math.random() * 0.16) * (big ? 1.6 : 1))
         scene.add(m)
-        puffs.push({ mesh: m, mat, life: 0, max: 0.5 + Math.random() * 0.3 })
+        puffs.push({ mesh: m, mat, life: 0, max: 0.5 + Math.random() * 0.3, peak: big ? 0.78 : 0.5 })
       }
 
       const fireBolt = (shooter, target, big = false, bomb = !!shooter.isBomber) => {
@@ -1232,6 +1245,100 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         if (nano.t >= NANO_DUR) { clearNano(); nano.active = false }
       }
 
+      // ── "Macro-Missile Barrage" — legendary 2nd admiral skill ─────────────────
+      // Marks 10 random enemies one-by-one with red crosshairs over 2s, then
+      // looses a missile at each at once — they fan out in arcs to their targets.
+      const BARRAGE_N = 10, BARRAGE_LOCK_T = 2.0, BARRAGE_DMG = 5
+      const barrage = { active: false, phase: '', t: 0, locks: [], missiles: [] }
+      const _bz = new THREE.Vector3(), _be = new THREE.Vector3(), _bc = new THREE.Vector3(), _bp = new THREE.Vector3()
+      // crosshairs are plain DOM "+" symbols (outside the bloom canvas → no glow)
+      const makeCrosshair = () => {
+        const el = document.createElement('div')
+        el.className = 'sb-lock'
+        el.innerHTML = '<svg viewBox="0 0 28 28"><path d="M14 3 V25 M3 14 H25" stroke="#8fd0ff" stroke-width="2" fill="none" /></svg>'
+        if (barrageLayerRef.current) barrageLayerRef.current.appendChild(el)
+        return { el }
+      }
+      const clearBarrage = () => {
+        for (const l of barrage.locks) if (l.cross) l.cross.el.remove()
+        for (const m of barrage.missiles) scene.remove(m.mesh)
+        if (missileTrailRef.current) { missileTrailRef.current.pause(); missileTrailRef.current.currentTime = 0 }   // cut the trail when no missiles remain
+        barrage.locks.length = 0; barrage.missiles.length = 0; barrage.active = false; barrage.phase = ''
+      }
+      const startBarrage = () => {
+        if (barrage.active || gameOver) return false
+        if (!blueCapital || !blueCapital.alive) return false
+        if (introT < INTRO_TOTAL) return false
+        const enemies = ships.filter(s => s.alive && s.team === 'red')
+        if (!enemies.length) return false
+        for (let i = enemies.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[enemies[i], enemies[j]] = [enemies[j], enemies[i]] }
+        const picked = enemies.slice(0, BARRAGE_N), n = picked.length
+        barrage.active = true; barrage.phase = 'lock'; barrage.t = 0
+        barrage.locks = picked.map((target, i) => ({ target, lastPos: target.pos.clone(), revealAt: (i / n) * BARRAGE_LOCK_T, cross: null }))
+        showComms('blue', 'Macro-missile barrage — designating targets.')
+        if (!gameOver) showPip('blue', 'MACRO-MISSILE BARRAGE', () => blueCapital.pos, new THREE.Vector3(0.5, 0.42, 0.7), 78, 28, BARRAGE_LOCK_T + 0.6)
+        return true
+      }
+      macroBarrageRef.current = startBarrage
+      const launchBarrage = () => {
+        barrage.phase = 'fly'
+        _bz.set(0, 0, 1).applyQuaternion(blueCapital.mesh.quaternion).normalize()
+        const muzzle = blueCapital.pos.clone().addScaledVector(_bz, 14)
+        let i = 0
+        for (const l of barrage.locks) {
+          const end = l.target.alive ? l.target.pos : l.lastPos
+          _be.subVectors(end, muzzle); const dist = _be.length() || 1; _be.divideScalar(dist)
+          _bp.crossVectors(_be, UP); if (_bp.lengthSq() < 1e-4) _bp.set(1, 0, 0); _bp.normalize()
+          _bp.applyAxisAngle(_be, (i / barrage.locks.length) * Math.PI * 2 + Math.random() * 0.7)   // fan the arcs around the launch axis
+          const mesh = new THREE.Mesh(missileGeo, missileMat); mesh.position.copy(muzzle); mesh.scale.setScalar(1.2); scene.add(mesh)   // 20% bigger than a standard missile
+          barrage.missiles.push({ mesh, lock: l, start: muzzle.clone(), perp: _bp.clone(), arcMag: dist * (0.3 + Math.random() * 0.25) + 6, t: 0, dur: 1.15 + Math.random() * 0.5, smokeCd: 0 })
+          i++
+        }
+        audioRef.current?.playJump()
+        if (!mutedRef.current && missileTrailRef.current) { const a = missileTrailRef.current; a.currentTime = 0; a.volume = 0.2; a.loop = true; a.play().catch(() => {}) }   // looped trail whoosh while they fly
+      }
+      const updateBarrage = (dt) => {
+        if (!barrage.active) return
+        if (gameOver || !blueCapital || !blueCapital.alive) { clearBarrage(); return }
+        barrage.t += dt
+        // crosshairs (DOM "+") track their (live) targets, projected to screen
+        for (const l of barrage.locks) {
+          if (l.target.alive) l.lastPos.copy(l.target.pos)
+          if (barrage.phase === 'lock' && barrage.t >= l.revealAt && !l.cross) {
+            l.cross = makeCrosshair()
+            if (!mutedRef.current && codeTickRef.current) { const s = codeTickRef.current.cloneNode(); s.volume = 0.3; s.play().catch(() => {}) }   // blip on each lock
+          }
+          if (l.cross) {
+            _proj.copy(l.lastPos).project(camera)
+            if (_proj.z > 1) l.cross.el.style.display = 'none'
+            else {
+              l.cross.el.style.display = ''
+              l.cross.el.style.transform = `translate(-50%, -50%) translate(${(_proj.x * 0.5 + 0.5) * cw}px, ${(-_proj.y * 0.5 + 0.5) * ch}px)`
+            }
+          }
+        }
+        if (barrage.phase === 'lock') { if (barrage.t >= BARRAGE_LOCK_T) launchBarrage(); return }
+        // fly: advance each missile along its bezier arc, impact at the end
+        for (let k = barrage.missiles.length - 1; k >= 0; k--) {
+          const m = barrage.missiles[k]; m.t += dt
+          const tt = Math.min(1, m.t / m.dur), u = 1 - tt
+          const end = m.lock.target.alive ? m.lock.target.pos : m.lock.lastPos
+          _bc.addVectors(m.start, end).multiplyScalar(0.5).addScaledVector(m.perp, m.arcMag)   // bezier control
+          _bp.copy(m.start).multiplyScalar(u * u).addScaledVector(_bc, 2 * u * tt).addScaledVector(end, tt * tt)
+          _bz.subVectors(_bp, m.mesh.position)
+          m.mesh.position.copy(_bp)
+          if (_bz.lengthSq() > 1e-6) m.mesh.quaternion.setFromUnitVectors(yAxis, _bz.normalize())
+          m.smokeCd -= dt; if (m.smokeCd <= 0) { spawnSmoke(m.mesh.position, true); m.smokeCd = 0.02 }   // bigger, denser barrage trail
+          if (tt >= 1) {
+            spawnBlast(_bp.clone(), false)
+            if (m.lock.target.alive) damage(m.lock.target, blueCapital, BARRAGE_DMG)
+            if (m.lock.cross) { m.lock.cross.el.remove(); m.lock.cross = null }
+            scene.remove(m.mesh); barrage.missiles.splice(k, 1)
+          }
+        }
+        if (!barrage.missiles.length) clearBarrage()
+      }
+
       // ── Frame loop ───────────────────────────────────────────────────────────
       const clock = new THREE.Clock()
       let simT = 0, battleSimT = 0
@@ -1550,6 +1657,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         // advance the capital lance + nano-repair specials (after ships have moved)
         updateLance(dt)
         updateNano(dt)
+        updateBarrage(dt)
 
         // ── Bolts: home gently toward target (hits), or streak straight (misses)
         for (let i = bolts.length - 1; i >= 0; i--) {
@@ -1697,7 +1805,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           const p = puffs[i]
           p.life += dt
           p.mesh.scale.multiplyScalar(1 + dt * 1.6)
-          p.mat.opacity = Math.max(0, 0.5 * (1 - p.life / p.max))
+          p.mat.opacity = Math.max(0, (p.peak ?? 0.5) * (1 - p.life / p.max))
           if (p.life >= p.max) { scene.remove(p.mesh); p.mat.dispose(); puffs.splice(i, 1) }
         }
 
@@ -1926,8 +2034,10 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         lanceStrikeRef.current = null
         aceWarpRef.current = null
         nanoRepairRef.current = null
+        macroBarrageRef.current = null
         for (const f of lanceFX) { scene.remove(f.mesh); f.mat.dispose && f.mat.dispose() }
         clearNano()
+        clearBarrage()
         controls.dispose()
         disposables.forEach(d => d.dispose && d.dispose())
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
@@ -1984,6 +2094,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
 
       <div className="sb-stage">
         <div className="sb-canvas" ref={mountRef} />
+        <div className="sb-barrage-layer" ref={barrageLayerRef} />
 
         {!started && !isCampaign && (
           <Briefing comp={comp} blueCapName={blueCapName} onCycleBlueName={cycleBlueName} onAdjust={adjustComp} onStart={startBattle} />
@@ -2124,18 +2235,26 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
 
           {eliteSkill !== null ? (
             <div className="sb-tac-group">
-              <div className="sb-tac-label">ADMIRAL ELITE SKILL</div>
+              <div className="sb-tac-label">ADMIRAL ELITE SKILL{campaignSkillIdxs.length > 1 ? 'S' : ''}</div>
               <div className="sb-elite">
                 {operatorPortrait && <img className="sb-elite-portrait" src={operatorPortrait} alt="" />}
-                <button
-                  className={`sb-skill-btn${skillsUsed[eliteSkill] ? ' sb-skill-btn--used' : ''}`}
-                  onClick={() => triggerSkill(eliteSkill)}
-                  disabled={skillsUsed[eliteSkill]}
-                  title={SKILLS[eliteSkill].hint}
-                >
-                  <span className="sb-skill-name">{skillsUsed[eliteSkill] ? 'EXPENDED' : SKILLS[eliteSkill].name}</span>
-                  <span className="sb-skill-hint">{SKILLS[eliteSkill].hint}</span>
-                </button>
+                <div className="sb-elite-skills">
+                  {campaignSkillIdxs.map(i => {
+                    const sk = skillMeta(i)
+                    return (
+                      <button
+                        key={i}
+                        className={`sb-skill-btn${skillsUsed[i] ? ' sb-skill-btn--used' : ''}`}
+                        onClick={() => triggerSkill(i)}
+                        disabled={skillsUsed[i]}
+                        title={sk.hint}
+                      >
+                        <span className="sb-skill-name">{skillsUsed[i] ? 'EXPENDED' : sk.name}</span>
+                        <span className="sb-skill-hint">{sk.hint}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           ) : (

@@ -5,7 +5,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import HudHeader from '../components/HudHeader'
 import { getFlag } from '../lib/store'
-import { getCredits, getFleet, resetCampaign, unlockAllCampaign } from '../lib/campaign'
+import { getCredits, getFleet, resetCampaign, unlockAllCampaign, addUpgrade } from '../lib/campaign'
 import { STORY } from './cutscene/scenes'
 import {
   NEBULA_VERT, NEBULA_FRAG,
@@ -136,6 +136,9 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet }) {
     setCredits(getCredits())
     setFleet(getFleet())
   }
+  // debug: grant the legendary Macro-Missile Barrage skill
+  const [gaveMacro, setGaveMacro] = useState(false)
+  const doGiveMacro = () => { addUpgrade('macroMissile'); setGaveMacro(true) }
 
   useEffect(() => {
     const mount = mountRef.current
@@ -321,6 +324,7 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet }) {
         <div className="cmap-hint">{completed >= NODES.length ? 'The Order is restored — select a system to revisit' : 'Select a system to begin the operation'}</div>
 
         {showDebug && <button className="cmap-unlock" onClick={doUnlockAll}>⚡ DEBUG · UNLOCK ALL</button>}
+        {showDebug && <button className="cmap-unlock cmap-givemacro" onClick={doGiveMacro}>{gaveMacro ? '✓ MACRO-MISSILE GRANTED' : '⚡ DEBUG · GIVE MACRO-MISSILE'}</button>}
         <button className="cmap-reset" onClick={() => setConfirmReset(true)}>⟲ RESET PROGRESS</button>
 
         {confirmReset && (

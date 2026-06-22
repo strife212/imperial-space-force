@@ -72,12 +72,14 @@ export const UPGRADE_INFO = {
   capHp:             { name: 'Reinforced Hull',         category: 'capital' },
   capMissile:        { name: 'Spinal Missile Launcher', category: 'capital' },
   unsellableFighter: { name: 'Additional Fighter',      category: 'fleet' },
+  macroMissile:      { name: 'Macro-Missile Barrage',   category: 'capital' },
 }
 export function getUpgrades() { return getFlag('upgrades') || {} }
 export function addUpgrade(id) { const u = { ...getUpgrades() }; u[id] = (u[id] || 0) + 1; setFlag('upgrades', u) }
 export function getUnsellableFighters() { return getUpgrades().unsellableFighter || 0 }     // permanent fighters, can't be sold
 export function getCapMaxHp() { return CAP_HP + 5 * (getUpgrades().capHp || 0) }             // flagship hull, +5 per upgrade
 export function hasCapMissile() { return (getUpgrades().capMissile || 0) > 0 }               // flagship homing-missile launcher
+export function hasMacroMissile() { return (getUpgrades().macroMissile || 0) > 0 }           // 2nd admiral skill: macro-missile barrage
 
 // The fleet actually deployed to battle: the buyable fleet plus any permanent
 // (unsellable) fighters granted by upgrades.

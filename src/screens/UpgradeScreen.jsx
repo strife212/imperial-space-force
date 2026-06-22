@@ -33,24 +33,40 @@ function HullIcon() {
     </svg>
   )
 }
+function BarrageIcon() {
+  return (
+    <svg viewBox="0 0 64 64" className="up-svg" aria-hidden="true">
+      <path d="M32 58 Q 13 33 18 14" fill="none" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M32 58 Q 32 30 32 10" fill="none" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M32 58 Q 51 33 46 14" fill="none" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M18 9 l-4 8 8 0 Z" />
+      <path d="M32 5 l-4 8 8 0 Z" />
+      <path d="M46 9 l-4 8 8 0 Z" />
+    </svg>
+  )
+}
 
 // ── Rarity tiers ─────────────────────────────────────────────────────────────
 // Drives each card's colour and (later) its chance of appearing.
 //   legendary=orange · epic=purple · rare=blue · uncommon=green · basic=white
 const RARITY_LABEL = { legendary: 'LEGENDARY', epic: 'EPIC', rare: 'RARE', uncommon: 'UNCOMMON', basic: 'BASIC' }
 
-// ── Upgrade pool ─────────────────────────────────────────────────────────────
-// Extensible: add entries here and the screen will randomly draw three each time.
-const UPGRADE_POOL = [
-  { id: 'capMissile',       rarity: 'epic',     tag: 'FLAGSHIP', title: 'SPINAL MISSILE BATTERY', desc: 'Mount a homing-missile launcher on your flagship — it lobs a guided missile at the enemy throughout the battle.', Icon: MissileIcon },
-  { id: 'unsellableFighter', rarity: 'uncommon', tag: 'FLEET',    title: 'VOLUNTEER WING',         desc: 'A permanent interceptor joins your fleet. It deploys every battle and can never be decommissioned.', Icon: LockFighterIcon },
-  { id: 'capHp',            rarity: 'basic',    tag: 'FLAGSHIP', title: 'REINFORCED HULL',        desc: 'Plate the flagship with extra armour — +5 maximum hull integrity, permanently.', Icon: HullIcon },
-]
+// ── Upgrade catalog ──────────────────────────────────────────────────────────
+// Every defined upgrade card. POOL_IDS controls which are currently offered —
+// add an id there to put a card into the post-battle rotation.
+const UPGRADE_CARDS = {
+  capMissile:        { rarity: 'epic',      tag: 'FLAGSHIP', title: 'SPINAL MISSILE BATTERY', desc: 'Mount a homing-missile launcher on your flagship — it lobs a guided missile at the enemy throughout the battle.', Icon: MissileIcon },
+  unsellableFighter: { rarity: 'uncommon',  tag: 'FLEET',    title: 'VOLUNTEER WING',         desc: 'A permanent interceptor joins your fleet. It deploys every battle and can never be decommissioned.', Icon: LockFighterIcon },
+  capHp:             { rarity: 'basic',     tag: 'FLAGSHIP', title: 'REINFORCED HULL',        desc: 'Plate the flagship with extra armour — +5 maximum hull integrity, permanently.', Icon: HullIcon },
+  // Defined but not yet offered (see POOL_IDS):
+  macroMissile:      { rarity: 'legendary', tag: 'FLAGSHIP', title: 'MACRO-MISSILE BARRAGE',  desc: 'A second admiral skill: lock onto 10 random targets, then loose a missile at each in one fanning barrage.', Icon: BarrageIcon },
+}
+const POOL_IDS = ['capMissile', 'unsellableFighter', 'capHp']   // macroMissile intentionally excluded for now
 
 const pickUpgrades = (n = 3) => {
-  const a = [...UPGRADE_POOL]
+  const a = [...POOL_IDS]
   for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]] }
-  return a.slice(0, n)
+  return a.slice(0, n).map(id => ({ id, ...UPGRADE_CARDS[id] }))
 }
 
 // Post-victory roguelike upgrade pick. `onChoose(id)` applies the choice and

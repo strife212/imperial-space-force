@@ -3,6 +3,8 @@ Real-time 3D fleet battle simulator
 
 A browser game built around a procedural **blue vs red** space battle: two fleets jump in, brawl, and one warps out broken. You compose your fleet within a points budget on a pre-battle briefing, issue tactical orders mid-fight, and watch it play out as a three.js set-piece with a follow camera, kill feed and post-battle breakdown. A headless version of the same combat loop runs from the command line for balance sweeps.
 
+On top of the one-off **skirmish**, a 10-mission **campaign** wraps the same battles in a persistent fleet and Requisition currency, an operator who commands a once-per-battle **admiral skill**, and **roguelike upgrades** chosen after each victory.
+
 The project began life as a narrative command-terminal game (the *HMSS Her Annunciator* orbital weapons platform); that game still ships intact — see [Legacy: 2D Command Terminal](#legacy-2d-command-terminal) — but the battle simulation is now the front door.
 
 ---
@@ -23,7 +25,7 @@ The project began life as a narrative command-terminal game (the *HMSS Her Annun
 
 `App.jsx` opens on the **Start screen** (`screen === 'home'`):
 
-- **Campaign** — placeholder, currently disabled.
+- **Campaign** — the story campaign: pick an operator, then fight a 10-node map with a fleet, currency and upgrades that persist between missions (see [The Campaign](#the-campaign)).
 - **Skirmish Battle** — opens the battle briefing, where you build both fleets and start the engagement.
 - A faint **debug** link in the footer opens the debug screen (jump to any screen, toggle story flags).
 
@@ -41,6 +43,7 @@ A self-contained three.js engagement: a player-built **blue** fleet against a **
 - **Fleet building** — on the briefing, both fleets are composed within a **1000-point budget** (`compStrength` in `battle/constants.js`) using `+`/`−` controls. The default red fleet is 24 fighters / 4 bombers / 1 cruiser; the player mirrors or counters it.
 - **Combat** — bolts, bombs and missiles each have their own damage, accuracy, range and homing. **Armour** gives the flagship/bombers/cruiser a chance to deflect fighter bolts to zero. **Flares** are a limited missile countermeasure: each flagship and bomber can decoy a number of incoming missiles (the missile loses lock, sails past, and detonates harmlessly) before its pool runs dry.
 - **Player tactics** (blue only) — flagship *Hold Back* / *Directly Engage*; fighter targeting *Attack All* / *Enemy Fighters* / *Enemy Capital Ship*; and a bomber wing you dispatch on your call (auto-launches if you wait too long).
+- **Admiral skills** — once-per-battle special abilities fired from the tactical-command panel (Lance Strike, Fighter Ace, Nano Repair). The skirmish offers all three but locks the others once you use one; the campaign gives your operator's single skill (plus a bonus skill from upgrades). See [The Campaign](#the-campaign).
 - **Presentation** — a hyperspace **jump-in**, a nebula skydome with a random background body (gas giant / ringed planet / black hole), engine glows, missile smoke trails, flare flame-bursts, fireball + shockwave explosions, capital damage states and a drawn-out death sequence with drifting wreckage.
 - **Follow camera** — click any ship to enter a third-person view with HP and a red **target** readout, numbered ship names (`Blue Fighter 3`, etc.), and dashed lines to every target it's currently engaging (the flagship tracks up to four, bombers two, cruisers two).
 - **Audio** — laser, explosion, jump-in, victory and ambient sounds are synthesised at runtime via the Web Audio API through a shared bus (compressor + soft-clip saturation + reverb send), rate-limited so massed fire stays a crackle. Each sound can be overridden by dropping a file into `public/sfx/` — missing files fall back to the synth.
@@ -59,6 +62,59 @@ Imports flow one way: `constants → geometry → RosterUI → SpaceBattleScreen
 
 ---
 
+## The Campaign
+
+A 10-mission story campaign that reuses the same battle engine. Each node runs **cutscene → shipyard → battle**; winning banks **Requisition** (first clear only — cleared nodes can be replayed but won't pay out again) and unlocks the next node. Your fleet, currency and upgrades persist between missions in `localStorage` (via `lib/store.js` flags).
+
+### Operators & admiral skills
+
+Before the first mission you choose an **operator** on the character-select screen. The choice sets your flagship name, fleet name, portrait — and your **admiral elite skill**, a once-per-battle ability fired from the tactical-command panel:
+
+| Operator | Fleet | Admiral skill |
+|---|---|---|
+| Princess V. **Astraia** (Admiral) | Fleet Berenike | **Lance Strike** — the flagship swings onto the enemy capital, charges a spinal lance, and looses one beam for **20 damage** (charge sound → cut-off → explosion). |
+| Princess T. **Severine** (Vice Admiral) | Fleet Concordia | **Fighter Ace** — warps in an elite **gold** fighter (2× hull, 1.5× speed, 2× fire-rate, 2 flares, gold lasers); at 0 hull it **warps out** with a comms line instead of exploding. |
+| Princess C. **Lucia** (Rear Admiral) | Fleet Polyhymnia | **Nano Repair** — a green nanite swarm heals the whole fleet (**+1 hp each, +20 flagship**) over 3 seconds. |
+
+- **Skirmish** offers all three skills, but using one **locks out the others** for that battle (one ability per battle).
+- **Campaign** gives only the chosen operator's skill (shown next to their portrait), plus the **Macro-Missile Barrage** as a second skill if that upgrade is owned. Each is once per battle.
+- The blue flagship's comms broadcasts (critical damage, victory) use the operator's portrait in campaign battles.
+
+### Roguelike upgrades
+
+After each **first-clear** victory, a refit screen offers a choice of **three random upgrade cards**. Picking one applies it permanently; upgrades carry through the campaign and are listed (grouped Flagship / Fleet) on the Fleet Review screen. Cards are **rarity-tiered**, which drives their colour and (later) their odds of appearing:
+
+`Legendary` = orange · `Epic` = purple · `Rare` = blue · `Uncommon` = green · `Basic` = white
+
+| Upgrade | Rarity | Effect |
+|---|---|---|
+| **Reinforced Hull** | Basic | +5 flagship max hull (stacks). |
+| **Volunteer Wing** | Uncommon | A permanent, **unsellable** fighter — deploys every battle, shown with a lock in the shipyard, counted in fleet strength. |
+| **Spinal Missile Battery** | Epic | The flagship gains a homing-missile launcher that fires throughout the battle. |
+| **Macro-Missile Barrage** | Legendary | A **second admiral skill**: lock onto 10 random targets one-by-one (red crosshairs over 2s), then loose a missile at each at once — they fan out in arcs. *Defined but not yet in the offered rotation.* |
+
+Upgrades are stored as a `{ id: level }` map; effects are derived by helpers in `lib/campaign.js` (`getCapMaxHp`, `getUnsellableFighters`, `hasCapMissile`, `hasMacroMissile`, `getDeployFleet`). The card catalog and the currently-offered `POOL_IDS` live in `UpgradeScreen.jsx`, so adding or enabling a card is a one-line change.
+
+### Fleet management
+
+- **Shipyard** (pre-battle) — spend Requisition to add ships at fixed costs and caps, see your strength vs the node's enemy intel, then **Deploy Fleet** or **Preview Fleet**.
+- **Fleet Review** — a 3D parade of your standing fleet that doubles as a live editor; it also previews your operator's elite skill and summarises your chosen upgrades. Opened from the campaign-map fleet panel or the shipyard (where the back button returns you to the battle prep).
+
+### Campaign files
+
+| File | Responsibility |
+|---|---|
+| `lib/campaign.js` | Campaign economy & state — the node table, fleet/Requisition helpers, the upgrade catalog/getters, and the battle deploy composition. |
+| `screens/CampaignMap.jsx` | The 3D node map: play a node, fleet/operator HUD, and hidden debug controls (press **Z** to reveal *Unlock All* / *Give Macro-Missile*). |
+| `screens/CharacterSelect.jsx` | Operator selection — dossier cards (rank, posting, flagship, elite-skill blurb) and the auth sequence. |
+| `screens/ShipyardScreen.jsx` | Pre-battle fleet builder — buy/sell, strength assessment, deploy/preview. |
+| `screens/FleetReview.jsx` | 3D fleet parade + live editor, elite-skill preview, and the chosen-upgrades summary. |
+| `screens/UpgradeScreen.jsx` | Post-victory upgrade pick — the rarity-tiered card UI and the upgrade catalog/pool. |
+| `screens/cutscene/` | The between-node story cutscenes (three.js stage + scene scripts). |
+| `lib/lanceSfx.js` | Shared lance **charge → cut-off → explosion** sound, used by both the battle and the Fleet Review preview (with a preload for no first-use delay). |
+
+---
+
 ## Battle Sim Harness
 
 `scripts/battle-sim.mjs` is a headless, faithful port of the in-game combat loop (three.js vector math only, no rendering) used to balance fleet compositions. It runs thousands of engagements and reports win rates, with the heavy lifting fanned out across CPU cores via `worker_threads`.
@@ -66,6 +122,7 @@ Imports flow one way: `constants → geometry → RosterUI → SpaceBattleScreen
 ```bash
 npm run sim -- --runs 200                       # single match-up, 200 runs
 npm run sim -- --sweep3 --runs 200 --workers 16 # full 25-build sweep, parallel
+npm run sim -- --campaign --runs 50             # each campaign node vs a sensible fleet
 ```
 
 Key flags:
@@ -75,6 +132,7 @@ Key flags:
 | `--runs N` | simulations per cell |
 | `--workers N` | parallel worker threads (default 12) |
 | `--sweep3` | sweep the full grid of fighter/bomber/cruiser builds vs the default red fleet |
+| `--campaign` | run each of the 10 campaign nodes (sensible all-Requisition fleet vs its fixed enemy) and report per-node win rates |
 | `--blue-fighters / --blue-bombers-count / --blue-cruisers-count` (and `--red-*`) | override fleet composition |
 | `--cruiser-speed`, `--cruiser-steer arc\|force` | A/B cruiser tuning |
 | `--verbose` / `--quiet` | output detail |
@@ -97,6 +155,8 @@ npm run sim      # run the headless balance harness (see above)
 ## Debug Mode
 
 Click the small **debug** link in the Start-screen footer to open the debug screen. From there you can jump directly to any screen (including the battle and the Combat Visual Test), and toggle persistent story flags without playing through the full sequence.
+
+On the **campaign map**, press **Z** to reveal hidden debug controls — *Unlock All* (clear every node, grant the matching Requisition, assign/cycle an operator) and *Give Macro-Missile* (grant the legendary barrage skill) — for testing campaign features quickly.
 
 ---
 
