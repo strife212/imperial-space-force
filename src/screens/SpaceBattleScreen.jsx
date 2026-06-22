@@ -140,12 +140,15 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   const nanoRepairRef = useRef(null)     // skill 2 — nano repair
   const triggerSkill = (i) => {
     if (skillsUsed[i] || !SKILLS[i].ready) return
+    if (!isCampaign && skillsUsed.some(Boolean)) return   // skirmish: only one ability per battle
     const fired = i === 0 ? lanceStrikeRef.current?.()
       : i === 1 ? aceWarpRef.current?.()
       : i === 2 ? nanoRepairRef.current?.()
       : false
     if (fired) setSkillsUsed(u => u.map((v, k) => (k === i ? true : v)))
   }
+  // Skirmish only: once any ability is fired, the rest lock out for the battle.
+  const skillsLockedOut = !isCampaign && skillsUsed.some(Boolean)
   // Campaign: the chosen operator grants exactly one elite skill, shown with
   // their portrait. Skirmish leaves this null (all three skills are offered).
   const eliteSkill = isCampaign ? operatorEliteSkill(getFlag('operator')) : null
@@ -2135,18 +2138,22 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
             <div className="sb-tac-group">
               <div className="sb-tac-label">SPECIAL ORDNANCE · ONCE PER BATTLE</div>
               <div className="sb-skill-btns">
-                {SKILLS.map((sk, i) => (
-                  <button
-                    key={sk.key}
-                    className={`sb-skill-btn${skillsUsed[i] ? ' sb-skill-btn--used' : ''}${sk.ready ? '' : ' sb-skill-btn--locked'}`}
-                    onClick={() => triggerSkill(i)}
-                    disabled={!sk.ready || skillsUsed[i]}
-                    title={sk.ready ? sk.hint : 'Authorisation pending'}
-                  >
-                    <span className="sb-skill-name">{skillsUsed[i] ? 'EXPENDED' : sk.name}</span>
-                    <span className="sb-skill-hint">{sk.ready ? sk.hint : 'LOCKED'}</span>
-                  </button>
-                ))}
+                {SKILLS.map((sk, i) => {
+                  const used = skillsUsed[i]
+                  const lockedOut = skillsLockedOut && !used   // another ability was used this battle
+                  return (
+                    <button
+                      key={sk.key}
+                      className={`sb-skill-btn${used ? ' sb-skill-btn--used' : ''}${(lockedOut || !sk.ready) ? ' sb-skill-btn--locked' : ''}`}
+                      onClick={() => triggerSkill(i)}
+                      disabled={!sk.ready || used || skillsLockedOut}
+                      title={!sk.ready ? 'Authorisation pending' : lockedOut ? 'Locked — one ability per battle' : sk.hint}
+                    >
+                      <span className="sb-skill-name">{used ? 'EXPENDED' : sk.name}</span>
+                      <span className="sb-skill-hint">{!sk.ready ? 'LOCKED' : lockedOut ? 'LOCKED' : sk.hint}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
