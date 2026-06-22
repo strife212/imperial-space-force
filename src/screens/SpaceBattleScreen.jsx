@@ -905,10 +905,11 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         }].slice(-7))
       }
 
-      // open the picture-in-picture event camera: track getTarget() from an offset
-      const showPip = (team, text, getTarget, camDir, dist, height, max = 4) => {
+      // open the picture-in-picture event camera: track getTarget() from an offset.
+      // `crosshair` overlays a reticle at the box centre (the cam looks at the target).
+      const showPip = (team, text, getTarget, camDir, dist, height, max = 4, crosshair = false) => {
         pipRef.current = { life: 0, max, getTarget, camDir: camDir.clone().normalize(), dist, height }
-        setPipCaption({ team, text })
+        setPipCaption({ team, text, crosshair })
       }
 
       const SHIELD_FLASH_TIME = 0.45   // seconds the flagship shield stays lit after catching a bolt
@@ -1276,7 +1277,6 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         barrage.active = true; barrage.phase = 'lock'; barrage.t = 0
         barrage.locks = picked.map((target, i) => ({ target, lastPos: target.pos.clone(), revealAt: (i / n) * BARRAGE_LOCK_T, cross: null }))
         showComms('blue', 'Macro-missile barrage — designating targets.')
-        if (!gameOver) showPip('blue', 'MACRO-MISSILE BARRAGE', () => blueCapital.pos, new THREE.Vector3(0.5, 0.42, 0.7), 78, 28, BARRAGE_LOCK_T + 0.6)
         return true
       }
       macroBarrageRef.current = startBarrage
@@ -1296,6 +1296,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         }
         audioRef.current?.playJump()
         if (!mutedRef.current && missileTrailRef.current) { const a = missileTrailRef.current; a.currentTime = 0; a.volume = 0.2; a.loop = true; a.play().catch(() => {}) }   // looped trail whoosh while they fly
+        // PiP holds on the flagship as the volley launches
+        if (!gameOver) showPip('blue', 'MISSILES AWAY', () => blueCapital.pos, new THREE.Vector3(0.55, 0.35, 0.75), 42, 14, 1.1)
       }
       const updateBarrage = (dt) => {
         if (!barrage.active) return
@@ -1307,6 +1309,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           if (barrage.phase === 'lock' && barrage.t >= l.revealAt && !l.cross) {
             l.cross = makeCrosshair()
             if (!mutedRef.current && codeTickRef.current) { const s = codeTickRef.current.cloneNode(); s.volume = 0.3; s.play().catch(() => {}) }   // blip on each lock
+            // PiP cuts to a very close zoom of each ship as it's marked
+            if (!gameOver) showPip('blue', 'TARGET LOCKED · ' + l.target.name.toUpperCase(), () => (l.target.alive ? l.target.pos : l.lastPos), new THREE.Vector3(0.5, 0.35, 0.78), 6.5, 2.2, 0.5, true)
           }
           if (l.cross) {
             _proj.copy(l.lastPos).project(camera)
@@ -2145,6 +2149,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         {pipCaption && (
           <div className={`sb-pip sb-pip--${pipCaption.team}`}>
             <div className="sb-pip-tag">◉ LIVE FEED</div>
+            {pipCaption.crosshair && (
+              <div className="sb-pip-crosshair"><svg viewBox="0 0 28 28"><path d="M14 3 V25 M3 14 H25" stroke="#8fd0ff" strokeWidth="2" fill="none" /></svg></div>
+            )}
             <div className="sb-pip-caption">{pipCaption.text}</div>
           </div>
         )}
