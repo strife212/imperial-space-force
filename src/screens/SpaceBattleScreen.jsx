@@ -618,6 +618,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         y: (Math.random() - 0.5) * 6,
         omega: (CAP_SPEED / orbitR) * (Math.random() < 0.5 ? 1 : -1),
       }
+      // blue flagship upgrades (campaign roguelike): bumped hull + a missile launcher
+      const blueCapHp = (isCampaign && campaign.capMaxHp) || CAP_HP
+      const blueCapMissile = isCampaign && !!campaign.capMissile
       const spawnCapital = (team, startAngle) => {
         const mat = new THREE.MeshStandardMaterial({
           color: TEAMS[team].color, emissive: TEAMS[team].color,
@@ -665,8 +668,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         mesh.position.copy(pos)
         orient(mesh, vel)
         scene.add(mesh)
+        const capHp = team === 'blue' ? blueCapHp : CAP_HP
         ships.push({
-          mesh, mat, team, hp: CAP_HP, alive: true, pos, vel,
+          mesh, mat, team, hp: capHp, maxHp: capHp, alive: true, pos, vel,
           name: team === 'blue' ? blueCapNameRef.current : redCapNameRef.current,
           labelEl:  team === 'blue' ? blueCapRef.current   : redCapRef.current,
           shieldEl: team === 'blue' ? blueShieldRef.current : redShieldRef.current,
@@ -674,6 +678,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           fireCd: 0.5 + Math.random(), flash: 0,
           isCapital: true, kills: 0, weapons: CAP_WEAPONS, armor: ARMOR_FLAGSHIP, radius: 16, route, glows, fires, emitCd: 0,
           shieldMesh: shield.mesh, shieldMat: shield.mat, shieldFlash: 0, flares: FLARES_FLAGSHIP,
+          capMissile: team === 'blue' && blueCapMissile, missileCd: 1.2 + Math.random() * 1.5,
         })
       }
       spawnCapital('blue', Math.PI)   // start on the left
@@ -896,7 +901,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         ship.hp -= amount
         ship.flash = 0.12
         // capital crosses 25% shield → critical-damage broadcast (once per ship)
-        if (ship.isCapital && ship.alive && !ship.commsCritical && ship.hp <= CAP_HP * 0.25 && ship.hp > 0) {
+        if (ship.isCapital && ship.alive && !ship.commsCritical && ship.hp <= ship.maxHp * 0.25 && ship.hp > 0) {
           ship.commsCritical = true
           showComms(ship.team, 'Critical damage sustained!')
         }
@@ -1464,7 +1469,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
               if (s.shieldFlash > 0) s.shieldFlash = Math.max(0, s.shieldFlash - dt)
               s.shieldMat.uniforms.uIntensity.value = s.shieldFlash > 0 ? Math.pow(s.shieldFlash / SHIELD_FLASH_TIME, 0.7) : 0
             }
-            const dmg = 1 - s.hp / CAP_HP
+            const dmg = 1 - s.hp / s.maxHp
             const nf = Math.floor(dmg * s.fires.length)
             for (let i = 0; i < s.fires.length; i++) {
               const f = s.fires[i]
@@ -1521,6 +1526,15 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
               } else if (target && s.pos.distanceToSquared(target.pos) < FIGHTER_RANGE * FIGHTER_RANGE) {
                 fireBolt(s, target)   // fighters hold fire until the target is within range
                 s.fireCd = (1.2 + Math.random() * 2.8) * (s.fireMul || 1)   // fireMul < 1 → elite ace shoots faster
+              }
+            }
+            // capital missile-launcher upgrade (blue flagship): one homing missile on its own cadence
+            if (s.capMissile) {
+              s.missileCd -= dt
+              if (s.missileCd <= 0) {
+                if (nearest && s.pos.distanceToSquared(nearest.pos) < MISSILE_RANGE * MISSILE_RANGE) {
+                  fireMissile(s, nearest); s.missileCd = MISSILE_CD_MIN + Math.random() * MISSILE_CD_RND
+                } else { s.missileCd = 0.6 }
               }
             }
           }
@@ -1700,7 +1714,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           }
           s.labelEl.style.opacity = '1'
           s.labelEl.style.transform = `translate(-50%, -100%) translate(${lx}px, ${ly}px)`
-          if (s.shieldEl) s.shieldEl.textContent = Math.max(0, Math.round(s.hp / CAP_HP * 100))
+          if (s.shieldEl) s.shieldEl.textContent = Math.max(0, Math.round(s.hp / s.maxHp * 100))
           if (s.reserveEl) {
             const r = reserveLeft[s.team]
             if (r > 0) { s.reserveEl.style.display = ''; s.reserveEl.textContent = `RESERVE FIGHTERS: ${r}` }
@@ -1719,7 +1733,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         // capital erodes fleet power before it's destroyed. A living flagship never drops
         // below PTS_FLAGSHIP_MIN, though (its guns and morale keep it worth something).
         const strength = { blue: 0, red: 0 }
-        for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? Math.max(PTS_FLAGSHIP_MIN, PTS_FLAGSHIP * Math.max(0, s.hp) / CAP_HP) : s.isBomber ? PTS_BOMBER : s.isCruiser ? PTS_CRUISER : PTS_FIGHTER
+        for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? Math.max(PTS_FLAGSHIP_MIN, PTS_FLAGSHIP * Math.max(0, s.hp) / s.maxHp) : s.isBomber ? PTS_BOMBER : s.isCruiser ? PTS_CRUISER : PTS_FIGHTER
         if (blueStrengthRef.current) blueStrengthRef.current.textContent = Math.round(strength.blue)
         if (redStrengthRef.current)  redStrengthRef.current.textContent  = Math.round(strength.red)
         if (powerBarRef.current) {                                   // ratio bar: blue's share of total strength
@@ -2040,7 +2054,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
                 ) : null}
                 <div className="sb-victory-btns">
                   {!won && <button className="sb-restart sb-restart--ghost" onClick={() => campaign.onRetry()}>↻ RE-DEPLOY</button>}
-                  <button className="sb-restart" onClick={() => campaign.onExit()}>{won ? 'CONTINUE ▶' : '↩ WITHDRAW'}</button>
+                  <button className="sb-restart" onClick={() => won ? campaign.onContinue(campResult) : campaign.onExit()}>{won ? 'CONTINUE ▶' : '↩ WITHDRAW'}</button>
                 </div>
               </div>
             </div>

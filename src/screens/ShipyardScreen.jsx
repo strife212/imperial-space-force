@@ -6,7 +6,7 @@ import { useFitScale } from '../hooks/useScreenScale'
 import { splitCapName } from './battle/constants'
 import {
   NODE_BATTLES, SHIP_COST, getFleet, setFleet, getCredits, spendCredits, addCredits,
-  fleetStrength, getFlagshipName,
+  fleetStrength, getFlagshipName, getUnsellableFighters,
 } from '../lib/campaign'
 import './shipyard.css'
 
@@ -17,11 +17,17 @@ const KINDS = [
 ]
 
 // A wrapped row of ship silhouettes, capped so a huge enemy fleet stays readable.
-function SpriteRow({ team, kind, count, max = 16 }) {
+function SpriteRow({ team, kind, count, locked = 0, max = 16 }) {
   if (count === 0) return <div className="sy-sprites sy-sprites--empty">— none —</div>
+  // Locked (permanent) ships are drawn first so they're always visible — even
+  // when the row is capped and the rest spill into the "+N" overflow.
+  const shown = Math.min(count, max)
+  const lockedShown = Math.min(locked, shown)
+  const normalShown = shown - lockedShown
   return (
     <div className="sy-sprites">
-      {Array.from({ length: Math.min(count, max) }, (_, i) => <ShipSprite key={i} team={team} kind={kind} />)}
+      {Array.from({ length: lockedShown }, (_, i) => <ShipSprite key={`L${i}`} team={team} kind={kind} locked />)}
+      {Array.from({ length: normalShown }, (_, i) => <ShipSprite key={`N${i}`} team={team} kind={kind} />)}
       {count > max && <span className="sy-sprites-more">+{count - max}</span>}
     </div>
   )
@@ -31,6 +37,7 @@ export default function ShipyardScreen({ nodeIndex, onDeploy, onExit, onPreview 
   const node = NODE_BATTLES[nodeIndex] || NODE_BATTLES[0]
   const [fleet,   setFleetState]   = useState(getFleet)
   const [credits, setCreditsState] = useState(getCredits)
+  const unsellable = getUnsellableFighters()   // permanent fighters granted by upgrades
   const flagship = splitCapName(getFlagshipName())
   const fitRef = useFitScale()   // scale the body to fit between header/footer
 
@@ -53,7 +60,7 @@ export default function ShipyardScreen({ nodeIndex, onDeploy, onExit, onPreview 
 
   // strength readouts (flagship is always present on both sides → +1 capital each)
   const enemyComp  = node.enemy
-  const yourStr    = fleetStrength(fleet)
+  const yourStr    = fleetStrength({ ...fleet, fighters: fleet.fighters + unsellable })
   const enemyStr   = fleetStrength(enemyComp)
   const ratio      = enemyStr > 0 ? yourStr / enemyStr : 2
   const odds       = ratio >= 1.1 ? { cls: 'good', text: 'FAVOURABLE' }
@@ -99,13 +106,15 @@ export default function ShipyardScreen({ nodeIndex, onDeploy, onExit, onPreview 
 
             {KINDS.map(({ key, kind, label }) => {
               const cost = SHIP_COST[key]
+              const locked = key === 'fighters' ? unsellable : 0
+              const shown = fleet[key] + locked
               return (
                 <div className="sy-row" key={key}>
                   <div className="sy-row-head">
                     <span className="sy-row-label">{label} <ShipInfoTip kind={kind} team="blue" /></span>
-                    <span className="sy-row-count">×{fleet[key]}</span>
+                    <span className="sy-row-count">×{shown}</span>
                   </div>
-                  <SpriteRow team="blue" kind={kind} count={fleet[key]} />
+                  <SpriteRow team="blue" kind={kind} count={shown} locked={locked} />
                   <div className="sy-row-buy">
                     <button className="sy-btn sy-btn--sell" onClick={() => sell(key)} disabled={fleet[key] <= 0} aria-label={`Sell ${label}`}>−</button>
                     <span className="sy-cost">{cost} REQ</span>

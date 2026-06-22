@@ -9,11 +9,24 @@
 .fr-stage { position: relative; flex: 1 1 auto; min-height: 0; }
 .fr-canvas { position: absolute; inset: 0; }
 
-/* fleet command panel — top-left, interactive */
-.fr-panel {
+/* top-left column: the fleet command panel + the upgrades summary beneath it */
+.fr-topleft {
   position: absolute;
   top: 18px; left: 20px;
-  width: 260px;
+  width: 296px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100% - 36px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* fleet command panel — interactive */
+.fr-panel {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -24,6 +37,33 @@
   border-radius: 3px;
   padding: 16px 18px 18px;
 }
+
+/* chosen roguelike upgrades — its own card below the fleet panel */
+.fr-upgrades {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  font-family: var(--font-mono);
+  background: linear-gradient(160deg, rgba(8, 14, 30, 0.82), rgba(2, 4, 12, 0.9));
+  border: 1px solid rgba(120, 180, 255, 0.28);
+  box-shadow: 0 0 18px rgba(20, 96, 208, 0.14);
+  border-radius: 3px;
+  padding: 14px 16px 15px;
+}
+.fr-upg-group { display: flex; flex-direction: column; gap: 6px; }
+.fr-upg-title {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #9fb0d4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.fr-upg-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.fr-upg-name { font-size: 11.5px; letter-spacing: 0.03em; color: var(--c-ash); }
+.fr-upg-x { font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; color: var(--c-rose); }
 .fr-name {
   font-size: 20px;
   font-weight: 800;

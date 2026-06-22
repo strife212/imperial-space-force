@@ -5,7 +5,7 @@
 //
 // The skirmish battle is untouched; campaign mode just feeds SpaceBattleScreen a
 // locked pair of fleet compositions plus a result callback.
-import { compStrength, randomBlueCapName } from '../screens/battle/constants.js'
+import { compStrength, randomBlueCapName, CAP_HP } from '../screens/battle/constants.js'
 import { getFlag, setFlag } from './store.js'
 
 // Cost (in Requisition) to add one ship of each class to your standing fleet.
@@ -62,6 +62,30 @@ export function setFleet(f) {
   setFlag('campaignFleet', { fighters: Math.max(0, f.fighters | 0), bombers: Math.max(0, f.bombers | 0), cruisers: Math.max(0, f.cruisers | 0) })
 }
 
+// ── Roguelike fleet upgrades ──────────────────────────────────────────────────
+// Won as a choice after each campaign victory and stored as a { id: level } map.
+// Helpers below translate the map into concrete effects the battle/shipyard read.
+//
+// Catalog: every upgrade's display name + category ('capital' = flagship, 'fleet').
+// Used by the fleet-review summary; extend this alongside the upgrade pool.
+export const UPGRADE_INFO = {
+  capHp:             { name: 'Reinforced Hull',         category: 'capital' },
+  capMissile:        { name: 'Spinal Missile Launcher', category: 'capital' },
+  unsellableFighter: { name: 'Additional Fighter',      category: 'fleet' },
+}
+export function getUpgrades() { return getFlag('upgrades') || {} }
+export function addUpgrade(id) { const u = { ...getUpgrades() }; u[id] = (u[id] || 0) + 1; setFlag('upgrades', u) }
+export function getUnsellableFighters() { return getUpgrades().unsellableFighter || 0 }     // permanent fighters, can't be sold
+export function getCapMaxHp() { return CAP_HP + 5 * (getUpgrades().capHp || 0) }             // flagship hull, +5 per upgrade
+export function hasCapMissile() { return (getUpgrades().capMissile || 0) > 0 }               // flagship homing-missile launcher
+
+// The fleet actually deployed to battle: the buyable fleet plus any permanent
+// (unsellable) fighters granted by upgrades.
+export function getDeployFleet() {
+  const f = getFleet()
+  return { fighters: f.fighters + getUnsellableFighters(), bombers: f.bombers, cruisers: f.cruisers }
+}
+
 export function getFlagshipName() {
   let n = getFlag('campaignFlagship')
   if (!n) { n = randomBlueCapName(); setFlag('campaignFlagship', n) }
@@ -104,6 +128,7 @@ export function resetCampaign() {
   setFlag('operator', '')          // clear the chosen operator so the
   setFlag('operatorPortrait', '')  // campaign-map portrait hides again
   setFlag('fleetName', '')
+  setFlag('upgrades', {})           // wipe roguelike upgrades back to none
 }
 
 // Selectable operators, in carousel order. Mirrors the roster in CharacterSelect

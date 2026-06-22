@@ -1,0 +1,134 @@
+/* ── Post-victory upgrade pick ────────────────────────────────────────────── */
+#upgrade-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: safe center;
+  justify-content: center;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(26, 64, 140, 0.22), rgba(2, 4, 10, 0) 60%),
+    radial-gradient(100% 80% at 50% 110%, rgba(120, 40, 160, 0.14), rgba(2, 4, 10, 0) 55%),
+    #02040a;
+}
+.up-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  padding: 28px;
+  transform-origin: top center;
+}
+
+.up-head { text-align: center; }
+.up-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.5em;
+  color: #ffd24a;
+  text-shadow: 0 0 12px rgba(255, 200, 80, 0.4);
+  margin-bottom: 12px;
+}
+.up-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--c-pink);
+  text-shadow: 0 0 22px rgba(20, 96, 208, 0.55);
+}
+.up-sub {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: #9fb0d4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}
+
+.up-cards { display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; }
+
+.up-card {
+  /* per-card accent (overridden by the tone classes below) */
+  --up-accent: #9fc0ff;
+  --up-rgb: 120, 180, 255;
+  position: relative;
+  width: 244px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 26px 20px 20px;
+  background: linear-gradient(165deg, rgba(14, 24, 48, 0.92), rgba(4, 8, 18, 0.95));
+  border: 1px solid rgba(var(--up-rgb), 0.42);
+  border-radius: 5px;
+  box-shadow: 0 0 22px rgba(var(--up-rgb), 0.16);
+  color: #eaf4ff;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.16s ease, border-color 0.16s, box-shadow 0.16s, background 0.16s;
+}
+.up-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(var(--up-rgb), 0.95);
+  box-shadow: 0 12px 34px rgba(var(--up-rgb), 0.38), 0 0 22px rgba(var(--up-rgb), 0.5);
+  background: linear-gradient(165deg, rgba(var(--up-rgb), 0.16), rgba(6, 12, 26, 0.97));
+}
+
+/* ── tones ── */
+.up-card--purple { --up-accent: #c39bff; --up-rgb: 175, 130, 255; }
+.up-card--green  { --up-accent: #6ef0a6; --up-rgb: 94, 235, 158; }
+.up-card--white  { --up-accent: #eaf1ff; --up-rgb: 214, 226, 250; }
+
+.up-card-tag {
+  font-size: 8.5px;
+  letter-spacing: 0.26em;
+  color: #9fb0d4;
+  border: 1px solid rgba(var(--up-rgb), 0.4);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.up-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 104px;
+  height: 104px;
+  margin: 4px 0 2px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, rgba(var(--up-rgb), 0.26), rgba(8, 14, 30, 0.2) 70%);
+  border: 1px solid rgba(var(--up-rgb), 0.28);
+}
+.up-svg { width: 66px; height: 66px; }
+.up-svg path, .up-svg rect, .up-svg circle { fill: var(--up-accent); }
+.up-svg path[fill="none"] { fill: none; stroke: var(--up-accent); }
+.up-card:hover .up-svg path, .up-card:hover .up-svg rect, .up-card:hover .up-svg circle { fill: #fff; }
+.up-card:hover .up-svg path[fill="none"] { fill: none; stroke: #fff; }
+.up-svg-cut { fill: #0a1430 !important; }
+.up-svg-flame { fill: #ffb454 !important; }
+.up-svg-plus { fill: #7ef0b0 !important; }
+/* the lock badge on the volunteer-wing fighter reads gold */
+.up-svg-lock path { fill: none !important; stroke: #ffd24a !important; }
+.up-svg-lock rect { fill: #ffd24a !important; }
+
+.up-card-name {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #eaf4ff;
+}
+.up-card-desc {
+  font-size: 10.5px;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+  color: var(--c-ash);
+  min-height: 68px;
+}
+.up-card-cta {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--up-accent);
+}
+.up-card:hover .up-card-cta { color: #fff; }

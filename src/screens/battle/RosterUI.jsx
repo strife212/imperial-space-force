@@ -41,13 +41,24 @@ const SPRITE_PATHS = {
   redCapital:  'M14 3 L20 12 L20 20 L25 26 L25 34 L20 38 L20 56 L16 61 L12 61 L8 56 L8 38 L3 34 L3 26 L8 20 L8 12 Z',
 }
 const SPRITE_SUFFIX = { capital: 'Capital', bomber: 'Bomber', cruiser: 'Cruiser', fighter: 'Fighter' }
-function ShipSprite({ team, kind }) {
+function ShipSprite({ team, kind, locked }) {
   const cap = kind === 'capital'
   const vb = cap ? (team === 'blue' ? '0 0 24 64' : '0 0 28 64') : '0 0 24 24'
-  return (
+  const svg = (
     <svg className={`sb-sprite sb-sprite--${team}${cap ? ' sb-sprite--cap' : ''}${kind === 'bomber' ? ' sb-sprite--bomber' : ''}${kind === 'cruiser' ? ' sb-sprite--cruiser' : ''}`} viewBox={vb} aria-hidden="true">
       <path d={SPRITE_PATHS[team + SPRITE_SUFFIX[kind]]} />
     </svg>
+  )
+  if (!locked) return svg
+  // permanent / unsellable ship — overlay a small padlock badge
+  return (
+    <span className="sb-sprite-lockwrap" title="Permanent — cannot be decommissioned">
+      {svg}
+      <svg className="sb-sprite-lock" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 11 V8.5 a5 5 0 0 1 10 0 V11" fill="none" stroke="currentColor" strokeWidth="2.4" />
+        <rect x="5" y="10.5" width="14" height="9.5" rx="2" />
+      </svg>
+    </span>
   )
 }
 function CountAdjust({ count, cost, free, onAdjust }) {

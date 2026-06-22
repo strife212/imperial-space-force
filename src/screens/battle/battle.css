@@ -1074,6 +1074,16 @@
 .sb-sprite { display: block; }
 .sb-sprite--blue path { fill: var(--c-scarlet); }
 .sb-sprite--red  path { fill: var(--c-bad); }
+/* permanent / unsellable ship — sprite wrapped with a small gold padlock badge */
+.sb-sprite-lockwrap { position: relative; display: inline-flex; line-height: 0; }
+.sb-sprite-lock {
+  position: absolute; right: -4px; bottom: -3px;
+  width: 11px; height: 11px;
+  color: #ffd24a;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.95));
+}
+.sb-sprite-lock path, .sb-sprite-lock rect { fill: #ffd24a; }
+.sb-sprite-lock path[fill="none"] { fill: none; stroke: #ffd24a; }
 .sb-brief-fighters .sb-sprite { width: 22px; height: 22px; }
 .sb-brief-bombers .sb-sprite { width: 30px; height: 30px; }
 .sb-brief-bombers .sb-sprite--blue { filter: drop-shadow(0 0 4px rgba(26, 128, 255, 0.6)); }

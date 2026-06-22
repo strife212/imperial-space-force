@@ -22,8 +22,9 @@ import CampaignMap from './screens/CampaignMap'
 import ShipyardScreen from './screens/ShipyardScreen'
 import CharacterSelect from './screens/CharacterSelect'
 import FleetReview from './screens/FleetReview'
+import UpgradeScreen from './screens/UpgradeScreen'
 import FleetBoot from './screens/FleetBoot'
-import { NODE_BATTLES, getFleet, getFlagshipName, recordBattle, resetCampaign } from './lib/campaign'
+import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import UrgentMessageOverlay from './components/UrgentMessageOverlay'
@@ -159,12 +160,16 @@ export default function App() {
     nodeTitle:  NODE_BATTLES[i].title,
     enemyName:  NODE_BATTLES[i].enemyName,
     enemyComp:  NODE_BATTLES[i].enemy,
-    playerComp: getFleet(),
+    playerComp: getDeployFleet(),                 // buyable fleet + permanent (unsellable) fighters
+    capMaxHp:   getCapMaxHp(),                     // flagship hull upgrades
+    capMissile: hasCapMissile(),                  // flagship missile-launcher upgrade
     flagshipName: getFlagshipName(),
     reward:     NODE_BATTLES[i].reward,
-    onResolve:  (won) => recordBattle(i, won),   // banks Requisition + unlocks next node (once)
+    onResolve:  (won) => recordBattle(i, won),    // banks Requisition + unlocks next node (once)
     onExit:     exitCampaign,
-    onRetry:    () => setScreen('shipyard'),      // rebuild the fleet, then re-deploy
+    onRetry:    () => setScreen('shipyard'),       // rebuild the fleet, then re-deploy
+    // a first-clear win offers a roguelike upgrade; otherwise straight back to the map
+    onContinue: (result) => { if (result && result.firstClear) setScreen('upgrade'); else exitCampaign() },
   })
   // Where a finished cutscene goes next: campaign → muster the fleet (shipyard);
   // a debug playthrough → the next story beat; a single scene → back to source.
@@ -203,6 +208,7 @@ export default function App() {
       {screen === 'home'    && <StartScreen onCampaign={() => setScreen('campaign-map')} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
       {screen === 'campaign-map' && <CampaignMap onExit={() => setScreen('home')} onPlay={playCampaignNode} onReviewFleet={() => { setFleetReviewSource('campaign-map'); setScreen('fleet-review') }} />}
       {screen === 'fleet-review' && <FleetReview onExit={() => setScreen(fleetReviewSource)} backLabel={fleetReviewSource === 'shipyard' ? '◂ BACK TO BATTLE' : '◂ RETURN TO MAP'} />}
+      {screen === 'upgrade'      && <UpgradeScreen onChoose={(id) => { addUpgrade(id); exitCampaign() }} />}
       {screen === 'shipyard'     && <ShipyardScreen nodeIndex={campaignNode ?? 0} onDeploy={() => setScreen('battle')} onExit={exitCampaign} onPreview={() => { setFleetReviewSource('shipyard'); setScreen('fleet-review') }} />}
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onBack={() => setScreen('home')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}

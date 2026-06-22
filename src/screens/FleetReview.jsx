@@ -4,7 +4,7 @@ import HudHeader from '../components/HudHeader'
 import { createStage } from './cutscene/stage'
 import { buildReviewFleet } from './buildReviewFleet'
 import { buildBlueModel } from './battle/geometry'
-import { SHIP_COST, getFleet, setFleet as storeSetFleet, getCredits, spendCredits, addCredits, getFlagshipName } from '../lib/campaign'
+import { SHIP_COST, getFleet, setFleet as storeSetFleet, getCredits, spendCredits, addCredits, getFlagshipName, getUnsellableFighters, getUpgrades, UPGRADE_INFO } from '../lib/campaign'
 import { getFlag } from '../lib/store'
 import { playLanceCharge } from '../lib/lanceSfx'
 import './fleet-review.css'
@@ -39,6 +39,19 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' })
   const flagshipName = getFlagshipName()
   const fleetName = getFlag('fleetName') || 'Fleet Polyhymnia'
   const elite = eliteForOperator(getFlag('operator'))
+  // the parade includes permanent (unsellable) fighters on top of the buyable fleet
+  const withPermanent = (f) => ({ ...f, fighters: f.fighters + getUnsellableFighters() })
+
+  // chosen roguelike upgrades, grouped by category for the summary list
+  const upgradeGroups = (() => {
+    const g = { capital: [], fleet: [] }
+    for (const [id, lvl] of Object.entries(getUpgrades())) {
+      const info = UPGRADE_INFO[id]
+      if (lvl > 0 && info) g[info.category].push({ name: info.name, lvl })
+    }
+    return g
+  })()
+  const hasUpgrades = upgradeGroups.capital.length > 0 || upgradeGroups.fleet.length > 0
 
   const rebuildRef = useRef(null)   // set by the scene; call with a comp to rebuild
   const playSkillRef = useRef(null) // set by the scene; call with a skill key to preview it
@@ -216,7 +229,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' })
           targetDist = (current.radius / Math.sin(fov / 2)) * 0.92
           if (first) { curCenter.copy(targetCenter); curDist = targetDist; first = false }
         }
-        build(getFleet())
+        build(withPermanent(getFleet()))
         rebuildRef.current = build
 
         let T = 0
@@ -242,7 +255,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' })
   }, [])
 
   // persist + refresh UI + rebuild the 3D formation
-  const apply = (next) => { storeSetFleet(next); setFleet(next); rebuildRef.current?.(next) }
+  const apply = (next) => { storeSetFleet(next); setFleet(next); rebuildRef.current?.(withPermanent(next)) }
   const buy = (key) => {
     const cost = SHIP_COST[key]
     if (getCredits() < cost) return
@@ -261,6 +274,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' })
       <div className="fr-stage">
         <div className="fr-canvas" ref={mountRef} />
 
+        <div className="fr-topleft">
         <div className="fr-panel">
           <div className="fr-name">{fleetName}</div>
           <div className="fr-flagship">⬢ {flagshipName} · FLAGSHIP</div>
@@ -273,11 +287,12 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' })
           <div className="fr-rows">
             {KINDS.map(({ key, label }) => {
               const cost = SHIP_COST[key]
+              const shown = fleet[key] + (key === 'fighters' ? getUnsellableFighters() : 0)
               return (
                 <div className="fr-row" key={key}>
                   <div className="fr-row-top">
                     <span className="fr-row-label">{label}</span>
-                    <span className="fr-row-count">×{fleet[key]}</span>
+                    <span className="fr-row-count">×{shown}</span>
                   </div>
                   <div className="fr-row-ctrl">
                     <button className="fr-btn" onClick={() => sell(key)} disabled={fleet[key] <= 0} aria-label={`Remove ${label}`}>−</button>
@@ -298,6 +313,28 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' })
               </button>
             </div>
           )}
+        </div>
+
+        {hasUpgrades && (
+          <div className="fr-upgrades">
+            {upgradeGroups.capital.length > 0 && (
+              <div className="fr-upg-group">
+                <div className="fr-upg-title">Flagship Upgrades</div>
+                {upgradeGroups.capital.map(u => (
+                  <div className="fr-upg-row" key={u.name}><span className="fr-upg-name">{u.name}</span><span className="fr-upg-x">×{u.lvl}</span></div>
+                ))}
+              </div>
+            )}
+            {upgradeGroups.fleet.length > 0 && (
+              <div className="fr-upg-group">
+                <div className="fr-upg-title">Fleet Upgrades</div>
+                {upgradeGroups.fleet.map(u => (
+                  <div className="fr-upg-row" key={u.name}><span className="fr-upg-name">{u.name}</span><span className="fr-upg-x">×{u.lvl}</span></div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         </div>
 
         <button className="fr-back" onClick={onExit}>{backLabel}</button>
