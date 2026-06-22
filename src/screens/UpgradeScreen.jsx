@@ -34,12 +34,17 @@ function HullIcon() {
   )
 }
 
+// ── Rarity tiers ─────────────────────────────────────────────────────────────
+// Drives each card's colour and (later) its chance of appearing.
+//   legendary=orange · epic=purple · rare=blue · uncommon=green · basic=white
+const RARITY_LABEL = { legendary: 'LEGENDARY', epic: 'EPIC', rare: 'RARE', uncommon: 'UNCOMMON', basic: 'BASIC' }
+
 // ── Upgrade pool ─────────────────────────────────────────────────────────────
 // Extensible: add entries here and the screen will randomly draw three each time.
 const UPGRADE_POOL = [
-  { id: 'capMissile',       tone: 'purple', tag: 'FLAGSHIP', title: 'SPINAL MISSILE BATTERY', desc: 'Mount a homing-missile launcher on your flagship — it lobs a guided missile at the enemy throughout the battle.', Icon: MissileIcon },
-  { id: 'unsellableFighter', tone: 'green',  tag: 'FLEET',    title: 'VOLUNTEER WING',         desc: 'A permanent interceptor joins your fleet. It deploys every battle and can never be decommissioned.', Icon: LockFighterIcon },
-  { id: 'capHp',            tone: 'white',  tag: 'FLAGSHIP', title: 'REINFORCED HULL',        desc: 'Plate the flagship with extra armour — +5 maximum hull integrity, permanently.', Icon: HullIcon },
+  { id: 'capMissile',       rarity: 'epic',     tag: 'FLAGSHIP', title: 'SPINAL MISSILE BATTERY', desc: 'Mount a homing-missile launcher on your flagship — it lobs a guided missile at the enemy throughout the battle.', Icon: MissileIcon },
+  { id: 'unsellableFighter', rarity: 'uncommon', tag: 'FLEET',    title: 'VOLUNTEER WING',         desc: 'A permanent interceptor joins your fleet. It deploys every battle and can never be decommissioned.', Icon: LockFighterIcon },
+  { id: 'capHp',            rarity: 'basic',    tag: 'FLAGSHIP', title: 'REINFORCED HULL',        desc: 'Plate the flagship with extra armour — +5 maximum hull integrity, permanently.', Icon: HullIcon },
 ]
 
 const pickUpgrades = (n = 3) => {
@@ -62,9 +67,12 @@ export default function UpgradeScreen({ onChoose }) {
           <div className="up-sub">VICTORY SECURED // CHOOSE ONE UPGRADE FOR YOUR FLEET</div>
         </div>
         <div className="up-cards">
-          {options.map(({ id, tone, tag, title, desc, Icon }) => (
-            <button key={id} className={`up-card up-card--${tone}`} onClick={() => onChoose(id)}>
-              <span className="up-card-tag">{tag}</span>
+          {options.map(({ id, rarity, tag, title, desc, Icon }) => (
+            <button key={id} className={`up-card up-card--${rarity}`} onClick={() => onChoose(id)}>
+              <span className="up-card-top">
+                <span className="up-card-rarity">{RARITY_LABEL[rarity]}</span>
+                <span className="up-card-tag">{tag}</span>
+              </span>
               <span className="up-card-icon"><Icon /></span>
               <span className="up-card-name">{title}</span>
               <span className="up-card-desc">{desc}</span>
