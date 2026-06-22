@@ -36,7 +36,7 @@ const countTrueFlags = () => Object.values(getFlags()).filter(Boolean).length
 // ── Deep links: a bare path (e.g. /battlesim) opens straight to that screen ───
 // On GitHub Pages the unknown path is served by 404.html, which bounces it back
 // to index.html where a snippet restores the real URL before React mounts.
-const DEEP_LINKS = { battlesim: 'home' }
+const DEEP_LINKS = { battlesim: 'home', fleetbuilder: 'fleetbuilder' }
 const pathScreen = () => {
   const slug = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase()
   return DEEP_LINKS[slug] || null
@@ -209,6 +209,7 @@ export default function App() {
       {screen === 'home'    && <StartScreen onCampaign={() => setScreen('campaign-map')} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
       {screen === 'campaign-map' && <CampaignMap onExit={() => setScreen('home')} onPlay={playCampaignNode} onReviewFleet={() => { setFleetReviewSource('campaign-map'); setScreen('fleet-review') }} />}
       {screen === 'fleet-review' && <FleetReview onExit={() => setScreen(fleetReviewSource)} backLabel={fleetReviewSource === 'shipyard' ? '◂ BACK TO BATTLE' : '◂ RETURN TO MAP'} />}
+      {screen === 'fleetbuilder' && <FleetReview testMode onExit={() => setScreen('home')} backLabel="◂ HOME" />}
       {screen === 'upgrade'      && <UpgradeScreen onChoose={(id) => { addUpgrade(id); exitCampaign() }} />}
       {screen === 'shipyard'     && <ShipyardScreen nodeIndex={campaignNode ?? 0} onDeploy={() => setScreen('battle')} onExit={exitCampaign} onPreview={() => { setFleetReviewSource('shipyard'); setScreen('fleet-review') }} />}
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onBack={() => setScreen('home')} />}

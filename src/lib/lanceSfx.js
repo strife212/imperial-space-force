@@ -37,6 +37,15 @@ const send = (node, amt) => { if (!convInput) return; const s = ctx.createGain()
 // the first lance fire has no fetch/decode delay. Safe to call repeatedly.
 export function preloadLanceSfx() { init() }
 
+// Fire a one-off explosion (the same sample the lance boom uses). Handy for the
+// fleet-review barrage preview, which has no battle audio engine of its own.
+export function playExplosion({ muted = false } = {}) {
+  if (muted) return
+  const c = init(); if (!c) return
+  if (c.state === 'suspended') c.resume()
+  boom()
+}
+
 function boom() {
   if (!ctx) return
   const now = ctx.currentTime

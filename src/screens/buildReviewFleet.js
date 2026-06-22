@@ -50,7 +50,7 @@ export function buildReviewFleet(ctx, { fighters = 0, bombers = 0, cruisers = 0 
   // ── Interceptors: concentric rings, denser rings further out ──
   let placed = 0, ring = 0
   while (placed < fighters) {
-    const r = 15 + ring * 6.5
+    const r = 20 + ring * 6.5   // first ring sits a touch clear of the flagship hull
     const cap = Math.max(10, Math.round((2 * Math.PI * r) / 5.5))   // ~one per 5.5u of circumference
     const n = Math.min(cap, fighters - placed)
     const phase = ring * 0.4                                        // stagger rings so they don't line up
