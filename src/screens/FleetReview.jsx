@@ -6,7 +6,7 @@ import { buildReviewFleet } from './buildReviewFleet'
 import { buildBlueModel } from './battle/geometry'
 import { SHIP_COST, getFleet, setFleet as storeSetFleet, getCredits, spendCredits, addCredits, getFlagshipName, getUnsellableFighters, getUpgrades, UPGRADE_INFO } from '../lib/campaign'
 import { getFlag } from '../lib/store'
-import { playLanceCharge } from '../lib/lanceSfx'
+import { playLanceCharge, preloadLanceSfx } from '../lib/lanceSfx'
 import './fleet-review.css'
 
 const KINDS = [
@@ -68,6 +68,9 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP' })
     }
   }
   useEffect(() => () => clearTimeout(skillTimerRef.current), [])
+  // Fleet Berenike (Astraia) wields the lance — warm up its sound on entry so
+  // the preview fires without a load delay.
+  useEffect(() => { if (elite?.key === 'lance') preloadLanceSfx() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const mount = mountRef.current

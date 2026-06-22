@@ -21,7 +21,7 @@ import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapit
 import { makeCampaignBackdrop } from './battle/campaignBackdrop'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
 import { getFlag, setFlag } from '../lib/store'
-import { playLanceCharge } from '../lib/lanceSfx'
+import { playLanceCharge, preloadLanceSfx } from '../lib/lanceSfx'
 import './battle/battle.css'
 
 // Player special skills — one-shot battle abilities. In the skirmish all three
@@ -153,6 +153,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   // their portrait. Skirmish leaves this null (all three skills are offered).
   const eliteSkill = isCampaign ? operatorEliteSkill(getFlag('operator')) : null
   const operatorPortrait = isCampaign ? getFlag('operatorPortrait') : null
+  // Preload the lance sound on entry whenever the lance is available — always in
+  // skirmish (it's one of the three skills), in campaign only if it's the elite.
+  useEffect(() => { if (isCampaign ? eliteSkill === 0 : true) preloadLanceSfx() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Enqueue a broadcast; show it now if the box is free, otherwise queue it so
   // simultaneous lines play one after another rather than overlapping.
@@ -512,6 +515,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         blue: new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
         red:  new THREE.MeshBasicMaterial({ color: TEAMS.red.bolt,  transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
       }
+      const aceBoltMat = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })   // the gold ace fires gold lasers
       const bombMat = new THREE.MeshBasicMaterial({ color: 0xffb030, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })  // glowing bomb ordnance
       const bombGeo = new THREE.BoxGeometry(0.6, 1.5, 0.2)   // a glowing rectangular slab (long axis = travel)
       const smokeMatProto = new THREE.MeshBasicMaterial({ color: 0x8c8c8c, transparent: true, opacity: 0.5, depthWrite: false })  // template for trail puffs
@@ -520,7 +524,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         blue: new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
         red:  new THREE.MeshBasicMaterial({ color: TEAMS.red.bolt,  transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }),
       }
-      disposables.push(boltMat.blue, boltMat.red, glowMat.blue, glowMat.red)
+      disposables.push(boltMat.blue, boltMat.red, aceBoltMat, glowMat.blue, glowMat.red)
 
       // reusable scratch objects (avoid per-frame allocation)
       const yAxis = new THREE.Vector3(0, 1, 0)
@@ -836,7 +840,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         const aim = target.pos.clone()
         if (!willHit) aim.add(new THREE.Vector3((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9))
         const dir = aim.sub(start).normalize()
-        const mesh = new THREE.Mesh(bomb ? bombGeo : boltGeo, bomb ? bombMat : boltMat[shooter.team])
+        const mesh = new THREE.Mesh(bomb ? bombGeo : boltGeo, bomb ? bombMat : shooter.isAce ? aceBoltMat : boltMat[shooter.team])
         if (big) mesh.scale.set(2.3, 1.5, 2.3)
         mesh.position.copy(start)
         mesh.quaternion.setFromUnitVectors(yAxis, dir)

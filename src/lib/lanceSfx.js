@@ -33,6 +33,10 @@ function init() {
 
 const send = (node, amt) => { if (!convInput) return; const s = ctx.createGain(); s.gain.value = amt; node.connect(s); s.connect(convInput) }
 
+// Warm up the audio context + sample cache ahead of time (no sound played), so
+// the first lance fire has no fetch/decode delay. Safe to call repeatedly.
+export function preloadLanceSfx() { init() }
+
 function boom() {
   if (!ctx) return
   const now = ctx.currentTime
