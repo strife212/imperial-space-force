@@ -559,7 +559,10 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       // ── Spawn the two fleets (loose cloud on each flank, charging inward) ─────
       const reserveLeft = { blue: 0, red: 0 }   // fighters held off-field, fed in as reinforcements
       const ships = []
+      // roguelike combat modifiers (campaign only) — applied to the player's blue ships
+      const blueMods = (isCampaign && campaign.mods) || null
       const spawnFleet = (team, sx, vdir) => {
+        const fm = team === 'blue' ? blueMods?.fighter : null
         for (let i = 0; i < compRef.current[team].fighters; i++) {
           const reserve = i >= FIELD_FIGHTER_CAP     // beyond the field cap: held back as reinforcements
           const row = i % 5, col = Math.floor(i / 5)
@@ -584,11 +587,12 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           orient(mesh, vel)
           mesh.visible = !reserve
           scene.add(mesh)
+          const fHp = SHIP_HP + (fm ? fm.hp : 0)
           ships.push({
-            mesh, mat, team, hp: SHIP_HP, alive: !reserve, reserve, pos, vel,
+            mesh, mat, team, hp: fHp, maxHp: fHp, alive: !reserve, reserve, pos, vel,
             name: `${team === 'blue' ? 'Blue' : 'Red'} Fighter ${i + 1}`,
-            fireCd: 0.5 + Math.random() * 2.5, flash: 0,
-            isCapital: false, kills: 0, weapons: 1, armor: ARMOR_FIGHTER, maxSpeed: MAX_SPEED, minSpeed: MIN_SPEED, radius: 0, turn: TURN_RATE,
+            fireCd: 0.5 + Math.random() * 2.5, flash: 0, fireMul: fm ? fm.fireMul : 1,
+            isCapital: false, kills: 0, weapons: 1, armor: ARMOR_FIGHTER + (fm ? fm.armor : 0), maxSpeed: MAX_SPEED, minSpeed: MIN_SPEED, radius: 0, turn: TURN_RATE,
             standoff: STANDOFF, bound: BOUND_R,
           })
         }
@@ -688,7 +692,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         mesh.position.copy(pos)
         orient(mesh, vel)
         scene.add(mesh)
-        const capHp = team === 'blue' ? blueCapHp : CAP_HP
+        const cm = team === 'blue' ? blueMods?.flagship : null
+        const capHp = (team === 'blue' ? blueCapHp : CAP_HP) + (cm ? cm.hp : 0)
         ships.push({
           mesh, mat, team, hp: capHp, maxHp: capHp, alive: true, pos, vel,
           name: team === 'blue' ? blueCapNameRef.current : redCapNameRef.current,
@@ -696,9 +701,10 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           shieldEl: team === 'blue' ? blueShieldRef.current : redShieldRef.current,
           reserveEl: team === 'blue' ? blueReserveRef.current : redReserveRef.current,
           fireCd: 0.5 + Math.random(), flash: 0,
-          isCapital: true, kills: 0, weapons: CAP_WEAPONS, armor: ARMOR_FLAGSHIP, radius: 16, route, glows, fires, emitCd: 0,
-          shieldMesh: shield.mesh, shieldMat: shield.mat, shieldFlash: 0, flares: FLARES_FLAGSHIP,
+          isCapital: true, kills: 0, weapons: CAP_WEAPONS + (cm ? cm.weapons : 0), armor: ARMOR_FLAGSHIP + (cm ? cm.armor : 0), radius: 16, route, glows, fires, emitCd: 0,
+          shieldMesh: shield.mesh, shieldMat: shield.mat, shieldFlash: 0, flares: FLARES_FLAGSHIP + (cm ? cm.flares : 0),
           capMissile: team === 'blue' && blueCapMissile, missileCd: 1.2 + Math.random() * 1.5,
+          regen: cm ? cm.regen : 0,   // flagship auto-repair (HP/sec) from roguelike upgrades
         })
       }
       spawnCapital('blue', Math.PI)   // start on the left
@@ -1016,10 +1022,12 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       renderer.domElement.addEventListener('pointerup', onUp)
 
       // dashed red lines from a followed ship to each foe it's engaging (a ship
-      // with several weapons can attack several targets — up to the capital's gun count)
+      // with several weapons can attack several targets — up to its gun count, which
+      // for the flagship may exceed CAP_WEAPONS once weapon upgrades are applied)
       const targetLineMat = new THREE.LineDashedMaterial({ color: 0xff3322, dashSize: 1.4, gapSize: 0.9, transparent: true, opacity: 0.85, depthWrite: false })
       disposables.push(targetLineMat)
-      const targetLines = Array.from({ length: CAP_WEAPONS }, () => {
+      const maxTargetLines = ships.reduce((m, s) => Math.max(m, s.weapons || 1), CAP_WEAPONS)
+      const targetLines = Array.from({ length: maxTargetLines }, () => {
         const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()])
         const line = new THREE.Line(geo, targetLineMat)
         line.frustumCulled = false; line.visible = false; scene.add(line)
@@ -1392,6 +1400,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         // ── Ships: steer (seek nearest enemy + separation + bounds), then fire ──
         for (const s of ships) {
           if (!s.alive) continue
+          if (s.regen && !gameOver && s.hp > 0) s.hp = Math.min(shipMaxHp(s), s.hp + s.regen * dt)   // flagship auto-repair upgrade
           const lancing = lance.active && s === blueCapital   // mid spinal-lance special
 
           // retreat: streak away in a hyperspace jump, then vanish from the field
@@ -1960,6 +1969,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
             } else tgts = (follow.attackTarget && follow.attackTarget.alive) ? [follow.attackTarget] : foes.slice().sort(byDist).slice(0, 1)
           }
           tgts.forEach((tg, i) => {
+            if (!targetLines[i]) return   // never index past the pool (guards weapon-count edge cases)
             const { line, geo } = targetLines[i]
             const p = geo.attributes.position
             p.setXYZ(0, follow.pos.x, follow.pos.y, follow.pos.z)

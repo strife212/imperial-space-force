@@ -73,6 +73,18 @@ export const UPGRADE_INFO = {
   capMissile:        { name: 'Spinal Missile Launcher', category: 'capital' },
   unsellableFighter: { name: 'Additional Fighter',      category: 'fleet' },
   macroMissile:      { name: 'Macro-Missile Barrage',   category: 'capital' },
+  // Staged combat-stat upgrades (cards defined in UpgradeScreen, not yet offered).
+  // Their effects are aggregated by getCombatMods() and applied to blue ships.
+  capArmor:          { name: 'Ablative Plating',        category: 'capital' },
+  capFlares:         { name: 'Decoy Launchers',         category: 'capital' },
+  capWeapons:        { name: 'Forward Batteries',       category: 'capital' },
+  capRegen:          { name: 'Auto-Repair Bays',        category: 'capital' },
+  bastionHull:       { name: 'Bastion Bulwark',         category: 'capital' },
+  throneAegis:       { name: 'Throne-Forged Aegis',     category: 'capital' },
+  fighterArmor:      { name: 'Hardened Hulls',          category: 'fleet' },
+  fighterHp:         { name: 'Veteran Squadrons',       category: 'fleet' },
+  fighterRof:        { name: 'Targeting Uplink',        category: 'fleet' },
+  praetorianWing:    { name: 'Praetorian Wing',         category: 'fleet' },
 }
 export function getUpgrades() { return getFlag('upgrades') || {} }
 export function addUpgrade(id) { const u = { ...getUpgrades() }; u[id] = (u[id] || 0) + 1; setFlag('upgrades', u) }
@@ -80,6 +92,30 @@ export function getUnsellableFighters() { return getUpgrades().unsellableFighter
 export function getCapMaxHp() { return CAP_HP + 5 * (getUpgrades().capHp || 0) }             // flagship hull, +5 per upgrade
 export function hasCapMissile() { return (getUpgrades().capMissile || 0) > 0 }               // flagship homing-missile launcher
 export function hasMacroMissile() { return (getUpgrades().macroMissile || 0) > 0 }           // 2nd admiral skill: macro-missile barrage
+
+// Flagship/fleet combat modifiers granted by the roguelike upgrades, aggregated
+// for the battle to apply to the player's blue ships at spawn. Every term is
+// additive and scales with the upgrade's level; an unowned upgrade contributes 0,
+// so with no upgrades this returns an all-zero (no-op) modifier set. Designed so
+// higher-rarity cards simply contribute larger numbers to the same knobs.
+export function getCombatMods() {
+  const u = getUpgrades()
+  const L = (id) => u[id] || 0
+  return {
+    flagship: {
+      hp:      35 * L('bastionHull') + 50 * L('throneAegis'),                   // extra max hull
+      armor:    8 * L('capArmor')    + 15 * L('bastionHull') + 25 * L('throneAegis'),  // +% bolt deflect
+      flares:   5 * L('capFlares')   +  8 * L('bastionHull') + 15 * L('throneAegis'),  // extra missile decoys
+      weapons:  1 * L('capWeapons')  +  2 * L('throneAegis'),                   // extra bolts per broadside
+      regen:    1 * L('capRegen')    +  2 * L('throneAegis'),                   // hull repaired per second
+    },
+    fighter: {
+      hp:      2 * L('fighterHp')    + 4 * L('praetorianWing'),                 // extra interceptor hull
+      armor:   6 * L('fighterArmor') + 14 * L('praetorianWing'),               // +% bolt deflect
+      fireMul: Math.pow(0.75, L('fighterRof')),                                // each level fires 25% faster
+    },
+  }
+}
 
 // The fleet actually deployed to battle: the buyable fleet plus any permanent
 // (unsellable) fighters granted by upgrades.

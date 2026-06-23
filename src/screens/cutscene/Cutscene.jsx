@@ -20,6 +20,7 @@ const BASE_URL = import.meta.env?.BASE_URL ?? '/'
 const CHAR_PORTRAIT = {
   'The Empress':   `${BASE_URL}empress_portrait.jpg`,
   'Litania Magna': `${BASE_URL}worldengine_portrait.jpg`,
+  'Imperial Science Vessel Cassiopeia': `${BASE_URL}scienceofficer.jpg`,
 }
 
 // Generic cutscene shell. Owns the screen chrome — comms typewriter box, replay,
