@@ -158,15 +158,14 @@ function AegisIcon() {
 export const RARITY_LABEL = { legendary: 'LEGENDARY', epic: 'EPIC', rare: 'RARE', uncommon: 'UNCOMMON', basic: 'BASIC' }
 
 // ── Upgrade catalog ──────────────────────────────────────────────────────────
-// Every defined upgrade card. POOL_IDS controls which are currently offered —
-// add an id there to put a card into the post-battle rotation.
+// Every defined upgrade card, keyed by id. The post-battle draw (pickUpgrades)
+// rolls each slot's rarity, then picks a random card of that rarity from here.
 export const UPGRADE_CARDS = {
   capMissile:        { rarity: 'epic',      tag: 'FLAGSHIP', title: 'SPINAL MISSILE BATTERY', desc: 'Mount a homing-missile launcher on your flagship — it lobs a guided missile at the enemy throughout the battle.', Icon: MissileIcon },
   unsellableFighter: { rarity: 'uncommon',  tag: 'FLEET',    title: 'VOLUNTEER WING',         desc: 'A permanent interceptor joins your fleet. It deploys every battle and can never be decommissioned.', Icon: LockFighterIcon },
   capHp:             { rarity: 'basic',     tag: 'FLAGSHIP', title: 'REINFORCED HULL',        desc: 'Plate the flagship with extra armour — +5 maximum hull integrity, permanently.', Icon: HullIcon },
-  // Defined but not yet offered (see POOL_IDS):
   macroMissile:      { rarity: 'legendary', tag: 'FLAGSHIP', title: 'MACRO-MISSILE BARRAGE',  desc: 'A second admiral skill: lock onto 10 random targets, then loose a missile at each in one fanning barrage.', Icon: BarrageIcon },
-  // ── Staged combat-stat cards (defined, balanced by rarity, not yet offered) ──
+  // ── Combat-stat cards (drawn into the post-battle pick by rarity) ──
   // basic (white) — minor single-stat bumps
   capArmor:          { rarity: 'basic',     tag: 'FLAGSHIP', title: 'ABLATIVE PLATING',       desc: 'Bolt-deflecting plates layer the flagship hull, raising its armour so more fighter fire glances off.', Icon: PlatingIcon },
   fighterArmor:      { rarity: 'basic',     tag: 'FLEET',    title: 'HARDENED HULLS',         desc: 'Reinforced plating across the whole interceptor wing — each fighter deflects a slice of incoming fire.', Icon: HardenIcon },
@@ -183,12 +182,41 @@ export const UPGRADE_CARDS = {
   // legendary (orange) — apotheosis
   throneAegis:       { rarity: 'legendary', tag: 'FLAGSHIP', title: 'THRONE-FORGED AEGIS',    desc: 'The flagship ascends: vast hull and armour, more flares, an added broadside gun, and a hull that repairs itself.', Icon: AegisIcon },
 }
-const POOL_IDS = ['capMissile', 'unsellableFighter', 'capHp']   // macroMissile + the staged stat cards intentionally excluded for now
+// Card ids grouped by rarity, derived from the full catalog above.
+const CARDS_BY_RARITY = Object.entries(UPGRADE_CARDS).reduce((acc, [id, c]) => {
+  (acc[c.rarity] ||= []).push(id)
+  return acc
+}, {})
 
-const pickUpgrades = (n = 3) => {
-  const a = [...POOL_IDS]
-  for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[a[i], a[j]] = [a[j], a[i]] }
-  return a.slice(0, n).map(id => ({ id, ...UPGRADE_CARDS[id] }))
+// Roll one card slot's rarity as a cascade of independent "upgrade" chances. Each
+// slot starts as a basic (white) card; it has a 15% chance to upgrade to green,
+// else a 10% chance for blue, else 5% for purple, else 1% for orange/legendary —
+// and if none of those hit, it stays white.
+const rollRarity = () => {
+  if (Math.random() < 0.15) return 'uncommon'   // green
+  if (Math.random() < 0.10) return 'rare'       // blue
+  if (Math.random() < 0.05) return 'epic'       // purple
+  if (Math.random() < 0.01) return 'legendary'  // orange
+  return 'basic'                                 // white
+}
+
+// Draw n distinct cards: each slot rolls its own rarity, then picks a random card
+// of that rarity. If a rolled tier has no unused cards left, it falls back to a
+// basic one (then to anything) so the draw always fills.
+export const pickUpgrades = (n = 3) => {
+  const chosen = [], used = new Set()
+  let guard = 0
+  while (chosen.length < n && guard++ < 200) {
+    const rarity = rollRarity()
+    let bucket = (CARDS_BY_RARITY[rarity] || []).filter(id => !used.has(id))
+    if (!bucket.length) bucket = (CARDS_BY_RARITY.basic || []).filter(id => !used.has(id))
+    if (!bucket.length) bucket = Object.keys(UPGRADE_CARDS).filter(id => !used.has(id))
+    if (!bucket.length) break
+    const id = bucket[(Math.random() * bucket.length) | 0]
+    used.add(id)
+    chosen.push({ id, ...UPGRADE_CARDS[id] })
+  }
+  return chosen
 }
 
 // A single upgrade card. Reused by the post-battle pick and the debug card vault.

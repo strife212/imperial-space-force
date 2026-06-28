@@ -99,7 +99,7 @@ function buildNode(model) {
   }
 }
 
-export default function CampaignMap({ onExit, onPlay, onReviewFleet, onCards }) {
+export default function CampaignMap({ onExit, onPlay, onReviewFleet, onCards, onDrawTest }) {
   const mountRef = useRef(null)
   const labelRefs = useRef([])
   const [completed, setCompleted] = useState(() => Math.min(NODES.length, getFlag('campaignProgress') || 0))
@@ -322,6 +322,7 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet, onCards }) 
 
         {showDebug && <button className="cmap-unlock" onClick={doUnlockAll}>⚡ DEBUG · UNLOCK ALL</button>}
         {showDebug && <button className="cmap-unlock cmap-givemacro" onClick={onCards}>⚡ DEBUG · CARD VAULT</button>}
+        {showDebug && <button className="cmap-unlock cmap-drawtest" onClick={onDrawTest}>⚡ DEBUG · DRAW TEST</button>}
         <button className="cmap-reset" onClick={() => setConfirmReset(true)}>⟲ RESET PROGRESS</button>
 
         {confirmReset && (

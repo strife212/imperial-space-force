@@ -145,3 +145,36 @@
   color: var(--up-accent);
 }
 .up-card:hover .up-card-cta { color: #fff; }
+
+/* debug draw-test controls (re-roll / back) beneath the card row */
+.up-debug-controls { display: flex; gap: 16px; justify-content: center; margin-top: 6px; }
+.up-debug-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 11px 26px;
+  border-radius: 2px;
+  cursor: pointer;
+  background: rgba(20, 96, 208, 0.08);
+  border: 1px solid rgba(120, 180, 255, 0.45);
+  color: rgba(190, 222, 255, 0.92);
+  transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s;
+}
+.up-debug-btn:hover {
+  background: rgba(20, 96, 208, 0.18);
+  border-color: rgba(150, 205, 255, 0.9);
+  color: #eaf4ff;
+  box-shadow: 0 0 16px rgba(20, 96, 208, 0.4);
+}
+.up-debug-btn--go {
+  background: rgba(255, 168, 70, 0.1);
+  border-color: rgba(255, 168, 70, 0.55);
+  color: rgba(255, 205, 150, 0.95);
+}
+.up-debug-btn--go:hover {
+  background: rgba(255, 168, 70, 0.2);
+  border-color: rgba(255, 190, 110, 0.95);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(255, 150, 60, 0.4);
+}

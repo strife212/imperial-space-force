@@ -24,6 +24,7 @@ import CharacterSelect from './screens/CharacterSelect'
 import FleetReview from './screens/FleetReview'
 import UpgradeScreen from './screens/UpgradeScreen'
 import CardVaultScreen from './screens/CardVaultScreen'
+import DrawTestScreen from './screens/DrawTestScreen'
 import FleetBoot from './screens/FleetBoot'
 import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, hasMacroMissile, getCombatMods, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
@@ -209,8 +210,9 @@ export default function App() {
       <div className="scanlines" />
       <div className="vignette" />
       {screen === 'home'    && <StartScreen onCampaign={() => setScreen('campaign-map')} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
-      {screen === 'campaign-map' && <CampaignMap onExit={() => setScreen('home')} onPlay={playCampaignNode} onReviewFleet={() => { setFleetReviewSource('campaign-map'); setScreen('fleet-review') }} onCards={() => setScreen('card-vault')} />}
+      {screen === 'campaign-map' && <CampaignMap onExit={() => setScreen('home')} onPlay={playCampaignNode} onReviewFleet={() => { setFleetReviewSource('campaign-map'); setScreen('fleet-review') }} onCards={() => setScreen('card-vault')} onDrawTest={() => setScreen('draw-test')} />}
       {screen === 'card-vault'   && <CardVaultScreen onBack={() => setScreen('campaign-map')} />}
+      {screen === 'draw-test'    && <DrawTestScreen onBack={() => setScreen('campaign-map')} />}
       {screen === 'fleet-review' && <FleetReview onExit={() => setScreen(fleetReviewSource)} backLabel={fleetReviewSource === 'shipyard' ? '◂ BACK TO BATTLE' : '◂ RETURN TO MAP'} />}
       {screen === 'fleetbuilder' && <FleetReview testMode onExit={() => setScreen('home')} backLabel="◂ HOME" />}
       {screen === 'upgrade'      && <UpgradeScreen onChoose={(id) => { addUpgrade(id); exitCampaign() }} />}
