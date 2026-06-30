@@ -77,7 +77,30 @@
 }
 
 /* ── rarity tiers (colour = rarity) ── */
-.up-card--legendary { --up-accent: #ffb454; --up-rgb: 255, 168, 70; }
+.up-card--legendary {
+  --up-accent: #ffb454;
+  --up-rgb: 255, 168, 70;
+  border-color: rgba(var(--up-rgb), 0.75);
+  animation: up-legendary-glow 2.6s ease-in-out infinite;
+}
+/* legendary cards radiate a stronger, gently pulsing aura */
+@keyframes up-legendary-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 30px rgba(var(--up-rgb), 0.42),
+      0 0 64px rgba(var(--up-rgb), 0.20),
+      inset 0 18px 42px -26px rgba(var(--up-rgb), 1);
+  }
+  50% {
+    box-shadow:
+      0 0 48px rgba(var(--up-rgb), 0.62),
+      0 0 96px rgba(var(--up-rgb), 0.34),
+      inset 0 18px 46px -24px rgba(var(--up-rgb), 1);
+  }
+}
+.up-card--legendary .up-card-icon {
+  box-shadow: 0 0 26px rgba(var(--up-rgb), 0.55), inset 0 0 22px rgba(var(--up-rgb), 0.4);
+}
 .up-card--epic      { --up-accent: #c39bff; --up-rgb: 175, 130, 255; }
 .up-card--rare      { --up-accent: #5fb0ff; --up-rgb: 80, 160, 255; }
 .up-card--uncommon  { --up-accent: #6ef0a6; --up-rgb: 94, 235, 158; }
@@ -137,8 +160,30 @@
   color: var(--c-ash);
   min-height: 68px;
 }
+/* at-a-glance numeric summary of the card's effect */
+.up-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px 6px;
+  margin-top: 2px;
+}
+.up-card-stat {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--up-accent);
+  background: rgba(var(--up-rgb), 0.14);
+  border: 1px solid rgba(var(--up-rgb), 0.4);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.up-card:hover .up-card-stat { color: #fff; border-color: rgba(var(--up-rgb), 0.75); background: rgba(var(--up-rgb), 0.22); }
+
 .up-card-cta {
-  margin-top: 4px;
+  margin-top: auto;   /* pin to the bottom so every card's CTA lines up */
+  padding-top: 6px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.2em;

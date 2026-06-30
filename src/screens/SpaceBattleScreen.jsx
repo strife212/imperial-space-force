@@ -37,6 +37,14 @@ const SKILLS = [
 const MACRO_SKILL = { key: 'macro', name: 'MACRO-MISSILE BARRAGE', hint: 'Lock 10 targets · a missile each', ready: true }
 const skillMeta = (i) => (i === 3 ? MACRO_SKILL : SKILLS[i])
 
+// Admiral skills granted by roguelike upgrades, beyond the operator's own elite.
+// Each maps an upgrade flag (passed in via `campaign`) to its skill index, so
+// owning the upgrade adds that skill's button to the campaign elite-skills list.
+// Extend this (and pass the matching flag from App) to add more granted skills.
+const UPGRADE_ELITE_SKILLS = [
+  { flag: 'macroMissile', idx: 3 },   // legendary Macro-Missile Barrage
+]
+
 // Each campaign operator commands one elite skill (matched on the operator name).
 const OPERATOR_SKILL = [
   { match: 'ASTRAIA',  skill: 0 },   // Lance Strike
@@ -158,11 +166,12 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   }
   // Skirmish only: once any ability is fired, the rest lock out for the battle.
   const skillsLockedOut = !isCampaign && skillsUsed.some(Boolean)
-  // Campaign: the chosen operator grants one elite skill (+ the macro-missile
-  // barrage if that legendary upgrade is owned). Skirmish leaves this null.
+  // Campaign elite skills: the chosen operator's own skill, plus a button for
+  // every admiral skill granted by an owned upgrade. Skirmish leaves this empty
+  // (it offers the three tactical skills instead).
   const eliteSkill = isCampaign ? operatorEliteSkill(getFlag('operator')) : null
-  const hasMacroMissile = isCampaign && !!campaign.macroMissile
-  const campaignSkillIdxs = eliteSkill !== null ? [eliteSkill, ...(hasMacroMissile ? [3] : [])] : []
+  const upgradeSkillIdxs = isCampaign ? UPGRADE_ELITE_SKILLS.filter(s => campaign[s.flag]).map(s => s.idx) : []
+  const campaignSkillIdxs = [...(eliteSkill !== null ? [eliteSkill] : []), ...upgradeSkillIdxs]
   const operatorPortrait = isCampaign ? getFlag('operatorPortrait') : null
   // Preload the lance sound on entry whenever the lance is available — always in
   // skirmish (it's one of the three skills), in campaign only if it's the elite.
@@ -2250,7 +2259,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
             </div>
           </div>
 
-          {eliteSkill !== null ? (
+          {campaignSkillIdxs.length > 0 ? (
             <div className="sb-tac-group">
               <div className="sb-tac-label">ADMIRAL ELITE SKILL{campaignSkillIdxs.length > 1 ? 'S' : ''}</div>
               <div className="sb-elite">

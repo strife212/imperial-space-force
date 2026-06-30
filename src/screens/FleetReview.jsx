@@ -5,7 +5,7 @@ import { createStage } from './cutscene/stage'
 import { buildReviewFleet } from './buildReviewFleet'
 import { buildBlueModel } from './battle/geometry'
 import { TEAMS } from './battle/constants'
-import { SHIP_COST, getFleet, setFleet as storeSetFleet, getCredits, spendCredits, addCredits, getFlagshipName, getUnsellableFighters, getUpgrades, UPGRADE_INFO } from '../lib/campaign'
+import { SHIP_COST, getFleet, setFleet as storeSetFleet, getCredits, spendCredits, addCredits, getFlagshipName, getUnsellableFighters, getUpgrades, hasMacroMissile, UPGRADE_INFO } from '../lib/campaign'
 import { getFlag } from '../lib/store'
 import { playLanceCharge, preloadLanceSfx, playExplosion } from '../lib/lanceSfx'
 import { UPGRADE_CARDS, RARITY_LABEL } from './UpgradeScreen'
@@ -60,6 +60,12 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
   const flagshipName = testMode ? 'HMSS Drydock' : getFlagshipName()
   const fleetName = testMode ? 'Fleet Builder' : (getFlag('fleetName') || 'Fleet Polyhymnia')
   const elite = eliteForOperator(getFlag('operator'))
+  // campaign: the macro-missile barrage is a bonus admiral skill once its upgrade
+  // is owned — previewable alongside the operator's own elite skill
+  const ownsMacro = !testMode && hasMacroMissile()
+  const campaignEliteSkills = !testMode
+    ? [...(elite ? [elite] : []), ...(ownsMacro ? [{ key: 'macro', name: 'MACRO-MISSILE BARRAGE', hint: 'Locks & strikes 10 targets' }] : [])]
+    : []
   // the parade includes permanent (unsellable) fighters on top of the buyable
   // fleet (test mode flies exactly what's shown — no roster carry-over)
   const withPermanent = (f) => (testMode ? f : { ...f, fighters: f.fighters + getUnsellableFighters() })
@@ -104,7 +110,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
   const codeTickRef = useRef(null)
   const lockLayerRef = useRef(null)
   useEffect(() => {
-    if (!testMode) return undefined
+    if (!testMode && !ownsMacro) return undefined   // only needed when the barrage is previewable
     const a = new Audio(`${import.meta.env.BASE_URL}sfx/missiletrail.mp3`)
     a.preload = 'auto'; a.loop = true; a.volume = 0.2
     missileTrailRef.current = a
@@ -112,7 +118,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
     tick.preload = 'auto'
     codeTickRef.current = tick
     return () => { a.pause(); missileTrailRef.current = null; codeTickRef.current = null }
-  }, [testMode])
+  }, [testMode, ownsMacro])
 
   useEffect(() => {
     const mount = mountRef.current
@@ -447,7 +453,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
       <HudHeader onLogout={onExit} right={<span className="label">FLEET REVIEW</span>} />
       <div className="fr-stage">
         <div className="fr-canvas" ref={mountRef} />
-        {testMode && <div className="fr-lock-layer" ref={lockLayerRef} />}
+        {(testMode || ownsMacro) && <div className="fr-lock-layer" ref={lockLayerRef} />}
 
         <div className="fr-topleft">
         <div className="fr-panel">
@@ -479,13 +485,18 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
             })}
           </div>
 
-          {elite && !testMode && (
+          {campaignEliteSkills.length > 0 && (
             <div className="fr-elite">
-              <div className="fr-elite-label">ADMIRAL ELITE SKILL</div>
-              <button className="fr-elite-btn" onClick={() => previewKey(elite.key)} disabled={skillPlaying}>
-                <span className="fr-elite-name">{skillPlaying ? 'DEMONSTRATING…' : elite.name}</span>
-                <span className="fr-elite-hint">{skillPlaying ? 'Preview running' : elite.hint}</span>
-              </button>
+              <div className="fr-elite-label">ADMIRAL ELITE SKILL{campaignEliteSkills.length > 1 ? 'S' : ''}</div>
+              {campaignEliteSkills.map(sk => {
+                const active = playingKey === sk.key
+                return (
+                  <button key={sk.key} className="fr-elite-btn" onClick={() => previewKey(sk.key)} disabled={skillPlaying}>
+                    <span className="fr-elite-name">{active ? 'DEMONSTRATING…' : sk.name}</span>
+                    <span className="fr-elite-hint">{active ? 'Preview running' : sk.hint}</span>
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>

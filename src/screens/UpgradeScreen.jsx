@@ -161,26 +161,26 @@ export const RARITY_LABEL = { legendary: 'LEGENDARY', epic: 'EPIC', rare: 'RARE'
 // Every defined upgrade card, keyed by id. The post-battle draw (pickUpgrades)
 // rolls each slot's rarity, then picks a random card of that rarity from here.
 export const UPGRADE_CARDS = {
-  capMissile:        { rarity: 'epic',      tag: 'FLAGSHIP', title: 'SPINAL MISSILE BATTERY', desc: 'Mount a homing-missile launcher on your flagship — it lobs a guided missile at the enemy throughout the battle.', Icon: MissileIcon },
-  unsellableFighter: { rarity: 'uncommon',  tag: 'FLEET',    title: 'VOLUNTEER WING',         desc: 'A permanent interceptor joins your fleet. It deploys every battle and can never be decommissioned.', Icon: LockFighterIcon },
-  capHp:             { rarity: 'basic',     tag: 'FLAGSHIP', title: 'REINFORCED HULL',        desc: 'Plate the flagship with extra armour — +5 maximum hull integrity, permanently.', Icon: HullIcon },
-  macroMissile:      { rarity: 'legendary', tag: 'FLAGSHIP', title: 'MACRO-MISSILE BARRAGE',  desc: 'A second admiral skill: lock onto 10 random targets, then loose a missile at each in one fanning barrage.', Icon: BarrageIcon },
+  capMissile:        { rarity: 'epic',      tag: 'FLAGSHIP', title: 'SPINAL MISSILE BATTERY', desc: 'Mount a homing-missile launcher on your flagship — it lobs a guided missile at the enemy throughout the battle.', stats: ['HOMING MISSILES'], Icon: MissileIcon },
+  unsellableFighter: { rarity: 'uncommon',  tag: 'FLEET',    title: 'VOLUNTEER WING',         desc: 'A permanent interceptor joins your fleet. It deploys every battle and can never be decommissioned.', stats: ['+1 FIGHTER', 'PERMANENT'], Icon: LockFighterIcon },
+  capHp:             { rarity: 'basic',     tag: 'FLAGSHIP', title: 'REINFORCED HULL',        desc: 'Plate the flagship with extra armour — +5 maximum hull integrity, permanently.', stats: ['+5 HP'], Icon: HullIcon },
+  macroMissile:      { rarity: 'legendary', tag: 'FLAGSHIP', title: 'MACRO-MISSILE BARRAGE',  desc: 'A second admiral skill: lock onto 10 random targets, then loose a missile at each in one fanning barrage.', stats: ['NEW SKILL', '10 MISSILES'], Icon: BarrageIcon },
   // ── Combat-stat cards (drawn into the post-battle pick by rarity) ──
   // basic (white) — minor single-stat bumps
-  capArmor:          { rarity: 'basic',     tag: 'FLAGSHIP', title: 'ABLATIVE PLATING',       desc: 'Bolt-deflecting plates layer the flagship hull, raising its armour so more fighter fire glances off.', Icon: PlatingIcon },
-  fighterArmor:      { rarity: 'basic',     tag: 'FLEET',    title: 'HARDENED HULLS',         desc: 'Reinforced plating across the whole interceptor wing — each fighter deflects a slice of incoming fire.', Icon: HardenIcon },
-  capFlares:         { rarity: 'basic',     tag: 'FLAGSHIP', title: 'DECOY LAUNCHERS',        desc: 'Extra countermeasure racks for the flagship: more flares to spoof incoming missiles before they connect.', Icon: FlareIcon },
+  capArmor:          { rarity: 'basic',     tag: 'FLAGSHIP', title: 'ABLATIVE PLATING',       desc: 'Bolt-deflecting plates layer the flagship hull, raising its armour so more fighter fire glances off.', stats: ['+8% ARMOUR'], Icon: PlatingIcon },
+  fighterArmor:      { rarity: 'basic',     tag: 'FLEET',    title: 'HARDENED HULLS',         desc: 'Reinforced plating across the whole interceptor wing — each fighter deflects a slice of incoming fire.', stats: ['+6% ARMOUR'], Icon: HardenIcon },
+  capFlares:         { rarity: 'basic',     tag: 'FLAGSHIP', title: 'DECOY LAUNCHERS',        desc: 'Extra countermeasure racks for the flagship: more flares to spoof incoming missiles before they connect.', stats: ['+5 FLARES'], Icon: FlareIcon },
   // uncommon (green) — moderate
-  fighterHp:         { rarity: 'uncommon',  tag: 'FLEET',    title: 'VETERAN SQUADRONS',      desc: 'Battle-hardened crews fly tougher hulls — every interceptor gains integrity and lasts longer in the brawl.', Icon: VeteranIcon },
-  capWeapons:        { rarity: 'uncommon',  tag: 'FLAGSHIP', title: 'FORWARD BATTERIES',      desc: 'An extra gun joins each flagship broadside, putting one more bolt on a fresh target every volley.', Icon: CannonIcon },
+  fighterHp:         { rarity: 'uncommon',  tag: 'FLEET',    title: 'VETERAN SQUADRONS',      desc: 'Battle-hardened crews fly tougher hulls — every interceptor gains integrity and lasts longer in the brawl.', stats: ['+2 HP EACH'], Icon: VeteranIcon },
+  capWeapons:        { rarity: 'uncommon',  tag: 'FLAGSHIP', title: 'FORWARD BATTERIES',      desc: 'An extra gun joins each flagship broadside, putting one more bolt on a fresh target every volley.', stats: ['+1 GUN'], Icon: CannonIcon },
   // rare (blue) — strong
-  fighterRof:        { rarity: 'rare',      tag: 'FLEET',    title: 'TARGETING UPLINK',       desc: 'A fleet-wide fire-control net: your interceptors acquire and fire markedly faster for the whole battle.', Icon: RateIcon },
-  capRegen:          { rarity: 'rare',      tag: 'FLAGSHIP', title: 'AUTO-REPAIR BAYS',       desc: 'Damage-control drones knit the hull back together, repairing the flagship steadily throughout the fight.', Icon: RepairIcon },
+  fighterRof:        { rarity: 'rare',      tag: 'FLEET',    title: 'TARGETING UPLINK',       desc: 'A fleet-wide fire-control net: your interceptors acquire and fire markedly faster for the whole battle.', stats: ['+25% FIRE RATE'], Icon: RateIcon },
+  capRegen:          { rarity: 'rare',      tag: 'FLAGSHIP', title: 'AUTO-REPAIR BAYS',       desc: 'Damage-control drones knit the hull back together, repairing the flagship steadily throughout the fight.', stats: ['+1 HP/SEC'], Icon: RepairIcon },
   // epic (purple) — powerful packages
-  bastionHull:       { rarity: 'epic',      tag: 'FLAGSHIP', title: 'BASTION BULWARK',        desc: 'A fortress refit — a major hull increase plus heavier armour and extra flares turn the flagship into a wall.', Icon: BastionIcon },
-  praetorianWing:    { rarity: 'epic',      tag: 'FLEET',    title: 'PRAETORIAN WING',        desc: 'Elite doctrine for the entire wing: every interceptor gains substantial hull and armour — a hardened vanguard.', Icon: WingIcon },
+  bastionHull:       { rarity: 'epic',      tag: 'FLAGSHIP', title: 'BASTION BULWARK',        desc: 'A fortress refit — a major hull increase plus heavier armour and extra flares turn the flagship into a wall.', stats: ['+35 HP', '+15% ARMOUR', '+8 FLARES'], Icon: BastionIcon },
+  praetorianWing:    { rarity: 'epic',      tag: 'FLEET',    title: 'PRAETORIAN WING',        desc: 'Elite doctrine for the entire wing: every interceptor gains substantial hull and armour — a hardened vanguard.', stats: ['+4 HP EACH', '+14% ARMOUR'], Icon: WingIcon },
   // legendary (orange) — apotheosis
-  throneAegis:       { rarity: 'legendary', tag: 'FLAGSHIP', title: 'THRONE-FORGED AEGIS',    desc: 'The flagship ascends: vast hull and armour, more flares, an added broadside gun, and a hull that repairs itself.', Icon: AegisIcon },
+  throneAegis:       { rarity: 'legendary', tag: 'FLAGSHIP', title: 'THRONE-FORGED AEGIS',    desc: 'The flagship ascends: vast hull and armour, more flares, an added broadside gun, and a hull that repairs itself.', stats: ['+50 HP', '+25% ARMOUR', '+15 FLARES', '+2 GUNS', '+2 HP/SEC'], Icon: AegisIcon },
 }
 // Card ids grouped by rarity, derived from the full catalog above.
 const CARDS_BY_RARITY = Object.entries(UPGRADE_CARDS).reduce((acc, [id, c]) => {
@@ -222,7 +222,7 @@ export const pickUpgrades = (n = 3) => {
 // A single upgrade card. Reused by the post-battle pick and the debug card vault.
 // `card` is a UPGRADE_CARDS entry; `badge` is optional corner content (e.g. owned count).
 export function UpgradeCard({ card, onClick, cta = 'SELECT ▸', badge = null }) {
-  const { rarity, tag, title, desc, Icon } = card
+  const { rarity, tag, title, desc, stats, Icon } = card
   return (
     <button className={`up-card up-card--${rarity}`} onClick={onClick}>
       {badge}
@@ -233,6 +233,11 @@ export function UpgradeCard({ card, onClick, cta = 'SELECT ▸', badge = null })
       <span className="up-card-icon"><Icon /></span>
       <span className="up-card-name">{title}</span>
       <span className="up-card-desc">{desc}</span>
+      {stats && stats.length > 0 && (
+        <span className="up-card-stats">
+          {stats.map((s, i) => <span className="up-card-stat" key={i}>{s}</span>)}
+        </span>
+      )}
       <span className="up-card-cta">{cta}</span>
     </button>
   )
