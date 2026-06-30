@@ -33,8 +33,12 @@ const eliteForOperator = (name) => {
   const up = name.toUpperCase()
   return ELITE_SKILLS.find(e => up.includes(e.match)) || null
 }
+// Lance preview charge/fade timing — a middle ground (longer than the old 1.5s,
+// shorter than the battle's ~3.3s AIM+CHARGE) so the long charge sample has room
+// to build before the discharge boom instead of being cut off early.
+const LANCE_CHARGE_T = 2.5, LANCE_FADE_T = 1.1
 // Preview durations (ms) — re-enable the button once the effect finishes.
-const SKILL_PREVIEW_MS = { lance: 2700, ace: 6800, nano: 3300, macro: 4400 }
+const SKILL_PREVIEW_MS = { lance: (LANCE_CHARGE_T + LANCE_FADE_T) * 1000 + 200, ace: 6800, nano: 3300, macro: 4400 }
 
 // The /fleetbuilder sandbox loads with this fleet + Requisition and offers all
 // four admiral skills (rather than a single operator's) for preview.
@@ -158,7 +162,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
           const orbMat = new THREE.MeshBasicMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
           const orb = new THREE.Mesh(fx.blastGeo, orbMat); orb.scale.setScalar(0.6); orb.position.copy(muzzle)
           trackMesh(orb); trackDisp(orbMat)
-          skillFX.kind = 'lance'; skillFX.t = 0; skillFX.dur = 2.6
+          skillFX.kind = 'lance'; skillFX.t = 0; skillFX.dur = LANCE_CHARGE_T + LANCE_FADE_T
           skillFX.state = { muzzle, orb, orbMat, fired: false, core: null, glow: null, discharge: playLanceCharge() }
         }
         const fireLance = (st) => {
@@ -304,12 +308,12 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
           skillFX.t += dt
           const st = skillFX.state
           if (skillFX.kind === 'lance') {
-            if (skillFX.t < 1.5) {
-              const p = skillFX.t / 1.5
+            if (skillFX.t < LANCE_CHARGE_T) {
+              const p = skillFX.t / LANCE_CHARGE_T
               st.orb.scale.setScalar(0.6 + p * 3.6); st.orbMat.opacity = 0.5 + 0.5 * p
             } else {
               if (!st.fired) { st.fired = true; fireLance(st) }
-              const fade = Math.max(0, 1 - (skillFX.t - 1.5) / 1.1), flick = 0.8 + 0.2 * Math.sin(skillFX.t * 60)
+              const fade = Math.max(0, 1 - (skillFX.t - LANCE_CHARGE_T) / LANCE_FADE_T), flick = 0.8 + 0.2 * Math.sin(skillFX.t * 60)
               st.orbMat.opacity = fade; st.orb.scale.setScalar(Math.max(0.2, 4 * fade))
               if (st.core) st.core.material.opacity = fade * flick
               if (st.glow) st.glow.material.opacity = 0.75 * fade
