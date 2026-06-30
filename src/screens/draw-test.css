@@ -1,0 +1,96 @@
+/* ── Debug card collector: random draw on the left, owned list on the right ──── */
+#draw-test {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  font-family: var(--font-mono);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(26, 64, 140, 0.22), rgba(2, 4, 10, 0) 60%),
+    radial-gradient(100% 80% at 50% 110%, rgba(120, 40, 160, 0.14), rgba(2, 4, 10, 0) 55%),
+    #02040a;
+}
+
+/* the draw area — centres the scaled card column */
+.dt-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: safe center;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* owned-cards panel pinned to the right edge, full height, scrollable */
+.dt-owned {
+  flex: 0 0 272px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px 18px;
+  border-left: 1px solid rgba(120, 180, 255, 0.18);
+  background: linear-gradient(200deg, rgba(8, 14, 30, 0.65), rgba(2, 4, 12, 0.88));
+}
+.dt-owned-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(120, 180, 255, 0.18);
+}
+.dt-owned-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--c-pink);
+  text-shadow: 0 0 12px rgba(20, 96, 208, 0.5);
+}
+.dt-owned-count {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #ffd24a;
+  text-shadow: 0 0 10px rgba(255, 200, 80, 0.4);
+}
+.dt-owned-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.dt-owned-empty {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: #6f7fa0;
+  font-style: italic;
+}
+.dt-owned-row { display: flex; align-items: center; gap: 9px; }
+.dt-owned-dot {
+  flex: 0 0 auto;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--row, #cfdcf5);
+  box-shadow: 0 0 8px var(--row, #cfdcf5);
+}
+.dt-owned-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--row, #cfdcf5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dt-owned-x {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #eaf4ff;
+}

@@ -8,7 +8,13 @@ import { TEAMS } from './battle/constants'
 import { SHIP_COST, getFleet, setFleet as storeSetFleet, getCredits, spendCredits, addCredits, getFlagshipName, getUnsellableFighters, getUpgrades, UPGRADE_INFO } from '../lib/campaign'
 import { getFlag } from '../lib/store'
 import { playLanceCharge, preloadLanceSfx, playExplosion } from '../lib/lanceSfx'
+import { UPGRADE_CARDS, RARITY_LABEL } from './UpgradeScreen'
 import './fleet-review.css'
+
+// Rarity → swatch colour for the owned-upgrades list (mirrors the card tones).
+const RARITY_COLOR = { legendary: '#ffb454', epic: '#c39bff', rare: '#5fb0ff', uncommon: '#6ef0a6', basic: '#d6e2fa' }
+// Sort order for the owned-upgrades list: rarest first.
+const RARITY_RANK = { legendary: 0, epic: 1, rare: 2, uncommon: 3, basic: 4 }
 
 const KINDS = [
   { key: 'fighters', label: 'Interceptors' },
@@ -63,8 +69,10 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
     const g = { capital: [], fleet: [] }
     for (const [id, lvl] of Object.entries(getUpgrades())) {
       const info = UPGRADE_INFO[id]
-      if (lvl > 0 && info) g[info.category].push({ name: info.name, lvl })
+      if (lvl > 0 && info) g[info.category].push({ id, name: info.name, lvl, rarity: UPGRADE_CARDS[id]?.rarity || 'basic' })
     }
+    const byRarity = (a, b) => (RARITY_RANK[a.rarity] - RARITY_RANK[b.rarity]) || a.name.localeCompare(b.name)
+    g.capital.sort(byRarity); g.fleet.sort(byRarity)
     return g
   })()
   const hasUpgrades = !testMode && (upgradeGroups.capital.length > 0 || upgradeGroups.fleet.length > 0)
@@ -481,6 +489,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
             </div>
           )}
         </div>
+        </div>
 
         {hasUpgrades && (
           <div className="fr-upgrades">
@@ -488,7 +497,11 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
               <div className="fr-upg-group">
                 <div className="fr-upg-title">Flagship Upgrades</div>
                 {upgradeGroups.capital.map(u => (
-                  <div className="fr-upg-row" key={u.name}><span className="fr-upg-name">{u.name}</span><span className="fr-upg-x">×{u.lvl}</span></div>
+                  <div className="fr-upg-row" key={u.id}>
+                    <span className="fr-upg-dot" data-rarity={RARITY_LABEL[u.rarity]} style={{ background: RARITY_COLOR[u.rarity] }} />
+                    <span className="fr-upg-name">{u.name}</span>
+                    <span className="fr-upg-x">×{u.lvl}</span>
+                  </div>
                 ))}
               </div>
             )}
@@ -496,13 +509,16 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
               <div className="fr-upg-group">
                 <div className="fr-upg-title">Fleet Upgrades</div>
                 {upgradeGroups.fleet.map(u => (
-                  <div className="fr-upg-row" key={u.name}><span className="fr-upg-name">{u.name}</span><span className="fr-upg-x">×{u.lvl}</span></div>
+                  <div className="fr-upg-row" key={u.id}>
+                    <span className="fr-upg-dot" data-rarity={RARITY_LABEL[u.rarity]} style={{ background: RARITY_COLOR[u.rarity] }} />
+                    <span className="fr-upg-name">{u.name}</span>
+                    <span className="fr-upg-x">×{u.lvl}</span>
+                  </div>
                 ))}
               </div>
             )}
           </div>
         )}
-        </div>
 
         {testMode && (
           <div className="fr-skills">
