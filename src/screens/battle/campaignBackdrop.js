@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { buildAleph, makeGasGiant, makeRingedPlanet, makeBlackHole } from './geometry'
+import { buildAleph, makeGasGiant, makeRingedPlanet, makeBlackHoleLensed } from './geometry'
 import { buildStation, buildCathedra, buildWorldEngine } from '../cutscene/models'
 
 // ── Campaign battle backdrops ────────────────────────────────────────────────
@@ -61,11 +61,11 @@ export function makeCampaignBackdrop(scene, disposables, lightDir, camera, nodeI
 
   // a celestial body (uses the existing skirmish backdrop builders)
   const addBody = (kind, ndcX, ndcY) => {
-    const bodyR = kind === 'gas' ? 40 : kind === 'ringed' ? 26 : 12
+    const bodyR = kind === 'gas' ? 40 : kind === 'ringed' ? 26 : 16   // black hole: shadow r ≈ 2.6 rs
     const pos = placePos(ndcX, ndcY, bodyR, 150 + Math.random() * 30)
     if (kind === 'gas')    return makeGasGiant(scene, disposables, pos, lightDir)
     if (kind === 'ringed') return makeRingedPlanet(scene, disposables, pos, lightDir)
-    return makeBlackHole(scene, disposables, pos)
+    return makeBlackHoleLensed(scene, disposables, pos)
   }
 
   // a structure hero (Aleph / station / cathedra / world engine), scaled up to

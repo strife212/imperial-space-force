@@ -95,6 +95,111 @@ export const DISK_FRAG = /* glsl */`
   }
 `
 
+// ── Lensed black hole — ray-marched null geodesics on a camera-facing quad ─────
+// Each fragment shoots its true camera ray past the hole and integrates the
+// Schwarzschild bending equation (d²x/dλ² = -3/2 h² x / r⁵), accumulating disk
+// emission at every crossing of the disk plane. This produces the "recent
+// realistic render" look: the far side of the accretion disk lenses into arcs
+// above and below the shadow, a photon ring hugs the silhouette, and Doppler
+// beaming brightens the approaching side — all view-dependent, so the image
+// responds correctly as the battle camera orbits. Additive: the black shadow
+// itself is occluded by a separate opaque sphere at the capture radius.
+export const LENSED_BH_VERT = /* glsl */`
+  varying vec3 vWorld;
+  void main() {
+    vWorld = (modelMatrix * vec4(position, 1.0)).xyz;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+export const LENSED_BH_FRAG = /* glsl */`
+  precision highp float;
+  uniform float uTime;
+  uniform vec3  uCenter;    // hole position (world)
+  uniform vec3  uDiskN;     // accretion-disk plane normal (world, unit)
+  uniform float uRs;        // Schwarzschild radius (world units)
+  uniform float uDiskIn;    // disk inner radius
+  uniform float uDiskOut;   // disk outer radius
+  varying vec3 vWorld;
+
+  float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p){
+    vec2 i = floor(p), f = fract(p);
+    float a = hash(i), b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+  }
+
+  // emission where a bent ray crosses the disk plane (hit is centre-relative)
+  vec4 diskEmission(vec3 hit, vec3 rd, vec3 T1, vec3 T2){
+    float hr = length(hit);
+    float t = clamp((hr - uDiskIn) / (uDiskOut - uDiskIn), 0.0, 1.0);
+    float ang = atan(dot(hit, T2), dot(hit, T1));
+    float swirl = ang + uTime * 0.22 * (1.6 / (0.35 + t));   // differential rotation
+    float n = noise(vec2(swirl * 2.0, hr * 0.55)) * 0.6
+            + noise(vec2(swirl * 5.0, hr * 1.5)) * 0.4;
+    float bright = 0.35 + 0.75 * smoothstep(0.12, 0.95, n);
+    // temperature gradient: white-hot inner edge -> deep orange rim
+    vec3 col = mix(vec3(1.00, 0.97, 0.92), vec3(1.00, 0.60, 0.20), smoothstep(0.0, 0.42, t));
+    col      = mix(col, vec3(0.55, 0.16, 0.05), smoothstep(0.42, 1.0, t));
+    float falloff = mix(2.1, 0.26, sqrt(t));
+    // relativistic beaming: matter orbits along the disk tangent; the side coming
+    // toward the camera is boosted and blue-shifted, the receding side dimmed
+    vec3 tangent = normalize(cross(uDiskN, hit));
+    float beta = clamp(sqrt(uRs / max(2.0 * hr, uRs)), 0.05, 0.6);
+    float g = 1.0 / max(1.0 - beta * dot(tangent, -rd), 0.30);
+    col *= mix(vec3(1.0), vec3(0.82, 0.90, 1.12), clamp((g - 1.0) * 1.4, 0.0, 1.0));
+    float inten = bright * falloff * min(g * g * g, 4.5);
+    float edge = smoothstep(0.0, 0.10, t) * (1.0 - smoothstep(0.78, 1.0, t));
+    return vec4(col * inten * edge, edge * clamp(inten * 0.8, 0.0, 1.0));
+  }
+
+  void main(){
+    vec3 rd = normalize(vWorld - cameraPosition);
+    vec3 ro = cameraPosition - uCenter;
+    // disk-plane basis for the swirl angle
+    vec3 T1 = normalize(cross(uDiskN, abs(uDiskN.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+    vec3 T2 = cross(uDiskN, T1);
+
+    // jump straight to the strong-field region, march through, stop when clear
+    float span = uDiskOut * 1.7;
+    float t0 = max(0.0, dot(-ro, rd) - span);
+    vec3 p = ro + rd * t0;
+    vec3 v = rd;
+    vec3 L = cross(p, v);
+    float h2 = dot(L, L);          // conserved angular momentum² (|v| = 1)
+    float b = sqrt(h2);            // impact parameter
+
+    vec3 acc = vec3(0.0);
+    float trans = 1.0;
+    for (int i = 0; i < 110; i++){
+      float r2 = dot(p, p); float r = sqrt(r2);
+      if (r < uRs) break;                                   // captured
+      if (r > span * 1.9 && dot(p, v) > 0.0) break;         // escaped, heading out
+      float dt = clamp(r * 0.12, 0.35, 6.0);                // fine steps near the hole
+      v += (-1.5 * h2 / (r2 * r2 * r)) * p * dt;            // geodesic bending
+      v = normalize(v);
+      float sidePrev = dot(p, uDiskN);
+      vec3 pPrev = p;
+      p += v * dt;
+      float side = dot(p, uDiskN);
+      if (sidePrev * side < 0.0 && trans > 0.02) {          // crossed the disk plane
+        vec3 hit = mix(pPrev, p, sidePrev / (sidePrev - side));
+        float hr = length(hit);
+        if (hr > uDiskIn && hr < uDiskOut) {
+          vec4 e = diskEmission(hit, v, T1, T2);
+          acc += e.rgb * trans;
+          trans *= (1.0 - e.a * 0.85);
+        }
+      }
+    }
+    // photon ring — a thin hot halo where rays graze the capture radius (~2.6 rs)
+    float ring = 0.6 * exp(-pow((b - 2.68 * uRs) / (0.34 * uRs), 2.0));
+    acc += vec3(1.0, 0.88, 0.66) * ring;
+    gl_FragColor = vec4(acc, 1.0);   // additive — pure light on top of the scene
+  }
+`
+
 // ── Fresnel rim — photon-ring glow hugging the event-horizon silhouette ────────
 export const RIM_VERT = /* glsl */`
   varying vec3 vN;

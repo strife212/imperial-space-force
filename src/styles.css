@@ -529,6 +529,12 @@
   height: 180px;
   margin: 0 auto 18px;
 }
+/* main menu: keep the emblem modest so it doesn't block the idle scene behind */
+#menu-screen .boot-emblem {
+  width: 104px;
+  height: 104px;
+  margin-bottom: 12px;
+}
 /* Fleet boot (muster): centre the header to match the operator-select screen.
    Sizing is handled by the shared useScreenScale design height (same scale
    factor as select), so the full-size header renders consistently. */
@@ -3255,6 +3261,25 @@ body {
   align-items: center;
 }
 
+/* looping idle scene (lensed black hole + patrolling fleets) behind the menu */
+.menu-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.menu-backdrop-canvas { position: absolute; inset: 0; }
+/* soften the centre column so the title/buttons stay readable over the disk */
+.menu-backdrop-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 46% 72% at 50% 46%, rgba(2, 4, 10, 0.58), rgba(2, 4, 10, 0) 74%),
+    linear-gradient(rgba(2, 4, 10, 0.16), rgba(2, 4, 10, 0.16));
+}
+/* the menu itself stacks above the backdrop */
+#menu-screen .login-inner,
+#menu-screen .login-footer { position: relative; z-index: 1; }
 
 .menu-content {
   opacity: 0;
@@ -3343,7 +3368,8 @@ body {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(106, 173, 245, 0.75);
+  color: rgba(158, 205, 255, 0.98);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 14px rgba(0, 0, 0, 0.7);
 }
 .start-section-sub {
   text-align: center;
@@ -3351,7 +3377,8 @@ body {
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(106, 173, 245, 0.7);
+  color: rgba(140, 190, 250, 0.92);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.7);
 }
 
 /* Pin the start-screen button column to the full container width so revealing
@@ -3369,7 +3396,8 @@ body {
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  color: rgba(106, 173, 245, 0.7);
+  color: rgba(140, 190, 250, 0.92);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 12px rgba(0, 0, 0, 0.7);
   transition: color 0.15s;
 }
 .start-bonus:hover { color: #fff; }
@@ -3411,6 +3439,21 @@ body {
   border-color: rgba(60,160,255,0.95);
   color: #fff;
   box-shadow: 0 0 20px rgba(26,100,255,0.3);
+}
+/* start menu only: solid dark fill + brighter text/border so the buttons hold
+   their own against the bright accretion disk behind them */
+.start-content .menu-btn--primary {
+  background: rgba(4, 9, 22, 0.66);
+  border-color: rgba(110, 170, 255, 0.85);
+  color: #e2efff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 0 14px rgba(8, 30, 90, 0.55), inset 0 0 18px rgba(20, 70, 180, 0.14);
+}
+.start-content .menu-btn--primary:hover {
+  background: rgba(20, 62, 150, 0.5);
+  border-color: rgba(150, 205, 255, 1);
+  color: #fff;
+  box-shadow: 0 0 24px rgba(40, 120, 255, 0.45), inset 0 0 18px rgba(40, 110, 230, 0.22);
 }
 
 /* Subtle pulsing glow marking the default choice (Skirmish Battle) */

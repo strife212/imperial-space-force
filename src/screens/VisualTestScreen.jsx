@@ -13,7 +13,7 @@ import {
 import {
   NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital,
   buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield,
-  buildGasGiantModel, buildRingedPlanetModel, buildBlackHoleModel,
+  buildGasGiantModel, buildRingedPlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel,
 } from './battle/geometry'
 import { buildStation, buildCathedra, buildRelay, buildWorldEngine } from './cutscene/models'
 import './battle/battle.css'
@@ -27,16 +27,17 @@ const PROP_BUILD = {
   cathedra:    buildCathedra,
   relay:       buildRelay,
   blackhole:   buildBlackHoleModel,
+  blackhole2:  buildBlackHoleLensedModel,
   gasgiant:    buildGasGiantModel,
   ringedplanet: buildRingedPlanetModel,
 }
 const PROP_LABEL = {
   aleph: 'Aleph', worldengine: 'World Engine', station: 'Orbital Station', cathedra: 'Cathedra', relay: 'Sensor Relay',
-  blackhole: 'Black Hole', gasgiant: 'Gas Giant', ringedplanet: 'Ringed Planet',
+  blackhole: 'Black Hole', blackhole2: 'Black Hole · Lensed', gasgiant: 'Gas Giant', ringedplanet: 'Ringed Planet',
 }
 const PROP_RIM = {
   aleph: 0xffcf5a, worldengine: 0x6f86ff, station: 0xffd28a, cathedra: 0xfff0c4, relay: 0x9fe0ff,
-  blackhole: 0xacdcff, gasgiant: 0x5fa0ff, ringedplanet: 0xd8b88a,
+  blackhole: 0xacdcff, blackhole2: 0xffd9a0, gasgiant: 0x5fa0ff, ringedplanet: 0xd8b88a,
 }
 
 const TYPES = ['fighter', 'bomber', 'cruiser', 'capital']
@@ -64,7 +65,7 @@ const MODELS = [
   ...TYPES.flatMap(kind => ['blue', 'red'].map(team => ({ kind, team }))),
   { kind: 'capital2', team: 'blue' },
   { kind: 'science', team: 'blue' },
-  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay', 'blackhole', 'gasgiant', 'ringedplanet'].map(kind => ({ kind, team: 'prop' })),
+  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay', 'blackhole', 'blackhole2', 'gasgiant', 'ringedplanet'].map(kind => ({ kind, team: 'prop' })),
 ]
 
 // A single large viewer that renders the selected ship on an orbitable turntable.

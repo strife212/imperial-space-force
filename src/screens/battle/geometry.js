@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import { RIM_VERT, RIM_FRAG, DISK_VERT, DISK_FRAG } from '../../lib/shaders'
+import { RIM_VERT, RIM_FRAG, DISK_VERT, DISK_FRAG, LENSED_BH_VERT, LENSED_BH_FRAG } from '../../lib/shaders'
 
 // ── Shared GLSL value-noise / fbm (for the nebula skydome and the planet) ──────
 const GLSL_NOISE = /* glsl */`
@@ -437,6 +437,45 @@ function makeBlackHole(scene, disposables, pos) {
   return (t) => { dMat.uniforms.uTime.value = t }
 }
 
+// A more physical black hole: a camera-facing quad ray-marches bent light paths
+// through the disk (see LENSED_BH_FRAG), so the far side of the accretion disk
+// lenses into arcs over and under the shadow and the beaming follows the real
+// camera. The additive quad can't darken the sky, so an opaque sphere at the
+// photon-capture radius (b ≈ 2.6 rs — view-independent) renders the shadow.
+function makeBlackHoleLensed(scene, disposables, pos) {
+  const RS = 6                                   // Schwarzschild radius (world units)
+  const DISK_IN = RS * 2.0, DISK_OUT = RS * 8.5  // ≈ the classic maker's disk span
+  const half = DISK_OUT * 1.45                   // quad reach: disk + lensed-arc margin
+
+  const shGeo = new THREE.SphereGeometry(RS * 2.6, 48, 48)
+  const shMat = new THREE.MeshBasicMaterial({ color: 0x000000 })
+  const shadow = new THREE.Mesh(shGeo, shMat); shadow.position.copy(pos); scene.add(shadow)
+
+  const qGeo = new THREE.PlaneGeometry(half * 2, half * 2)
+  const qMat = new THREE.ShaderMaterial({
+    vertexShader: LENSED_BH_VERT, fragmentShader: LENSED_BH_FRAG,
+    uniforms: {
+      uTime:    { value: 0 },
+      uCenter:  { value: pos.clone() },
+      uDiskN:   { value: new THREE.Vector3(0.55, 0.78, 0.22).normalize() },
+      uRs:      { value: RS },
+      uDiskIn:  { value: DISK_IN },
+      uDiskOut: { value: DISK_OUT },
+    },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  })
+  const quad = new THREE.Mesh(qGeo, qMat)
+  quad.position.copy(pos)
+  // keep the quad facing the live camera and its centre uniform tracking the mesh
+  quad.onBeforeRender = (renderer, sc, camera) => {
+    quad.quaternion.copy(camera.quaternion)
+    quad.getWorldPosition(qMat.uniforms.uCenter.value)
+  }
+  scene.add(quad)
+  disposables.push(shGeo, shMat, qGeo, qMat)
+  return (t) => { qMat.uniforms.uTime.value = t }
+}
+
 // Pick a random background body and place it at a random spot that is on-screen
 // in the opening shot (by unprojecting a random point of the camera's view).
 function makeBackdrop(scene, disposables, lightDir, camera) {
@@ -456,7 +495,7 @@ function makeBackdrop(scene, disposables, lightDir, camera) {
   }
   if (pick === 0) return makeGasGiant(scene, disposables, pos, lightDir)
   if (pick === 1) return makeRingedPlanet(scene, disposables, pos, lightDir)
-  return makeBlackHole(scene, disposables, pos)
+  return makeBlackHoleLensed(scene, disposables, pos)
 }
 
 // Standalone celestial-body models for the model viewer. The scene-adding makers
@@ -479,11 +518,16 @@ function buildBlackHoleModel() {
   g.userData.tick = makeBlackHole(g, [], new THREE.Vector3())
   return g
 }
+function buildBlackHoleLensedModel() {
+  const g = new THREE.Group()
+  g.userData.tick = makeBlackHoleLensed(g, [], new THREE.Vector3())
+  return g
+}
 
 export {
   NEBULA_VERT, NEBULA_FRAG,
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber,
   buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield, makeBackdrop,
-  makeGasGiant, makeRingedPlanet, makeBlackHole,
-  buildGasGiantModel, buildRingedPlanetModel, buildBlackHoleModel,
+  makeGasGiant, makeRingedPlanet, makeBlackHole, makeBlackHoleLensed,
+  buildGasGiantModel, buildRingedPlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel,
 }

@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { useScreenScale } from '../hooks/useScreenScale'
+import MenuBackdrop from './MenuBackdrop'
 
 export default function StartScreen({ onCampaign, onSkirmish, onPlay, onDebug }) {
   const clickSfx = useRef(null)
@@ -28,6 +29,7 @@ export default function StartScreen({ onCampaign, onSkirmish, onPlay, onDebug })
 
   return (
     <div id="menu-screen">
+      <MenuBackdrop />
       <div className="login-inner" ref={innerRef}>
         <div className="boot-header">
           <img className="boot-emblem" src={`${import.meta.env.BASE_URL}logo.png`} alt="Imperial Space Force Emblem" />
