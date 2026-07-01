@@ -13,23 +13,31 @@ import {
 import {
   NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital,
   buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield,
+  buildGasGiantModel, buildRingedPlanetModel, buildBlackHoleModel,
 } from './battle/geometry'
 import { buildStation, buildCathedra, buildRelay, buildWorldEngine } from './cutscene/models'
 import './battle/battle.css'
 
-// Faction-less cutscene props: each is a self-contained group (owns its
-// materials), shown on its own in the model viewer.
+// Faction-less cutscene props + celestial bodies: each is a self-contained group
+// (owns its materials), shown on its own in the model viewer.
 const PROP_BUILD = {
   aleph:       buildAleph,
   worldengine: buildWorldEngine,
   station:     buildStation,
   cathedra:    buildCathedra,
   relay:       buildRelay,
+  blackhole:   buildBlackHoleModel,
+  gasgiant:    buildGasGiantModel,
+  ringedplanet: buildRingedPlanetModel,
 }
 const PROP_LABEL = {
   aleph: 'Aleph', worldengine: 'World Engine', station: 'Orbital Station', cathedra: 'Cathedra', relay: 'Sensor Relay',
+  blackhole: 'Black Hole', gasgiant: 'Gas Giant', ringedplanet: 'Ringed Planet',
 }
-const PROP_RIM = { aleph: 0xffcf5a, worldengine: 0x6f86ff, station: 0xffd28a, cathedra: 0xfff0c4, relay: 0x9fe0ff }
+const PROP_RIM = {
+  aleph: 0xffcf5a, worldengine: 0x6f86ff, station: 0xffd28a, cathedra: 0xfff0c4, relay: 0x9fe0ff,
+  blackhole: 0xacdcff, gasgiant: 0x5fa0ff, ringedplanet: 0xd8b88a,
+}
 
 const TYPES = ['fighter', 'bomber', 'cruiser', 'capital']
 const LABEL = { fighter: 'Fighter', bomber: 'Bomber', cruiser: 'Cruiser', capital: 'Capital' }
@@ -56,7 +64,7 @@ const MODELS = [
   ...TYPES.flatMap(kind => ['blue', 'red'].map(team => ({ kind, team }))),
   { kind: 'capital2', team: 'blue' },
   { kind: 'science', team: 'blue' },
-  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay'].map(kind => ({ kind, team: 'prop' })),
+  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay', 'blackhole', 'gasgiant', 'ringedplanet'].map(kind => ({ kind, team: 'prop' })),
 ]
 
 // A single large viewer that renders the selected ship on an orbitable turntable.
@@ -90,7 +98,12 @@ function ModelStage({ kind, team }) {
       composer.addPass(new RenderPass(scene, camera))
       composer.addPass(new UnrealBloomPass(new THREE.Vector2(w, h), 0.7, 0.5, 0.25))   // glow for emissive cores
       sceneRef.current = { scene, camera, renderer, controls, holder, rim }
-      const loop = () => { controls.update(); composer.render(); raf = requestAnimationFrame(loop) }
+      const clock = new THREE.Clock()
+      const loop = () => {
+        const top = holder.children[0]
+        top?.userData.tick?.(clock.getElapsedTime())   // drive any animated body (black-hole disk)
+        controls.update(); composer.render(); raf = requestAnimationFrame(loop)
+      }
       loop()
       const onResize = () => {
         const nw = mount.clientWidth, nh = mount.clientHeight; if (!nw || !nh) return

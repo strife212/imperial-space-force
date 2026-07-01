@@ -459,9 +459,31 @@ function makeBackdrop(scene, disposables, lightDir, camera) {
   return makeBlackHole(scene, disposables, pos)
 }
 
+// Standalone celestial-body models for the model viewer. The scene-adding makers
+// above only call `scene.add(...)`, so passing a Group as the "scene" builds a
+// self-contained group. The black hole returns a per-frame tick (accretion-disk
+// swirl), stashed on userData.tick for the viewer to drive.
+const _CELESTIAL_LIGHT = new THREE.Vector3(0.5, 0.35, 0.8).normalize()
+function buildGasGiantModel() {
+  const g = new THREE.Group()
+  makeGasGiant(g, [], new THREE.Vector3(), _CELESTIAL_LIGHT.clone())
+  return g
+}
+function buildRingedPlanetModel() {
+  const g = new THREE.Group()
+  makeRingedPlanet(g, [], new THREE.Vector3(), _CELESTIAL_LIGHT.clone())
+  return g
+}
+function buildBlackHoleModel() {
+  const g = new THREE.Group()
+  g.userData.tick = makeBlackHole(g, [], new THREE.Vector3())
+  return g
+}
+
 export {
   NEBULA_VERT, NEBULA_FRAG,
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber,
   buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield, makeBackdrop,
   makeGasGiant, makeRingedPlanet, makeBlackHole,
+  buildGasGiantModel, buildRingedPlanetModel, buildBlackHoleModel,
 }
