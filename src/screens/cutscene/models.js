@@ -149,33 +149,72 @@ export function buildWorldEngine() {
   return g
 }
 
-// One lumpy asteroid geometry (jittered icosahedron). Reused across a field.
+// One asteroid geometry: an icosahedron sculpted by coherent low-frequency
+// waves (lumpy potato silhouette), dented with smooth craters and stretched
+// along a random axis. Recessed areas are darkened via vertex colours (fake
+// ambient occlusion); the non-indexed polyhedron keeps facet normals, so the
+// rocks read as chunky shattered stone instead of crumpled blobs.
 function buildAsteroid() {
-  const geo = new THREE.IcosahedronGeometry(1, 1)
+  const geo = new THREE.IcosahedronGeometry(1, 2)
+  const waves = Array.from({ length: 5 }, (_, i) => ({
+    k: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize()
+      .multiplyScalar(1.4 + i * 1.05 + Math.random() * 0.6),
+    a: 0.30 / (1 + i * 0.75),
+    ph: Math.random() * Math.PI * 2,
+  }))
+  const craters = Array.from({ length: 3 + ((Math.random() * 3) | 0) }, () => ({
+    dir: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(),
+    r: 0.35 + Math.random() * 0.45,        // angular radius
+    depth: 0.10 + Math.random() * 0.18,
+  }))
+  const stretch = new THREE.Vector3(0.72 + Math.random() * 0.6, 0.72 + Math.random() * 0.6, 0.72 + Math.random() * 0.6)
   const p = geo.attributes.position
+  const v = new THREE.Vector3()
+  const rs = new Float32Array(p.count)
+  let rMin = Infinity, rMax = -Infinity
   for (let i = 0; i < p.count; i++) {
-    const f = 0.72 + Math.random() * 0.5
-    p.setXYZ(i, p.getX(i) * f, p.getY(i) * f, p.getZ(i) * f)
+    v.set(p.getX(i), p.getY(i), p.getZ(i)).normalize()
+    let r = 1
+    for (const w of waves) r += w.a * Math.sin(v.dot(w.k) * Math.PI + w.ph)
+    for (const c of craters) {
+      const d = v.angleTo(c.dir)
+      if (d < c.r) { const t = 1 - d / c.r; r -= c.depth * t * t * (3 - 2 * t) }   // smoothstep dent
+    }
+    rs[i] = r
+    if (r < rMin) rMin = r
+    if (r > rMax) rMax = r
+    p.setXYZ(i, v.x * r * stretch.x, v.y * r * stretch.y, v.z * r * stretch.z)
   }
+  const col = new Float32Array(p.count * 3)
+  for (let i = 0; i < p.count; i++) {
+    const shade = 0.52 + 0.48 * ((rs[i] - rMin) / Math.max(1e-5, rMax - rMin))   // crevices darker
+    col[i * 3] = shade; col[i * 3 + 1] = shade; col[i * 3 + 2] = shade
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
   geo.computeVertexNormals()
   return geo
 }
 
 // Scatter a drifting asteroid field in a shell around `center`. Returns
-// { group, tick(dt) } — tick tumbles the rocks slowly.
+// { group, tick(dt) } — tick tumbles the rocks slowly (small rocks faster).
 export function asteroidField(ctx, { count = 40, center = new THREE.Vector3(), inner = 30, outer = 130, scaleMin = 0.8, scaleMax = 5 } = {}) {
-  const mat = new THREE.MeshStandardMaterial({ color: 0x4a4640, emissive: 0x0a0806, emissiveIntensity: 0.25, metalness: 0.2, roughness: 0.95 })
-  const geos = [buildAsteroid(), buildAsteroid(), buildAsteroid(), buildAsteroid()]
+  // a few rock tints — grey, umber, cold slate — with the AO baked per vertex
+  const mats = [0x5a544a, 0x52453a, 0x474b54].map(c => new THREE.MeshStandardMaterial({
+    color: c, vertexColors: true, emissive: 0x0a0806, emissiveIntensity: 0.3, metalness: 0.15, roughness: 0.95,
+  }))
+  const geos = Array.from({ length: 6 }, buildAsteroid)
   const group = new THREE.Group(); ctx.scene.add(group)
   const rocks = []
   for (let i = 0; i < count; i++) {
-    const m = new THREE.Mesh(geos[i % geos.length], mat)
+    const m = new THREE.Mesh(geos[i % geos.length], mats[i % mats.length])
     const dir = new THREE.Vector3(Math.random() - 0.5, (Math.random() - 0.5) * 0.6, Math.random() - 0.5).normalize()
     m.position.copy(center).addScaledVector(dir, inner + Math.random() * (outer - inner))
-    m.scale.setScalar(scaleMin + Math.random() * (scaleMax - scaleMin))
+    const s = scaleMin + (scaleMax - scaleMin) * Math.pow(Math.random(), 1.8)   // power-law: many small, few large
+    m.scale.setScalar(s)
     m.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6)
     group.add(m)
-    rocks.push({ m, sx: (Math.random() - 0.5) * 0.3, sy: (Math.random() - 0.5) * 0.3 })
+    const spin = 0.45 / (0.6 + s)                                              // small rocks tumble faster
+    rocks.push({ m, sx: (Math.random() - 0.5) * spin * 2, sy: (Math.random() - 0.5) * spin * 2, sz: (Math.random() - 0.5) * spin })
   }
-  return { group, tick: (dt) => { for (const r of rocks) { r.m.rotation.x += r.sx * dt; r.m.rotation.y += r.sy * dt } } }
+  return { group, tick: (dt) => { for (const r of rocks) { r.m.rotation.x += r.sx * dt; r.m.rotation.y += r.sy * dt; r.m.rotation.z += r.sz * dt } } }
 }
