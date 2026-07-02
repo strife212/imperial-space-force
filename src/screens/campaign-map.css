@@ -232,6 +232,20 @@
   color: #fff;
   box-shadow: 0 0 16px rgba(150, 90, 230, 0.4);
 }
+/* debug: clear the next node (plays the unlock moment) — top of the stack, green */
+.cmap-unlocknext {
+  bottom: 124px;
+  background: rgba(90, 220, 150, 0.07);
+  border-color: rgba(90, 220, 150, 0.45);
+  color: rgba(180, 245, 205, 0.9);
+}
+.cmap-unlocknext:hover:not(:disabled) {
+  background: rgba(90, 220, 150, 0.18);
+  border-color: rgba(120, 240, 175, 0.9);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(60, 200, 130, 0.4);
+}
+.cmap-unlocknext:disabled { opacity: 0.35; cursor: default; }
 
 /* reset-progress control (bottom-right) */
 .cmap-reset {
