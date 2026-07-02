@@ -19,6 +19,7 @@ import VisualTestScreen from './screens/VisualTestScreen'
 import Cutscene from './screens/cutscene/Cutscene'
 import { SCENES, STORY } from './screens/cutscene/scenes'
 import CampaignMap from './screens/CampaignMap'
+import CampaignStarMap from './screens/CampaignStarMap'
 import ShipyardScreen from './screens/ShipyardScreen'
 import CharacterSelect from './screens/CharacterSelect'
 import FleetReview from './screens/FleetReview'
@@ -78,6 +79,7 @@ export default function App() {
   const [cutsceneChain,     setCutsceneChain]     = useState(false)            // advance through STORY on complete
   const [campaignNode,      setCampaignNode]      = useState(null)             // active campaign node: cutscene → shipyard → battle (null = not in campaign flow)
   const [fleetReviewSource, setFleetReviewSource] = useState('campaign-map')   // where the Fleet Review screen returns to
+  const [mapStyle,          setMapStyle]          = useState(() => getFlag('campaignMapStyle') || 'stellar')  // campaign map: 'stellar' (default) | 'sector'
   const [bhOutput,          setBhOutput]          = useState(0)
   const [bhYield,           setBhYield]           = useState(0)
   const [messages,          setMessages]          = useState([])   // inbox fills on first main-panel visit
@@ -157,6 +159,7 @@ export default function App() {
   // Build the campaign-engagement config for a node: locked fleets (player from the
   // persistent roster, enemy fixed for the node), plus result/exit/retry callbacks.
   const exitCampaign = () => { setCampaignNode(null); setScreen('campaign-map') }
+  const toggleMapStyle = () => setMapStyle(s => { const n = s === 'sector' ? 'stellar' : 'sector'; setFlag('campaignMapStyle', n); return n })
   const campaignBattle = (i) => ({
     nodeIndex:  i,
     nodeTitle:  NODE_BATTLES[i].title,
@@ -211,7 +214,12 @@ export default function App() {
       <div className="scanlines" />
       <div className="vignette" />
       {screen === 'home'    && <StartScreen onCampaign={() => setScreen('campaign-map')} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
-      {screen === 'campaign-map' && <CampaignMap onExit={() => setScreen('home')} onPlay={playCampaignNode} onReviewFleet={() => { setFleetReviewSource('campaign-map'); setScreen('fleet-review') }} onCards={() => setScreen('card-vault')} onDrawTest={() => setScreen('draw-test')} />}
+      {screen === 'campaign-map' && (() => {
+        // two campaign-map styles: the classic sector map and the rotatable
+        // 3D stellar chart; the choice persists across sessions
+        const MapView = mapStyle === 'stellar' ? CampaignStarMap : CampaignMap
+        return <MapView onExit={() => setScreen('home')} onPlay={playCampaignNode} onReviewFleet={() => { setFleetReviewSource('campaign-map'); setScreen('fleet-review') }} onCards={() => setScreen('card-vault')} onDrawTest={() => setScreen('draw-test')} onToggleView={toggleMapStyle} />
+      })()}
       {screen === 'card-vault'   && <CardVaultScreen onBack={() => setScreen('campaign-map')} />}
       {screen === 'draw-test'    && <DrawTestScreen onBack={() => setScreen('campaign-map')} />}
       {screen === 'fleet-review' && <FleetReview onExit={() => setScreen(fleetReviewSource)} backLabel={fleetReviewSource === 'shipyard' ? '◂ BACK TO BATTLE' : '◂ RETURN TO MAP'} />}

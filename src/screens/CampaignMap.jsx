@@ -15,7 +15,8 @@ import { buildStation, buildCathedra } from './cutscene/models'
 import './campaign-map.css'
 
 // Each campaign node: title + a 3D visual keyed to its cutscene's events.
-const NODES = [
+// (Exported for the stellar-chart map, which reuses the same node models.)
+export const NODES = [
   { title: 'First Contact',   model: 'aleph' },
   { title: 'The Muster',      model: 'station' },
   { title: 'The Warfront',    model: 'battle' },
@@ -39,7 +40,7 @@ function fit(group, r) {
   return group
 }
 
-function buildNode(model) {
+export function buildNode(model) {
   switch (model) {
     case 'aleph': return fit(buildAleph(), 4.2)
     case 'station': return fit(buildStation(), 4.6)
@@ -99,7 +100,7 @@ function buildNode(model) {
   }
 }
 
-export default function CampaignMap({ onExit, onPlay, onReviewFleet, onCards, onDrawTest }) {
+export default function CampaignMap({ onExit, onPlay, onReviewFleet, onCards, onDrawTest, onToggleView }) {
   const mountRef = useRef(null)
   const labelRefs = useRef([])
   const [completed, setCompleted] = useState(() => Math.min(NODES.length, getFlag('campaignProgress') || 0))
@@ -464,6 +465,7 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet, onCards, on
         {showDebug && <button className="cmap-unlock cmap-givemacro" onClick={onCards}>⚡ DEBUG · CARD VAULT</button>}
         {showDebug && <button className="cmap-unlock cmap-drawtest" onClick={onDrawTest}>⚡ DEBUG · DRAW TEST</button>}
         {showDebug && <button className="cmap-unlock cmap-unlocknext" onClick={doUnlockNext} disabled={completed >= NODES.length}>⚡ DEBUG · UNLOCK NEXT NODE</button>}
+        <button className="cmap-viewtoggle" onClick={onToggleView}>✦ STELLAR CHART</button>
         <button className="cmap-reset" onClick={() => setConfirmReset(true)}>⟲ RESET PROGRESS</button>
 
         {confirmReset && (
