@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { TEAMS } from '../../battle/constants'
-import { makeGasGiant, makeRingedPlanet, buildBlueModel } from '../../battle/geometry'
+import { makeMachinePlanet, makeRingedPlanet, buildBlueModel } from '../../battle/geometry'
 import { buildRelay } from '../models'
 
 // The Ecumenologion — the World Engine, Litania Magna — computes the silence and
@@ -16,7 +16,7 @@ export default {
   bloom: 0.7,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx
-    makeGasGiant(scene, [], new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.5, 0.6, 0.4).normalize())   // the World Engine (R≈40)
+    const engineTick = makeMachinePlanet(scene, [], new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.5, 0.6, 0.4).normalize())   // the World Engine (R≈40)
     makeRingedPlanet(scene, [], new THREE.Vector3(150, 40, -180), new THREE.Vector3(0.4, 0.5, 0.6).normalize())   // the Throneworld it orbits
 
     // the diadem — orbital rings of solar collectors girdling the Engine
@@ -52,6 +52,7 @@ export default {
     let T = 0, c1 = false, c2 = false, c3 = false, ended = false
     return (dt) => {
       T += dt
+      engineTick(T)
       ring.rotation.z += 0.05 * dt; ring2.rotation.z -= 0.03 * dt; sats.rotation.z += 0.05 * dt
       for (const r of relays) r.rotation.y += 0.2 * dt
 

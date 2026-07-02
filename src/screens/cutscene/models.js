@@ -106,28 +106,202 @@ export function buildStation() {
   return g
 }
 
-// The Cathedra — a tiered stone spire crowned with light, for the Throneworld.
+// The Cathedra — the palace-spire of the Universal Order on the Throneworld.
+// Same envelope as the original simple build (base at y=0, crown orb at y≈34)
+// so scene placements are unchanged, redressed as a monumental palace: stepped
+// octagonal plinth with corner obelisks, a gate tier with lit processional
+// arches, flying buttresses onto a colonnaded great-hall tier, pilastered upper
+// tiers with lancet windows, a ribbed drum and spire, and a haloed crown orb.
+// Fully symmetric and deterministic — the architecture of Order.
 export function buildCathedra() {
   const g = new THREE.Group()
-  const stone = new THREE.MeshStandardMaterial({ color: 0xb9a36a, emissive: 0x3a2c10, emissiveIntensity: 0.4, metalness: 0.5, roughness: 0.6 })
-  const lit = new THREE.MeshBasicMaterial({ color: 0xfff0c4 })
-  let y = 0
-  for (let i = 0; i < 6; i++) { const w = 8 - i * 1.15, h = 4; const t = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), stone); t.position.y = y + h / 2; g.add(t); y += h }
-  const apex = new THREE.Mesh(new THREE.ConeGeometry(1.3, 9, 6), stone); apex.position.y = y + 4.5; g.add(apex)
-  const crown = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), lit); crown.position.y = y + 10; g.add(crown)
-  for (let i = 0; i < 5; i++) { const dot = new THREE.Mesh(new THREE.SphereGeometry(0.3, 6, 6), lit); dot.position.set((Math.random() - 0.5) * 7, i * 4 + 2, 3.6); g.add(dot) }   // window glow
+  const stone = new THREE.MeshStandardMaterial({ color: 0xc2ae7e, emissive: 0x3a2c10, emissiveIntensity: 0.42, metalness: 0.45, roughness: 0.62 })
+  const trim  = new THREE.MeshStandardMaterial({ color: 0x8a744a, emissive: 0x241a08, emissiveIntensity: 0.4, metalness: 0.62, roughness: 0.52 })
+  const lit   = new THREE.MeshBasicMaterial({ color: 0xfff0c4 })
+  const halo  = new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false })
+
+  const FACE = Math.PI / 4                    // octagon facet pitch (vertices at k·45°)
+  const APO = Math.cos(Math.PI / 8)           // facet-centre (apothem) ratio
+  const oct = (rBot, h, rTop = rBot) => new THREE.CylinderGeometry(rTop, rBot, h, 8)
+  const add = (mesh, x, y, z) => { mesh.position.set(x, y, z); g.add(mesh); return mesh }
+  const face = (mesh, a) => { mesh.rotation.y = Math.PI / 2 - a; return mesh }   // local +Z outward
+
+  // lit lancet windows spaced around a tier's facets
+  const lancets = (r, y, h, every = 1) => {
+    for (let k = 0; k < 8; k += every) {
+      const a = (k + 0.5) * FACE
+      face(add(new THREE.Mesh(new THREE.BoxGeometry(0.16, h, 0.06), lit), Math.cos(a) * (r * APO + 0.05), y, Math.sin(a) * (r * APO + 0.05)), a)
+    }
+  }
+  const cornice = (r, y) => add(new THREE.Mesh(oct(r, 0.5), trim), 0, y, 0)
+
+  // ── stepped plinth, obelisks on the cardinal corners ──
+  add(new THREE.Mesh(oct(6.0, 0.8), stone), 0, 0.4, 0)
+  add(new THREE.Mesh(oct(5.3, 0.8), stone), 0, 1.2, 0)
+  add(new THREE.Mesh(oct(4.7, 0.8), stone), 0, 2.0, 0)
+  for (let k = 0; k < 8; k += 2) {
+    const a = k * FACE
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.9, 0.5), trim), Math.cos(a) * 5.15, 2.55, Math.sin(a) * 5.15)
+    add(new THREE.Mesh(new THREE.ConeGeometry(0.34, 1.0, 4), trim), Math.cos(a) * 5.15, 4.0, Math.sin(a) * 5.15)
+  }
+
+  // ── gate tier: lit processional arches on four facets ──
+  add(new THREE.Mesh(oct(4.3, 4.8, 4.05), stone), 0, 4.8, 0)
+  for (let k = 0; k < 8; k += 2) {
+    const a = (k + 0.5) * FACE
+    face(add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.0, 0.06), lit), Math.cos(a) * (4.3 * APO + 0.03), 3.6, Math.sin(a) * (4.3 * APO + 0.03)), a)
+    face(add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.32, 0.3), trim), Math.cos(a) * (4.3 * APO), 4.85, Math.sin(a) * (4.3 * APO)), a)
+  }
+  cornice(4.55, 7.35)
+
+  // ── flying buttresses rising from plinth piers onto the great hall ──
+  const pierGeo = new THREE.BoxGeometry(0.55, 2.6, 0.55)
+  const butGeo  = new THREE.BoxGeometry(0.32, 5.7, 0.7)
+  for (let k = 1; k < 8; k += 2) {
+    const a = k * FACE
+    add(new THREE.Mesh(pierGeo, stone), Math.cos(a) * 5.0, 2.9, Math.sin(a) * 5.0)
+    const b = add(new THREE.Mesh(butGeo, trim), Math.cos(a) * 4.2, 6.9, Math.sin(a) * 4.2)
+    b.quaternion.setFromAxisAngle(new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)), 0.29)
+  }
+
+  // ── great-hall tier wrapped in a peristyle colonnade ──
+  add(new THREE.Mesh(oct(3.55, 4.45), stone), 0, 9.8, 0)
+  lancets(3.55, 9.7, 2.6)
+  const colGeo = new THREE.CylinderGeometry(0.13, 0.13, 4.2, 6)
+  for (let k = 0; k < 16; k++) {
+    const a = (k + 0.5) * (Math.PI / 8)
+    add(new THREE.Mesh(colGeo, stone), Math.cos(a) * 4.1, 9.8, Math.sin(a) * 4.1)
+  }
+  cornice(4.35, 12.15)
+
+  // ── upper palace tiers: pilasters, lancets, corner finials ──
+  add(new THREE.Mesh(oct(2.85, 3.8), stone), 0, 14.3, 0)
+  for (let k = 0; k < 8; k++) {
+    const a = k * FACE
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.24, 3.3, 0.24), trim), Math.cos(a) * 2.8, 14.3, Math.sin(a) * 2.8)
+  }
+  lancets(2.85, 14.2, 2.0)
+  cornice(3.1, 16.45)
+  for (let k = 1; k < 8; k += 2) {
+    const a = k * FACE
+    add(new THREE.Mesh(new THREE.ConeGeometry(0.26, 1.2, 4), trim), Math.cos(a) * 2.9, 17.3, Math.sin(a) * 2.9)
+  }
+  add(new THREE.Mesh(oct(2.2, 3.4), stone), 0, 18.4, 0)
+  lancets(2.2, 18.3, 1.6, 2)
+  cornice(2.4, 20.35)
+
+  // ── ribbed drum, spire and the radiant crown ──
+  add(new THREE.Mesh(oct(1.55, 2.9), stone), 0, 22.05, 0)
+  for (let k = 0; k < 8; k++) {
+    const a = k * FACE
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.9, 0.15), trim), Math.cos(a) * 1.55, 22.05, Math.sin(a) * 1.55)
+  }
+  for (let k = 0; k < 8; k += 2) {
+    const a = (k + 0.5) * FACE
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), lit), Math.cos(a) * (1.55 * APO + 0.06), 22.2, Math.sin(a) * (1.55 * APO + 0.06))
+  }
+  add(new THREE.Mesh(new THREE.ConeGeometry(1.5, 7, 8), stone), 0, 27.0, 0)
+  for (let k = 0; k < 8; k++) {
+    const a = k * FACE
+    const rib = add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 7.0, 0.12), trim), Math.cos(a) * 0.78, 27.0, Math.sin(a) * 0.78)
+    rib.quaternion.setFromAxisAngle(new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)), 0.21)
+  }
+  add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.24, 3.4, 6), trim), 0, 32.2, 0)
+  add(new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), lit), 0, 34.2, 0)
+  const ring = add(new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.07, 8, 48), halo), 0, 34.2, 0)
+  ring.rotation.x = Math.PI / 2
   return g
 }
 
 // A deep-space sensor relay / buoy — what the Cassiopeia was sent to investigate.
+// Same envelope as the simple build (core at the origin, tilted dish above, a
+// tripod below, ~7 units tall) dressed for close-ups: hex core with collars,
+// greebles and portholes, a rimmed dish with a strutted feed boom, a secondary
+// side dish, solar wings, whip antennae and trussed splayed legs with foot pods.
 export function buildRelay() {
   const g = new THREE.Group()
   const metal = new THREE.MeshStandardMaterial({ color: 0x7a869a, emissive: 0x101a2a, emissiveIntensity: 0.3, metalness: 0.8, roughness: 0.5 })
+  const panel = new THREE.MeshStandardMaterial({ color: 0x4a5566, emissive: 0x0a1220, emissiveIntensity: 0.3, metalness: 0.72, roughness: 0.6 })
+  const cell  = new THREE.MeshStandardMaterial({ color: 0x1c3a5e, emissive: 0x0e2440, emissiveIntensity: 0.55, metalness: 0.6, roughness: 0.35 })
   const lit = new THREE.MeshBasicMaterial({ color: 0x9fe0ff })
-  g.add(new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.6, 1.6), metal))
-  const dish = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 0.3, 0.5, 16), metal); dish.position.y = 2.1; dish.rotation.x = 0.5; g.add(dish)
-  for (const a of [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3]) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3.4, 0.18), metal); s.position.set(Math.cos(a) * 1.1, -2.2, Math.sin(a) * 1.1); g.add(s) }
-  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 8), lit))
+  const nav = new THREE.MeshBasicMaterial({ color: 0xff6a52 })
+  const add = (parent, mesh, x, y, z) => { mesh.position.set(x, y, z); parent.add(mesh); return mesh }
+
+  // ── hexagonal core: bulkhead collars, equipment boxes, lit portholes ──
+  add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 2.4, 6), metal), 0, 0, 0)
+  add(g, new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.12, 0.34, 6), panel), 0, 1.05, 0)
+  add(g, new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.12, 0.34, 6), panel), 0, -1.05, 0)
+  for (let k = 0; k < 6; k++) {
+    const a = (k + 0.5) * Math.PI / 3
+    if (k % 2 === 0) {
+      const m = add(g, new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.72, 0.3), k === 2 ? panel : metal), Math.cos(a) * 0.9, ((k / 2) % 3 - 1) * 0.45, Math.sin(a) * 0.9)
+      m.rotation.y = Math.PI / 2 - a
+    } else {
+      add(g, new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 6), lit), Math.cos(a) * 0.88, 0.35 - (k % 3) * 0.35, Math.sin(a) * 0.88)
+    }
+  }
+
+  // ── main dish assembly, tilted as before; rim, feed boom and strut tripod ──
+  const dishG = new THREE.Group(); dishG.position.set(0, 2.1, 0); dishG.rotation.x = 0.5; g.add(dishG)
+  add(dishG, new THREE.Mesh(new THREE.CylinderGeometry(2.55, 0.35, 0.45, 24), metal), 0, 0, 0)
+  const rim = add(dishG, new THREE.Mesh(new THREE.TorusGeometry(2.55, 0.09, 8, 36), panel), 0, 0.22, 0)
+  rim.rotation.x = Math.PI / 2
+  add(dishG, new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.6, 0.92), panel), 0, -0.5, 0)          // transceiver pack behind the dish
+  add(dishG, new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6), metal), 0, 0.85, 0)  // feed boom
+  const horn = add(dishG, new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.36, 8), metal), 0, 1.55, 0)
+  horn.rotation.x = Math.PI
+  add(dishG, new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), lit), 0, 1.72, 0)              // radiant feed tip
+  const strutGeo = new THREE.BoxGeometry(0.045, 2.5, 0.045)
+  for (let k = 0; k < 3; k++) {
+    const a = k * (Math.PI * 2 / 3) + 0.5
+    const s = add(dishG, new THREE.Mesh(strutGeo, panel), Math.cos(a) * 1.1, 0.85, Math.sin(a) * 1.1)
+    s.quaternion.setFromAxisAngle(new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)), 1.05)
+  }
+
+  // ── secondary dish on a side arm, listening the other way ──
+  add(g, new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.13, 0.13), metal), 1.25, -0.5, 0)
+  const sd = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.1, 0.24, 14), panel), 1.85, -0.5, 0)
+  sd.rotation.z = 0.35 - Math.PI / 2
+  add(g, new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), lit), 2.02, -0.44, 0)
+
+  // ── solar wings on rail arms, clear of the dish tilt plane ──
+  for (const s of [1, -1]) {
+    add(g, new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 0.1), metal), s * 1.35, 0.35, 0)
+    add(g, new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.04, 0.85), cell), s * 2.6, 0.35, 0)
+    for (const dz of [0.46, -0.46]) add(g, new THREE.Mesh(new THREE.BoxGeometry(1.94, 0.07, 0.07), panel), s * 2.6, 0.35, dz)
+    add(g, new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), nav), s * 3.5, 0.35, 0)
+  }
+
+  // ── whip antennae off the upper collar ──
+  for (const s of [1, -1]) {
+    const w = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 1.5, 5), metal), s * 0.85, 1.9, -0.45)
+    w.rotation.z = s * -0.3
+    add(g, new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), s > 0 ? nav : lit), s * 1.07, 2.6, -0.45)
+  }
+
+  // ── trussed tripod: splayed rail pairs, cross-rungs, foot pods ──
+  const railGeo = new THREE.BoxGeometry(0.09, 3.3, 0.09)
+  const rungGeo = new THREE.BoxGeometry(0.07, 0.07, 0.34)
+  for (let k = 0; k < 3; k++) {
+    const a = k * (Math.PI * 2 / 3)
+    const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a))
+    const t = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a))
+    for (const ds of [0.14, -0.14]) {
+      const r = new THREE.Mesh(railGeo, metal)
+      r.position.set(dir.x * 1.15 + t.x * ds, -2.25, dir.z * 1.15 + t.z * ds)
+      r.quaternion.setFromAxisAngle(t, 0.185)              // splay: feet wider than shoulders
+      g.add(r)
+    }
+    for (const ry of [-1.3, -2.2, -3.1]) {
+      const rung = new THREE.Mesh(rungGeo, panel)
+      const spread = 1.15 + (-(ry + 0.55)) * 0.19          // follow the splay outward
+      rung.position.set(dir.x * spread, ry, dir.z * spread)
+      rung.rotation.y = -a + Math.PI / 2
+      g.add(rung)
+    }
+    add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.3, 0.34, 8), panel), dir.x * 1.48, -3.95, dir.z * 1.48)
+    if (k === 0) add(g, new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), nav), dir.x * 1.48, -4.18, dir.z * 1.48)
+  }
   return g
 }
 

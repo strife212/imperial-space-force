@@ -125,7 +125,7 @@ export default function CampaignStarMap({ onExit, onPlay, onReviewFleet, onCards
       renderer.setSize(w, h); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       mount.appendChild(renderer.domElement)
 
-      camera.position.set(24, 52, 96)
+      camera.position.set(20, 43, 79)
       controls = new OrbitControls(camera, renderer.domElement)
       controls.target.set(0, 2, 0)
       controls.enableDamping = true; controls.dampingFactor = 0.07; controls.enablePan = false

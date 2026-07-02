@@ -101,29 +101,246 @@ function makeNebulaSky(scene, disposables, skyKey, radius = 330) {
   }
 }
 
-// ── Gas-giant planet — banded fbm surface with a soft day/night terminator ─────
+// ── Gas-giant planet — sheared zonal bands, storm oval, limb-aware lighting ────
 const PLANET_VERT = /* glsl */`
-  varying vec3 vWN; varying vec3 vPosL;
+  varying vec3 vWN; varying vec3 vPosL; varying vec3 vWPos;
   void main() {
     vWN = normalize(mat3(modelMatrix) * normal);
     vPosL = position;
+    vWPos = (modelMatrix * vec4(position, 1.0)).xyz;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `
+// Shared by the gas giant and the ringed planet. uTime drifts the bands (0 =
+// static, so untimed cutscene callers render a fixed frame); uStorm paints the
+// anticyclone oval; uHasRing enables the ring-shadow march using uRing*.
 const PLANET_FRAG = /* glsl */`
   precision highp float;
-  varying vec3 vWN; varying vec3 vPosL;
+  varying vec3 vWN; varying vec3 vPosL; varying vec3 vWPos;
   uniform vec3 uLightDir; uniform vec3 uColA; uniform vec3 uColB; uniform vec3 uColC;
+  uniform vec3 uAtmoCol;
+  uniform float uTime; uniform float uStorm; uniform float uHasRing;
+  uniform vec3 uRingN; uniform float uRingIn; uniform float uRingOut;
 ` + GLSL_NOISE + /* glsl */`
   void main() {
     vec3 n = normalize(vPosL);
-    float bands = sin(n.y * 9.0 + fbm(vPosL * 1.4) * 2.6);
-    float t = bands * 0.5 + 0.5;
-    vec3 surf = mix(uColA, uColB, t);
-    surf = mix(surf, uColC, smoothstep(0.62, 0.96, fbm(vPosL * 2.1 + 5.0)));   // storm highlights
-    float ndl = dot(normalize(vWN), normalize(uLightDir));
-    float lit = smoothstep(-0.3, 0.55, ndl);              // soft terminator
-    gl_FragColor = vec4(surf * (0.04 + lit * 1.05), 1.0);
+    // drift the sampling frame prograde instead of rotating the mesh
+    float ang = uTime * 0.012;
+    float ca = cos(ang), sa = sin(ang);
+    vec3 p = vec3(n.x * ca - n.z * sa, n.y, n.x * sa + n.z * ca);
+
+    // zonal bands at three latitude frequencies, sheared by turbulent flow
+    float flow = fbm(vec3(p.x * 1.2, p.y * 3.4, p.z * 1.2) + uTime * 0.006);
+    float y = p.y + (flow - 0.5) * 0.30;
+    float zones = 0.50 * sin(y * 9.5) + 0.30 * sin(y * 21.0 + 1.7) + 0.34 * sin(y * 4.3 - 0.6);
+    float t = smoothstep(0.22, 0.78, clamp(zones * 0.75 + 0.5, 0.0, 1.0));   // steepen belt edges
+    vec3 surf = mix(uColB, uColA, t);
+    // fine cirrus streaks stretched along the flow
+    float streak = fbm(vec3(p.x * 3.2, y * 16.0, p.z * 3.2));
+    surf = mix(surf, uColA * 1.06, smoothstep(0.60, 0.88, streak) * 0.22);
+    // small pale storm cells punched through the belts
+    surf = mix(surf, uColC, smoothstep(0.64, 0.95, fbm(p * 5.5 + 5.0)) * 0.5);
+    surf = min(surf, uColA * 1.10);   // keep accents below the bloom knee
+
+    // great anticyclone — a swirling oval pinned in the drifting frame
+    if (uStorm > 0.5) {
+      float lon = atan(p.z, p.x);
+      vec2 o = vec2((lon - 0.9) * 0.62, asin(clamp(p.y, -1.0, 1.0)) + 0.42);
+      float d = length(o) * 6.5;
+      if (d < 1.3) {
+        float sw = atan(o.y, o.x) + (1.3 - d) * 4.5 + uTime * 0.05;
+        float swirl = fbm(vec3(cos(sw), sin(sw), d * 1.8) * 2.0);
+        // dark vortex core with a thin pale collar
+        vec3 eye = mix(uColB * 0.75, uColA * 1.05, smoothstep(0.55, 0.95, d));
+        surf = mix(surf, eye * (0.85 + swirl * 0.25), 1.0 - smoothstep(0.55, 1.25, d));
+      }
+    }
+
+    vec3 N = normalize(vWN);
+    vec3 L = normalize(uLightDir);
+    float ndl = dot(N, L);
+    float lit = smoothstep(-0.28, 0.55, ndl);            // soft terminator
+
+    // ring shadow: march from the surface point toward the light, test the ring span
+    if (uHasRing > 0.5) {
+      float dn = dot(L, uRingN);
+      float s = -dot(vPosL, uRingN) / (abs(dn) > 1e-4 ? dn : 1e-4);
+      if (s > 0.0) {
+        float r = length(vPosL + L * s);
+        float rt = clamp((r - uRingIn) / (uRingOut - uRingIn), 0.0, 1.0);
+        float inRing = smoothstep(uRingIn - 0.8, uRingIn + 0.8, r) * (1.0 - smoothstep(uRingOut - 0.8, uRingOut + 0.8, r));
+        float gap = smoothstep(0.40, 0.44, rt) * (1.0 - smoothstep(0.53, 0.57, rt));
+        lit *= 1.0 - inRing * (1.0 - gap * 0.9) * 0.55;
+      }
+    }
+
+    vec3 V = normalize(cameraPosition - vWPos);
+    float limb = 1.0 - max(dot(N, V), 0.0);
+    vec3 col = surf * (1.0 - 0.34 * pow(limb, 1.7)) * (0.045 + lit * 1.0);    // limb darkening
+    col += uAtmoCol * pow(limb, 2.6) * (0.10 + lit * 0.45);                   // limb scattering
+    col += uAtmoCol * (1.0 - smoothstep(0.0, 0.40, abs(ndl))) * lit * 0.25;   // twilight band
+    gl_FragColor = vec4(col, 1.0);
+  }
+`
+
+// ── Earthlike planet — oceans, biome-tinted continents, night lights, clouds ───
+const EARTH_FRAG = /* glsl */`
+  precision highp float;
+  varying vec3 vWN; varying vec3 vPosL; varying vec3 vWPos;
+  uniform vec3 uLightDir; uniform float uTime;
+` + GLSL_NOISE + /* glsl */`
+  void main() {
+    vec3 n = normalize(vPosL);
+    float ang = uTime * 0.009;
+    float ca = cos(ang), sa = sin(ang);
+    vec3 p = vec3(n.x * ca - n.z * sa, n.y, n.x * sa + n.z * ca);
+
+    // elevation: broad continental plates + ridge detail
+    float h = fbm(p * 1.8 + 11.3) * 0.68 + fbm(p * 4.6 + 3.1) * 0.32;
+    float sea = 0.52;
+    float landM = smoothstep(sea - 0.006, sea + 0.006, h);
+    float lat = abs(p.y);
+
+    // ocean: deep basins darken, shelves brighten toward the coast
+    float shelf = smoothstep(sea - 0.06, sea, h);
+    vec3 ocean = mix(vec3(0.012, 0.052, 0.115), vec3(0.055, 0.19, 0.26), shelf);
+    // land: moisture picks desert→steppe→forest, altitude adds rock and snow
+    float moist = fbm(p * 3.1 + 27.0);
+    vec3 land = mix(vec3(0.40, 0.33, 0.19), vec3(0.11, 0.26, 0.11), smoothstep(0.38, 0.62, moist));
+    land = mix(land, vec3(0.045, 0.16, 0.065), smoothstep(0.55, 0.80, moist) * (1.0 - smoothstep(0.30, 0.65, lat)));
+    land = mix(land, vec3(0.31, 0.29, 0.27), smoothstep(0.64, 0.76, h) * 0.75);
+    land = mix(land, vec3(0.60, 0.63, 0.68), smoothstep(0.73, 0.80, h));
+    vec3 surf = mix(ocean, land, landM);
+    // polar ice with a noisy shoreline
+    float cap = smoothstep(0.76, 0.85, lat + (fbm(p * 5.0 + 8.0) - 0.5) * 0.10);
+    surf = mix(surf, vec3(0.64, 0.68, 0.76), cap);
+
+    vec3 N = normalize(vWN);
+    vec3 L = normalize(uLightDir);
+    float ndl = dot(N, L);
+    float lit = smoothstep(-0.18, 0.42, ndl);
+    vec3 V = normalize(cameraPosition - vWPos);
+    float limb = 1.0 - max(dot(N, V), 0.0);
+
+    vec3 col = surf * (1.0 - 0.30 * pow(limb, 1.8)) * (0.030 + lit * 0.98);
+    // sun glint on open water
+    float spec = pow(max(dot(N, normalize(L + V)), 0.0), 120.0) * (1.0 - landM) * (1.0 - cap) * lit;
+    col += vec3(1.0, 0.93, 0.76) * spec * 0.5;
+    // city lights speckling the night-side land clusters
+    float night = 1.0 - smoothstep(-0.24, 0.06, ndl);
+    float clus = fbm(p * 7.0 + 41.0);
+    float dots = smoothstep(0.70, 0.95, vnoise(p * 55.0));
+    col += vec3(1.0, 0.70, 0.34) * landM * (1.0 - cap) * smoothstep(0.52, 0.85, clus) * dots * night * 1.2;
+    // blue atmospheric limb, strongest on the day side
+    col += vec3(0.09, 0.19, 0.40) * pow(limb, 2.4) * (0.10 + lit * 0.55);
+    gl_FragColor = vec4(col, 1.0);
+  }
+`
+// ── Machine planet — the Ecumenologion: a planet-sized computer in indigo ──────
+// Panel plating with grout seams, concentric circuit tracery organised around a
+// machine axis, broken glowing arc segments, trench lines with lit floors, a
+// blanket of window lights (brightest on the night side) and a radiant polar
+// eye — the great mind at the pole. uTime drifts the sphere and pulses lights.
+const MACHINE_FRAG = /* glsl */`
+  precision highp float;
+  varying vec3 vWN; varying vec3 vPosL; varying vec3 vWPos;
+  uniform vec3 uLightDir; uniform float uTime;
+` + GLSL_NOISE + /* glsl */`
+  float hash2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  void main() {
+    vec3 n = normalize(vPosL);
+    float ang = uTime * 0.005;
+    float ca = cos(ang), sa = sin(ang);
+    vec3 p = vec3(n.x * ca - n.z * sa, n.y, n.x * sa + n.z * ca);
+
+    // the machine axis: all tracery is organised around this pole
+    vec3 A = normalize(vec3(0.20, 0.42, 0.88));
+    float axCos = clamp(dot(p, A), -1.0, 1.0);
+    float axLat = acos(axCos);                                   // 0 at the eye pole
+    vec3 T1 = normalize(cross(A, vec3(0.0, 0.0, 1.0)));
+    vec3 T2 = cross(A, T1);
+    float axAz = atan(dot(p, T2), dot(p, T1));
+
+    // ── panel plating: coarse plates and fine tiles, dark grout seams ──
+    vec2 uv = vec2(axAz, axLat);
+    vec2 f1 = fract(uv * vec2(4.0, 7.0));
+    vec2 e1 = min(f1, 1.0 - f1);
+    float seam1 = smoothstep(0.0, 0.030, min(e1.x, e1.y));
+    float plate = 0.80 + 0.40 * hash2(floor(uv * vec2(4.0, 7.0)));
+    vec2 f2 = fract(uv * vec2(16.0, 28.0));
+    vec2 e2 = min(f2, 1.0 - f2);
+    float seam2 = smoothstep(0.0, 0.012, min(e2.x, e2.y));
+    float tile = 0.88 + 0.24 * hash2(floor(uv * vec2(16.0, 28.0)));
+    vec3 base = vec3(0.016, 0.024, 0.050) * plate * tile * (0.45 + 0.55 * seam1) * (0.72 + 0.28 * seam2);
+
+    // ── concentric circuit tracery: rings and broken arc segments ──
+    float ringF = fract(axLat * 22.0);
+    float ringLine = 1.0 - smoothstep(0.0, 0.07, min(ringF, 1.0 - ringF));
+    float ringSel = step(0.35, hash2(vec2(floor(axLat * 22.0), 3.0)));
+    float segSel  = step(0.45, hash2(vec2(floor(axAz * 6.0), floor(axLat * 22.0))));
+    float flicker = 0.8 + 0.2 * sin(uTime * 0.7 + hash2(vec2(floor(axLat * 22.0), floor(axAz * 6.0))) * 6.28);
+    float traces = ringLine * ringSel * (0.35 + 0.65 * segSel) * flicker;
+
+    // ── two great-circle trenches with lit floors ──
+    vec3 N1 = normalize(vec3(0.70, 0.20, 0.70));
+    vec3 N2 = normalize(vec3(-0.50, 0.55, 0.60));
+    float d1 = abs(dot(p, N1)), d2 = abs(dot(p, N2));
+    float trench = max(1.0 - smoothstep(0.010, 0.030, d1), 1.0 - smoothstep(0.010, 0.030, d2));
+    float trenchGlow = max(1.0 - smoothstep(0.0, 0.006, d1), 1.0 - smoothstep(0.0, 0.006, d2));
+    base *= 1.0 - 0.6 * trench;
+
+    // ── window lights: fine points, denser where the districts cluster ──
+    float fine = smoothstep(0.72, 0.90, vnoise(p * 60.0));
+    float coarse = smoothstep(0.60, 0.92, vnoise(p * 26.0 + 7.0));
+    float dots = fine * (0.40 + 0.85 * coarse);
+    float clus = smoothstep(0.25, 0.65, fbm(p * 5.0 + 13.0));
+    float pulse = 0.85 + 0.15 * sin(uTime * 1.3 + vnoise(p * 9.0) * 6.28);
+    float lights = dots * clus * pulse;
+
+    vec3 N = normalize(vWN);
+    vec3 L = normalize(uLightDir);
+    float lit = smoothstep(-0.25, 0.50, dot(N, L));
+    vec3 V = normalize(cameraPosition - vWPos);
+    float limb = 1.0 - max(dot(N, V), 0.0);
+
+    vec3 traceCol = vec3(0.30, 0.42, 1.00);
+    vec3 col = base * (0.24 + 0.55 * lit) * (1.0 - 0.30 * pow(limb, 1.8));   // dim day side; machine floor-light
+    col += traceCol * traces * (0.42 + 0.22 * lit);
+    col += traceCol * trenchGlow * 0.6;
+    col += vec3(0.75, 0.85, 1.0) * lights * (1.05 - 0.55 * lit);             // windows shine hardest at night
+    // the polar eye: spiral iris converging on a radiant core
+    float eye = 1.0 - smoothstep(0.0, 0.40, axLat);
+    float spiral = smoothstep(0.2, 0.9, sin(axLat * 55.0 - axAz * 2.0 - uTime * 0.25));
+    col += vec3(0.40, 0.55, 1.05) * eye * (0.18 + 0.22 * spiral);
+    col += vec3(0.55, 0.70, 1.20) * pow(max(1.0 - axLat / 0.10, 0.0), 2.0);
+    // faint indigo limb glow
+    col += vec3(0.14, 0.19, 0.42) * pow(limb, 2.6) * 0.5;
+    gl_FragColor = vec4(col, 1.0);
+  }
+`
+
+const CLOUD_FRAG = /* glsl */`
+  precision highp float;
+  varying vec3 vWN; varying vec3 vPosL; varying vec3 vWPos;
+  uniform vec3 uLightDir; uniform float uTime;
+` + GLSL_NOISE + /* glsl */`
+  void main() {
+    vec3 n = normalize(vPosL);
+    float ang = uTime * 0.016;                       // clouds outrun the ground below
+    float ca = cos(ang), sa = sin(ang);
+    vec3 p = vec3(n.x * ca - n.z * sa, n.y, n.x * sa + n.z * ca);
+    float c = fbm(p * 2.5 + vec3(0.0, uTime * 0.004, 0.0));
+    c += 0.10 * sin(p.y * 6.0 + 1.3);                // zonal cloud belts
+    float a = smoothstep(0.56, 0.88, c);
+    a += smoothstep(0.58, 0.85, fbm(p * 5.4 + 9.0)) * 0.30 * a;   // curdled storm texture
+    vec3 N = normalize(vWN);
+    float ndl = dot(N, normalize(uLightDir));
+    float lit = smoothstep(-0.14, 0.45, ndl);
+    vec3 V = normalize(cameraPosition - vWPos);
+    float limb = 1.0 - max(dot(N, V), 0.0);
+    vec3 col = vec3(0.70, 0.73, 0.78) * (0.05 + lit * 0.92);
+    float alpha = clamp(a, 0.0, 1.0) * (0.08 + 0.92 * lit) * (1.0 - 0.55 * pow(limb, 3.0));
+    gl_FragColor = vec4(col, alpha);
   }
 `
 
@@ -137,14 +354,31 @@ const RING_FRAG = /* glsl */`
   varying vec2 vPos;
   uniform float uInner; uniform float uOuter;
   uniform vec3 uColA; uniform vec3 uColB;
+  uniform vec3 uLightLocal;   // light direction in the ring's local frame
+  uniform float uPlanetR;     // radius of the shadow-casting planet
+` + GLSL_NOISE + /* glsl */`
   void main() {
     float r = length(vPos);
     float t = clamp((r - uInner) / (uOuter - uInner), 0.0, 1.0);
-    float bands = 0.5 + 0.5 * sin(t * 70.0);
-    float gap = smoothstep(0.40, 0.45, t) * (1.0 - smoothstep(0.52, 0.57, t));   // dark division
-    float edge = smoothstep(0.0, 0.05, t) * (1.0 - smoothstep(0.92, 1.0, t));
-    vec3 col = mix(uColA, uColB, bands);
-    float alpha = edge * (0.45 + 0.4 * bands) * (1.0 - gap * 0.92);
+    // irregular ringlets: two noise scales over a soft sine carrier
+    float n1 = vnoise(vec3(t * 42.0, 3.7, 9.2));
+    float n2 = vnoise(vec3(t * 150.0, 8.1, 1.4));
+    float bands = clamp(0.28 + n1 * 0.52 + n2 * 0.42 + 0.16 * sin(t * 70.0), 0.0, 1.0);
+    // divisions: broad Cassini gap plus two thin lanes
+    float gap   = smoothstep(0.40, 0.44, t) * (1.0 - smoothstep(0.53, 0.57, t));
+    float lane1 = smoothstep(0.165, 0.175, t) * (1.0 - smoothstep(0.19, 0.20, t));
+    float lane2 = smoothstep(0.775, 0.783, t) * (1.0 - smoothstep(0.802, 0.81, t));
+    float density = bands * (1.0 - gap * 0.93) * (1.0 - lane1 * 0.75) * (1.0 - lane2 * 0.85);
+    float edge = smoothstep(0.0, 0.05, t) * (1.0 - smoothstep(0.90, 1.0, t));
+    // planet shadow: the dark cylinder cast down-light across the far ansa
+    vec3 P = vec3(vPos, 0.0);
+    float along = dot(P, uLightLocal);
+    float perp = length(P - uLightLocal * along);
+    float shadow = (1.0 - smoothstep(uPlanetR * 0.85, uPlanetR * 1.15, perp))
+                 * (1.0 - smoothstep(0.0, uPlanetR * 0.5, along));
+    vec3 col = mix(uColB, uColA, clamp(bands * 1.15, 0.0, 1.0));
+    col *= 0.28 + 0.62 * (1.0 - shadow * 0.9);
+    float alpha = edge * (0.24 + 0.50 * density) * (1.0 - shadow * 0.3);
     gl_FragColor = vec4(col, alpha * 0.9);
   }
 `
@@ -423,9 +657,12 @@ function makeGasGiant(scene, disposables, pos, lightDir) {
     vertexShader: PLANET_VERT, fragmentShader: PLANET_FRAG,
     uniforms: {
       uLightDir: { value: lightDir },
-      uColA: { value: new THREE.Color(0.17, 0.21, 0.29) },
-      uColB: { value: new THREE.Color(0.09, 0.14, 0.19) },
-      uColC: { value: new THREE.Color(0.42, 0.44, 0.48) },
+      uColA: { value: new THREE.Color(0.175, 0.215, 0.285) },  // pale zones
+      uColB: { value: new THREE.Color(0.035, 0.06, 0.105) },   // dark belts
+      uColC: { value: new THREE.Color(0.36, 0.35, 0.33) },     // cream storms
+      uAtmoCol: { value: new THREE.Color(0.07, 0.14, 0.30) },
+      uTime: { value: 0 }, uStorm: { value: 1 }, uHasRing: { value: 0 },
+      uRingN: { value: new THREE.Vector3(0, 1, 0) }, uRingIn: { value: 0 }, uRingOut: { value: 1 },
     },
   })
   const body = new THREE.Mesh(geo, mat); body.position.copy(pos); scene.add(body)
@@ -437,39 +674,93 @@ function makeGasGiant(scene, disposables, pos, lightDir) {
   })
   const atmo = new THREE.Mesh(aGeo, aMat); atmo.position.copy(pos); scene.add(atmo)
   disposables.push(geo, mat, aGeo, aMat)
-  return null
+  return (t) => { mat.uniforms.uTime.value = t }
 }
 
 function makeRingedPlanet(scene, disposables, pos, lightDir) {
   const R = 26
+  const ringEuler = new THREE.Euler(-1.15, 0.4, 0)                       // tilt for a 3/4 view
+  const ringN = new THREE.Vector3(0, 0, 1).applyEuler(ringEuler)
+  const rIn = R * 1.4, rOut = R * 2.4
   const geo = new THREE.SphereGeometry(R, 64, 64)
   const mat = new THREE.ShaderMaterial({
     vertexShader: PLANET_VERT, fragmentShader: PLANET_FRAG,
     uniforms: {
       uLightDir: { value: lightDir },
-      uColA: { value: new THREE.Color(0.26, 0.20, 0.12) },   // sandy tan (dimmed)
-      uColB: { value: new THREE.Color(0.16, 0.13, 0.075) },
-      uColC: { value: new THREE.Color(0.39, 0.34, 0.225) },
+      uColA: { value: new THREE.Color(0.30, 0.235, 0.135) },   // sandy tan
+      uColB: { value: new THREE.Color(0.145, 0.115, 0.065) },
+      uColC: { value: new THREE.Color(0.45, 0.39, 0.26) },
+      uAtmoCol: { value: new THREE.Color(0.13, 0.095, 0.045) },
+      uTime: { value: 0 }, uStorm: { value: 0 }, uHasRing: { value: 1 },
+      uRingN: { value: ringN }, uRingIn: { value: rIn }, uRingOut: { value: rOut },
     },
   })
   const body = new THREE.Mesh(geo, mat); body.position.copy(pos); scene.add(body)
-  const rIn = R * 1.4, rOut = R * 2.4
-  const rGeo = new THREE.RingGeometry(rIn, rOut, 120, 1)
+  // light expressed in the ring's local frame, for the planet's shadow across it
+  const lightLocal = lightDir.clone()
+    .applyQuaternion(new THREE.Quaternion().setFromEuler(ringEuler).invert()).normalize()
+  const rGeo = new THREE.RingGeometry(rIn, rOut, 160, 1)
   const rMat = new THREE.ShaderMaterial({
     vertexShader: RING_VERT, fragmentShader: RING_FRAG,
     uniforms: {
       uInner: { value: rIn }, uOuter: { value: rOut },
-      uColA: { value: new THREE.Color(0.435, 0.375, 0.27) },
-      uColB: { value: new THREE.Color(0.225, 0.19, 0.13) },
+      uColA: { value: new THREE.Color(0.42, 0.36, 0.255) },
+      uColB: { value: new THREE.Color(0.185, 0.15, 0.10) },
+      uLightLocal: { value: lightLocal }, uPlanetR: { value: R },
     },
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
   })
   const ring = new THREE.Mesh(rGeo, rMat)
   ring.position.copy(pos)
-  ring.rotation.set(-1.15, 0.4, 0)        // tilt for a 3/4 view
+  ring.rotation.copy(ringEuler)
   scene.add(ring)
   disposables.push(geo, mat, rGeo, rMat)
-  return null
+  return (t) => { mat.uniforms.uTime.value = t }
+}
+
+function makeEarthlike(scene, disposables, pos, lightDir) {
+  const R = 22
+  const geo = new THREE.SphereGeometry(R, 72, 72)
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: PLANET_VERT, fragmentShader: EARTH_FRAG,
+    uniforms: { uLightDir: { value: lightDir }, uTime: { value: 0 } },
+  })
+  const body = new THREE.Mesh(geo, mat); body.position.copy(pos); scene.add(body)
+  const cGeo = new THREE.SphereGeometry(R * 1.018, 64, 64)
+  const cMat = new THREE.ShaderMaterial({
+    vertexShader: PLANET_VERT, fragmentShader: CLOUD_FRAG,
+    uniforms: { uLightDir: { value: lightDir }, uTime: { value: 0 } },
+    transparent: true, depthWrite: false,
+  })
+  const clouds = new THREE.Mesh(cGeo, cMat); clouds.position.copy(pos); scene.add(clouds)
+  const aGeo = new THREE.SphereGeometry(R * 1.055, 48, 48)
+  const aMat = new THREE.ShaderMaterial({
+    vertexShader: RIM_VERT, fragmentShader: RIM_FRAG,
+    uniforms: { uColor: { value: new THREE.Color(0x4f8fe8) }, uPower: { value: 3.2 } },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide,
+  })
+  const atmo = new THREE.Mesh(aGeo, aMat); atmo.position.copy(pos); scene.add(atmo)
+  disposables.push(geo, mat, cGeo, cMat, aGeo, aMat)
+  return (t) => { mat.uniforms.uTime.value = t; cMat.uniforms.uTime.value = t }
+}
+
+function makeMachinePlanet(scene, disposables, pos, lightDir) {
+  const R = 40
+  const geo = new THREE.SphereGeometry(R, 96, 96)
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: PLANET_VERT, fragmentShader: MACHINE_FRAG,
+    uniforms: { uLightDir: { value: lightDir }, uTime: { value: 0 } },
+  })
+  const body = new THREE.Mesh(geo, mat); body.position.copy(pos); scene.add(body)
+  const aGeo = new THREE.SphereGeometry(R * 1.045, 48, 48)
+  const aMat = new THREE.ShaderMaterial({
+    vertexShader: RIM_VERT, fragmentShader: RIM_FRAG,
+    uniforms: { uColor: { value: new THREE.Color(0x3d4d8e) }, uPower: { value: 3.6 } },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide,
+  })
+  const atmo = new THREE.Mesh(aGeo, aMat); atmo.position.copy(pos); scene.add(atmo)
+  disposables.push(geo, mat, aGeo, aMat)
+  return (t) => { mat.uniforms.uTime.value = t }
 }
 
 function makeBlackHole(scene, disposables, pos) {
@@ -567,12 +858,22 @@ function makeBackdrop(scene, disposables, lightDir, camera) {
 const _CELESTIAL_LIGHT = new THREE.Vector3(0.5, 0.35, 0.8).normalize()
 function buildGasGiantModel() {
   const g = new THREE.Group()
-  makeGasGiant(g, [], new THREE.Vector3(), _CELESTIAL_LIGHT.clone())
+  g.userData.tick = makeGasGiant(g, [], new THREE.Vector3(), _CELESTIAL_LIGHT.clone())
   return g
 }
 function buildRingedPlanetModel() {
   const g = new THREE.Group()
-  makeRingedPlanet(g, [], new THREE.Vector3(), _CELESTIAL_LIGHT.clone())
+  g.userData.tick = makeRingedPlanet(g, [], new THREE.Vector3(), _CELESTIAL_LIGHT.clone())
+  return g
+}
+function buildEarthlikeModel() {
+  const g = new THREE.Group()
+  g.userData.tick = makeEarthlike(g, [], new THREE.Vector3(), _CELESTIAL_LIGHT.clone())
+  return g
+}
+function buildMachinePlanetModel() {
+  const g = new THREE.Group()
+  g.userData.tick = makeMachinePlanet(g, [], new THREE.Vector3(), _CELESTIAL_LIGHT.clone())
   return g
 }
 function buildBlackHoleModel() {
@@ -590,7 +891,7 @@ export {
   NEBULA_VERT, NEBULA_FRAG,
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber,
   buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield, makeBackdrop,
-  makeGasGiant, makeRingedPlanet, makeBlackHole, makeBlackHoleLensed,
-  buildGasGiantModel, buildRingedPlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel,
+  makeGasGiant, makeRingedPlanet, makeEarthlike, makeMachinePlanet, makeBlackHole, makeBlackHoleLensed,
+  buildGasGiantModel, buildRingedPlanetModel, buildEarthlikeModel, buildMachinePlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel,
   SKIES, makeNebulaSky,
 }

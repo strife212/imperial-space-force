@@ -13,7 +13,7 @@ import {
 import {
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital,
   buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield,
-  buildGasGiantModel, buildRingedPlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel,
+  buildGasGiantModel, buildRingedPlanetModel, buildEarthlikeModel, buildMachinePlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel,
   SKIES, makeNebulaSky,
 } from './battle/geometry'
 import { buildStation, buildCathedra, buildRelay, buildWorldEngine } from './cutscene/models'
@@ -31,14 +31,18 @@ const PROP_BUILD = {
   blackhole2:  buildBlackHoleLensedModel,
   gasgiant:    buildGasGiantModel,
   ringedplanet: buildRingedPlanetModel,
+  earthlike:   buildEarthlikeModel,
+  machineplanet: buildMachinePlanetModel,
 }
 const PROP_LABEL = {
   aleph: 'Aleph', worldengine: 'World Engine', station: 'Orbital Station', cathedra: 'Cathedra', relay: 'Sensor Relay',
   blackhole: 'Black Hole', blackhole2: 'Black Hole · Lensed', gasgiant: 'Gas Giant', ringedplanet: 'Ringed Planet',
+  earthlike: 'Earthlike Planet', machineplanet: 'Litania Magna',
 }
 const PROP_RIM = {
   aleph: 0xffcf5a, worldengine: 0x6f86ff, station: 0xffd28a, cathedra: 0xfff0c4, relay: 0x9fe0ff,
-  blackhole: 0xacdcff, blackhole2: 0xffd9a0, gasgiant: 0x5fa0ff, ringedplanet: 0xd8b88a,
+  blackhole: 0xacdcff, blackhole2: 0xffd9a0, gasgiant: 0x5fa0ff, ringedplanet: 0xd8b88a, earthlike: 0x74b8ff,
+  machineplanet: 0x6f86ff,
 }
 
 const TYPES = ['fighter', 'bomber', 'cruiser', 'capital']
@@ -66,7 +70,7 @@ const MODELS = [
   ...TYPES.flatMap(kind => ['blue', 'red'].map(team => ({ kind, team }))),
   { kind: 'capital2', team: 'blue' },
   { kind: 'science', team: 'blue' },
-  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay', 'blackhole', 'blackhole2', 'gasgiant', 'ringedplanet'].map(kind => ({ kind, team: 'prop' })),
+  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay', 'blackhole', 'blackhole2', 'gasgiant', 'ringedplanet', 'earthlike', 'machineplanet'].map(kind => ({ kind, team: 'prop' })),
 ]
 
 // A single large viewer that renders the selected ship on an orbitable turntable.
@@ -150,8 +154,10 @@ function ModelStage({ kind, team }) {
       rim.color.set(TEAMS[team].color)
     }
     const r = radius || 1
-    camera.position.set(0, r * 0.5, r * 2.8); controls.target.set(0, 0, 0); controls.update()
+    // set the zoom limits before update(): update() clamps to the previous
+    // model's limits, which strands the camera when sizes differ wildly
     controls.minDistance = r * 1.2; controls.maxDistance = r * 6
+    camera.position.set(0, r * 0.5, r * 2.8); controls.target.set(0, 0, 0); controls.update()
   }, [kind, team])
 
   return <div className="vistest-stage-canvas" ref={mountRef} />
