@@ -17,7 +17,7 @@ import {
   PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP, PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH, compStrength, TEAMS, SOUND_FILES,
   RED_CAP_NAME, randomBlueCapName, splitCapName, COMMS_PORTRAIT, VICTORY_SEGMENTS,
 } from './battle/constants'
-import { NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital2, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop } from './battle/geometry'
+import { buildBlueModel, buildRedModel, buildBlueCapital2, buildRedCapital, buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, makeShield, makeBackdrop, makeNebulaSky } from './battle/geometry'
 import { makeCampaignBackdrop } from './battle/campaignBackdrop'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
 import { getFlag, setFlag } from '../lib/store'
@@ -471,21 +471,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       rim.position.set(-20, -6, -30)
       scene.add(rim)
 
-      // ── Nebula skydome ─────────────────────────────────────────────────────────
-      const nebGeo = new THREE.SphereGeometry(330, 32, 32)
-      const nebMat = new THREE.ShaderMaterial({
-        vertexShader: NEBULA_VERT, fragmentShader: NEBULA_FRAG,
-        uniforms: {
-          uColA:    { value: new THREE.Color(0.030, 0.055, 0.140) },
-          uColB:    { value: new THREE.Color(0.090, 0.035, 0.150) },
-          uColWarm: { value: new THREE.Color(0.180, 0.070, 0.030) },
-        },
-        side: THREE.BackSide, depthWrite: false, depthTest: false,
-      })
-      const neb = new THREE.Mesh(nebGeo, nebMat)
-      neb.renderOrder = -10
-      scene.add(neb)
-      disposables.push(nebGeo, nebMat)
+      // ── Nebula skydome — the battle's selected sky (campaign nodes pick one;
+      // skirmish and unset nodes fall back to the first sky, Void Indigo) ────────
+      const nebulaSky = makeNebulaSky(scene, disposables, campaign?.sky)
 
       // ── Background body — random type, placed somewhere on-screen up front ──────
       camera.lookAt(0, 0, 0)            // orient the camera so the unproject is correct
@@ -1945,6 +1933,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         }
 
         if (backdropTick) backdropTick(t)
+        nebulaSky.tick(t)   // slow nebula cloud drift
 
         // camera: third-person chase when following a ship, else the orbiting tactical view
         const fol = followRef.current

@@ -20,24 +20,86 @@ const NEBULA_VERT = /* glsl */`
   varying vec3 vDir;
   void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
 `
+// The extra uniforms (uColC dust lanes, uGlowDir/uGlowCol core glow, uTime drift)
+// are all zero-safe: callers that only supply uColA/B/Warm — the cutscene stage
+// and the campaign map — render exactly the original static picture.
 const NEBULA_FRAG = /* glsl */`
   precision highp float;
   varying vec3 vDir;
   uniform vec3 uColA; uniform vec3 uColB; uniform vec3 uColWarm;
+  uniform vec3 uColC;                      // ridged dust-lane accent
+  uniform vec3 uGlowDir; uniform vec3 uGlowCol;   // distant luminous core
+  uniform float uTime;                     // slow cloud drift
 ` + GLSL_NOISE + /* glsl */`
   void main() {
     vec3 d = normalize(vDir);
-    float n  = fbm(d * 2.4 + 3.1);
-    float n2 = fbm(d * 5.3 + 9.7);
+    vec3 dd = d + vec3(uTime * 0.0100, uTime * 0.0042, -uTime * 0.0071);
+    float n  = fbm(dd * 2.4 + 3.1);
+    float n2 = fbm(dd * 5.3 + 9.7);
     float clouds = smoothstep(0.30, 0.95, n * 0.75 + n2 * 0.35);
     vec3 col = vec3(0.012, 0.020, 0.045);                 // deep-space base
     col = mix(col, uColA, clouds * 0.7);                  // cool nebula body
-    col = mix(col, uColB, smoothstep(0.55, 1.05, n) * 0.55);  // denser purple cores
+    col = mix(col, uColB, smoothstep(0.55, 1.05, n) * 0.55);  // denser cores
     float warm = smoothstep(0.15, 1.0, d.x * 0.5 + 0.5) * smoothstep(0.45, 0.95, n2);
     col += uColWarm * warm * 0.22;                        // faint warm region to one side
+    // ridged filaments threading the brighter cloud bodies
+    float ridge = 1.0 - abs(2.0 * fbm(dd * 3.6 - 4.2) - 1.0);
+    col += uColC * pow(ridge, 3.0) * clouds * 0.9;
+    // soft directional glow — a far-off luminous core behind the field
+    float g = max(dot(d, uGlowDir), 0.0);
+    col += uGlowCol * (pow(g, 3.0) * 0.5 + pow(g, 9.0) * 0.5);
     gl_FragColor = vec4(col, 1.0);
   }
 `
+
+// ── Battle skies — selectable nebula palettes for the skydome ──────────────────
+// Five looks sharing NEBULA_FRAG. `key` is what battles reference (campaign nodes
+// pick one; anything unset falls back to the first entry, Void Indigo — the
+// classic backdrop). `drift` scales the cloud-drift rate.
+const SKIES = [
+  { key: 'void',    name: 'Void Indigo',    a: [0.030, 0.055, 0.140], b: [0.090, 0.035, 0.150], warm: [0.180, 0.070, 0.030], accent: [0.050, 0.045, 0.110], glowDir: [0.55, 0.20, -0.35], glowCol: [0.10, 0.09, 0.17], drift: 1.0 },
+  { key: 'ember',   name: 'Ember Reach',    a: [0.115, 0.038, 0.018], b: [0.150, 0.032, 0.055], warm: [0.240, 0.110, 0.030], accent: [0.130, 0.050, 0.018], glowDir: [-0.45, 0.30, 0.45], glowCol: [0.22, 0.09, 0.03], drift: 1.25 },
+  { key: 'verdant', name: 'Verdant Drift',  a: [0.020, 0.095, 0.075], b: [0.030, 0.075, 0.130], warm: [0.060, 0.180, 0.100], accent: [0.025, 0.105, 0.070], glowDir: [0.30, 0.50, 0.30],  glowCol: [0.05, 0.14, 0.10], drift: 0.9 },
+  { key: 'rose',    name: 'Rose Cathedral', a: [0.100, 0.025, 0.120], b: [0.160, 0.040, 0.100], warm: [0.220, 0.070, 0.130], accent: [0.120, 0.030, 0.100], glowDir: [-0.35, 0.42, -0.40], glowCol: [0.18, 0.06, 0.12], drift: 0.8 },
+  { key: 'aurum',   name: 'Aurum Dawn',     a: [0.055, 0.045, 0.085], b: [0.150, 0.105, 0.035], warm: [0.235, 0.160, 0.055], accent: [0.140, 0.100, 0.030], glowDir: [0.60, 0.28, 0.20],  glowCol: [0.24, 0.15, 0.05], drift: 1.1 },
+]
+const skyByKey = (key) => SKIES.find(s => s.key === key) || SKIES[0]
+
+// Build the nebula skydome for a battle. Returns { tick, setSky }: tick(t)
+// drives the slow cloud drift; setSky(key) recolours the dome live.
+function makeNebulaSky(scene, disposables, skyKey, radius = 330) {
+  let sky = skyByKey(skyKey)
+  const geo = new THREE.SphereGeometry(radius, 32, 32)
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: NEBULA_VERT, fragmentShader: NEBULA_FRAG,
+    uniforms: {
+      uColA:    { value: new THREE.Color(...sky.a) },
+      uColB:    { value: new THREE.Color(...sky.b) },
+      uColWarm: { value: new THREE.Color(...sky.warm) },
+      uColC:    { value: new THREE.Color(...sky.accent) },
+      uGlowDir: { value: new THREE.Vector3(...sky.glowDir).normalize() },
+      uGlowCol: { value: new THREE.Color(...sky.glowCol) },
+      uTime:    { value: 0 },
+    },
+    side: THREE.BackSide, depthWrite: false, depthTest: false,
+  })
+  const mesh = new THREE.Mesh(geo, mat)
+  mesh.renderOrder = -10
+  scene.add(mesh)
+  disposables.push(geo, mat)
+  return {
+    tick: (t) => { mat.uniforms.uTime.value = t * sky.drift },
+    setSky: (key) => {
+      sky = skyByKey(key)
+      mat.uniforms.uColA.value.setRGB(...sky.a)
+      mat.uniforms.uColB.value.setRGB(...sky.b)
+      mat.uniforms.uColWarm.value.setRGB(...sky.warm)
+      mat.uniforms.uColC.value.setRGB(...sky.accent)
+      mat.uniforms.uGlowDir.value.set(...sky.glowDir).normalize()
+      mat.uniforms.uGlowCol.value.setRGB(...sky.glowCol)
+    },
+  }
+}
 
 // ── Gas-giant planet — banded fbm surface with a soft day/night terminator ─────
 const PLANET_VERT = /* glsl */`
@@ -530,4 +592,5 @@ export {
   buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield, makeBackdrop,
   makeGasGiant, makeRingedPlanet, makeBlackHole, makeBlackHoleLensed,
   buildGasGiantModel, buildRingedPlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel,
+  SKIES, makeNebulaSky,
 }

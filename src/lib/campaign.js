@@ -19,26 +19,28 @@ export const STARTING_FLEET = { fighters: 8, bombers: 0, cruisers: 0 }
 // One entry per campaign node, in story order. `enemy` is the fixed Red fleet
 // (a flagship is always added on top by the battle). `reward` is the Requisition
 // granted the first time the node is cleared. Fleets escalate to a finale.
+// `sky` picks the battle's nebula backdrop (see SKIES in battle/geometry.js);
+// omit it to use the default first sky (Void Indigo).
 export const NODE_BATTLES = [
-  { title: 'First Contact',     enemyName: 'Aleph Sentinels',       enemy: { fighters: 7,  bombers: 0, cruisers: 0 }, reward: 560,
+  { title: 'First Contact',     enemyName: 'Aleph Sentinels',       enemy: { fighters: 7,  bombers: 0, cruisers: 0 }, reward: 560,  sky: 'void',
     brief: 'Hostiles of unknown origin have swarmed the Cassiopeia. Break the ambush.' },
-  { title: 'The Muster',        enemyName: 'Rebel Vanguard',        enemy: { fighters: 9,  bombers: 1, cruisers: 0 }, reward: 720,
+  { title: 'The Muster',        enemyName: 'Rebel Vanguard',        enemy: { fighters: 9,  bombers: 1, cruisers: 0 }, reward: 720,  sky: 'aurum',
     brief: 'A rebel screen tests the mustering fleet. Hold the line and scatter them.' },
-  { title: 'The Warfront',      enemyName: 'Heretic Battlegroup',   enemy: { fighters: 11, bombers: 1, cruisers: 1 }, reward: 880,
+  { title: 'The Warfront',      enemyName: 'Heretic Battlegroup',   enemy: { fighters: 11, bombers: 1, cruisers: 1 }, reward: 880,  sky: 'ember',
     brief: 'The front is open. Punch through the heretic battlegroup and take the lane.' },
-  { title: 'The Hush',          enemyName: 'The Silent Fleet',      enemy: { fighters: 17, bombers: 2, cruisers: 1 }, reward: 1000,
+  { title: 'The Hush',          enemyName: 'The Silent Fleet',      enemy: { fighters: 17, bombers: 2, cruisers: 1 }, reward: 1000, sky: 'rose',
     brief: 'They came without signal or hail. Answer the silence in kind.' },
-  { title: 'The Great Litany',  enemyName: 'Apostate Armada',       enemy: { fighters: 22, bombers: 2, cruisers: 2 }, reward: 1220,
+  { title: 'The Great Litany',  enemyName: 'Apostate Armada',       enemy: { fighters: 22, bombers: 2, cruisers: 2 }, reward: 1220, sky: 'verdant',
     brief: 'Guard the relays of the Great Litany. Do not let the apostates break the chant.' },
-  { title: 'The Fall',          enemyName: 'The Unsung Host',       enemy: { fighters: 29, bombers: 3, cruisers: 2 }, reward: 1440,
+  { title: 'The Fall',          enemyName: 'The Unsung Host',       enemy: { fighters: 29, bombers: 3, cruisers: 2 }, reward: 1440, sky: 'ember',
     brief: 'The Unsung Host swarms out of the dark. Hold the line, whatever it costs.' },
-  { title: 'The Final Hearing', enemyName: 'The Hush at the Gates', enemy: { fighters: 39, bombers: 3, cruisers: 3 }, reward: 1730,
+  { title: 'The Final Hearing', enemyName: 'The Hush at the Gates', enemy: { fighters: 39, bombers: 3, cruisers: 3 }, reward: 1730, sky: 'aurum',
     brief: 'The Discord has reached the Throneworld itself. Hold the skies over Novaraya while the Empress renders the Final Hearing.' },
-  { title: 'The Annunciator',   enemyName: 'Heralds of the Hush',   enemy: { fighters: 51, bombers: 4, cruisers: 3 }, reward: 2020,
+  { title: 'The Annunciator',   enemyName: 'Heralds of the Hush',   enemy: { fighters: 51, bombers: 4, cruisers: 3 }, reward: 2020, sky: 'rose',
     brief: 'Her Annunciator is arming. Hold the Heralds of the Hush off the firing lane until the Lance can be cast.' },
-  { title: 'The Lance',         enemyName: 'Throneward Blockade',    enemy: { fighters: 64, bombers: 5, cruisers: 4 }, reward: 2450,
+  { title: 'The Lance',         enemyName: 'Throneward Blockade',    enemy: { fighters: 64, bombers: 5, cruisers: 4 }, reward: 2450, sky: 'void',
     brief: 'Clear the blockade so the Lance can be cast. Everything rides on the lane.' },
-  { title: 'Order Restored',    enemyName: "Discord's Last Stand",   enemy: { fighters: 69, bombers: 7, cruisers: 6 }, reward: 3600,
+  { title: 'Order Restored',    enemyName: "Discord's Last Stand",   enemy: { fighters: 69, bombers: 7, cruisers: 6 }, reward: 3600, sky: 'aurum',
     brief: "The Discord's last stand, laid bare at last. Break it utterly and the Song returns." },
 ]
 

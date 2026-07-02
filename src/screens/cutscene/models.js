@@ -5,21 +5,101 @@ import * as THREE from 'three'
 // field helper. The stage's teardown disposes everything attached to the scene.
 
 // An orbital station / drydock: a spine with habitation rings, docking arms and
-// beacon lights. Oriented along +Y; scenes rotate/scale as needed.
+// beacon lights. Oriented along +Y; scenes rotate/scale as needed. Same envelope
+// and silhouette as the original simple build (height ~±18.9, radius ~9.1), but
+// dressed with bulkhead collars, hull greebles, ring habitation pods, trussed
+// spokes, lit windows, a comms dish and landing-pad rings for close-up fidelity.
 export function buildStation() {
   const g = new THREE.Group()
-  const hull = new THREE.MeshStandardMaterial({ color: 0x6b7686, emissive: 0x0a1626, emissiveIntensity: 0.35, metalness: 0.82, roughness: 0.5 })
-  const lit = new THREE.MeshBasicMaterial({ color: 0xffd28a })   // window / beacon lights (bloom)
-  g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 30, 14), hull))   // central spine
-  g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(4.2, 0), hull))          // command hub
+  const hull  = new THREE.MeshStandardMaterial({ color: 0x6b7686, emissive: 0x0a1626, emissiveIntensity: 0.35, metalness: 0.82, roughness: 0.5 })
+  const panel = new THREE.MeshStandardMaterial({ color: 0x424d5e, emissive: 0x070f1c, emissiveIntensity: 0.3, metalness: 0.75, roughness: 0.62 })
+  const lit   = new THREE.MeshBasicMaterial({ color: 0xffd28a })   // window / beacon lights (bloom)
+  const nav   = new THREE.MeshBasicMaterial({ color: 0xff6a52 })   // hazard / nav markers
+
+  // shared low-poly pieces, reused across the greebles
+  const podGeo    = new THREE.BoxGeometry(1.3, 1.5, 2.0)   // x = radial depth, z = tangential
+  const strutGeo  = new THREE.BoxGeometry(16, 0.3, 0.3)
+  const windowGeo = new THREE.SphereGeometry(0.13, 6, 6)
+
+  // ── central spine, segmented by bulkhead collars, hugged by utility modules ──
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 30, 14), hull))
+  for (const y of [-12.2, -4.4, 4.4, 12.2]) {
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(2.7, 2.7, 1.1, 14), panel)
+    collar.position.y = y; g.add(collar)
+  }
+  const modY = [-11, -6.2, -3.4, 3.4, 6.2, 11]
+  for (let i = 0; i < 12; i++) {
+    const a = i * 2.4                       // golden-angle spread — even but unaligned
+    const m = new THREE.Mesh(podGeo, i % 3 ? panel : hull)
+    m.scale.setScalar(0.34 + (i % 3) * 0.09)
+    m.position.set(Math.cos(a) * 2.35, modY[i % 6] + ((i % 4) - 1.5) * 0.35, Math.sin(a) * 2.35)
+    m.rotation.y = -a
+    g.add(m)
+  }
+  for (let i = 0; i < 8; i++) {             // lit portholes between the rings
+    const a = i * 2.4 + 1.2, y = modY[(i + 3) % 6] + 1.3
+    const w = new THREE.Mesh(windowGeo, lit)
+    w.position.set(Math.cos(a) * 2.28, y, Math.sin(a) * 2.28)
+    g.add(w)
+  }
+
+  // ── command hub: faceted core, equatorial collar, comms dish ──
+  g.add(new THREE.Mesh(new THREE.IcosahedronGeometry(4.2, 0), hull))
+  const hubBand = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 0.9, 18), panel)
+  g.add(hubBand)
+  const dish = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 0.16, 0.55, 14), panel)
+  dish.position.set(4.6, 2.1, 0); dish.rotation.z = -0.85; g.add(dish)
+  const dishTip = new THREE.Mesh(windowGeo, nav)
+  dishTip.position.set(5.2, 2.75, 0); g.add(dishTip)
+
+  // ── habitation rings: smoother tori, trussed spokes, pods and window bands ──
   for (const y of [-8, 0, 8]) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(8, 1.1, 8, 32), hull); ring.position.y = y; ring.rotation.x = Math.PI / 2; g.add(ring)
-    for (let k = 0; k < 4; k++) { const s = new THREE.Mesh(new THREE.BoxGeometry(16, 0.6, 0.6), hull); s.position.y = y; s.rotation.y = k * Math.PI / 2; g.add(s) }
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(8, 1.0, 10, 48), hull)
+    ring.position.y = y; ring.rotation.x = Math.PI / 2; g.add(ring)
+    for (let k = 0; k < 4; k++) {                          // paired thin struts (truss look)
+      for (const dy of [-0.4, 0.4]) {
+        const s = new THREE.Mesh(strutGeo, panel)
+        s.position.y = y + dy; s.rotation.y = k * Math.PI / 2
+        g.add(s)
+      }
+    }
+    for (let k = 0; k < 8; k++) {                          // habitation pods studding the ring
+      const a = (k / 8) * Math.PI * 2 + (y === 0 ? Math.PI / 8 : 0)
+      const pod = new THREE.Mesh(podGeo, k % 2 ? hull : panel)
+      pod.position.set(Math.cos(a) * 8, y, Math.sin(a) * 8)
+      pod.rotation.y = -a
+      g.add(pod)
+    }
+    for (let k = 0; k < 10; k++) {                         // window lights on the outer face
+      const a = (k / 10) * Math.PI * 2 + 0.31 * (y + 9)
+      const w = new THREE.Mesh(windowGeo, lit)
+      w.position.set(Math.cos(a) * 9.0, y + ((k % 3) - 1) * 0.3, Math.sin(a) * 9.0)
+      g.add(w)
+    }
   }
+
+  // ── docking arms: railed trusses, pads with lit landing rings + nav markers ──
   for (const y of [-15, 15]) {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(1.4, 6, 1.4), hull); arm.position.y = y; g.add(arm)
-    const pad = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 0.7, 12), hull); pad.position.y = y + (y > 0 ? 3.5 : -3.5); g.add(pad)
+    const sgn = y > 0 ? 1 : -1
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(1.1, 6, 1.1), hull); arm.position.y = y; g.add(arm)
+    for (const [ox, oz] of [[0.8, 0], [-0.8, 0], [0, 0.8], [0, -0.8]]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.26, 5.4, 0.26), panel)
+      rail.position.set(ox, y, oz); g.add(rail)
+    }
+    const padY = y + sgn * 3.5
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 0.7, 18), hull); pad.position.y = padY; g.add(pad)
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(2.9, 0.09, 6, 36), lit)     // landing ring on the deck
+    rim.position.y = padY + sgn * 0.36; rim.rotation.x = Math.PI / 2; g.add(rim)
+    const tower = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.8), panel)      // control room under the deck lip
+    tower.position.set(2.5, padY - sgn * 0.8, 0); g.add(tower)
+    for (const a of [Math.PI / 3, Math.PI]) {                                      // hazard markers on the deck edge
+      const n = new THREE.Mesh(windowGeo, nav)
+      n.position.set(Math.cos(a) * 3.1, padY + sgn * 0.38, Math.sin(a) * 3.1)
+      g.add(n)
+    }
   }
+
+  // ── original beacon set (kept — part of the recognisable silhouette) ──
   for (const [x, y, z] of [[0, 17, 0], [0, -17, 0], [9, 0, 0], [-9, 0, 0], [0, 0, 9], [0, 0, -9]]) {
     const b = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), lit); b.position.set(x, y, z); g.add(b)
   }

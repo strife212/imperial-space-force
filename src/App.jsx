@@ -162,6 +162,7 @@ export default function App() {
     nodeTitle:  NODE_BATTLES[i].title,
     enemyName:  NODE_BATTLES[i].enemyName,
     enemyComp:  NODE_BATTLES[i].enemy,
+    sky:        NODE_BATTLES[i].sky,              // nebula backdrop for this node (default first sky)
     playerComp: getDeployFleet(),                 // buyable fleet + permanent (unsellable) fighters
     capMaxHp:   getCapMaxHp(),                     // flagship hull upgrades
     capMissile: hasCapMissile(),                  // flagship missile-launcher upgrade

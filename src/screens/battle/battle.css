@@ -70,6 +70,19 @@
   color: var(--c-ash-dim); cursor: pointer; white-space: nowrap;
 }
 .vistest-check input { accent-color: var(--c-scarlet); cursor: pointer; }
+/* combat-mode sky picker */
+.vistest-select {
+  background: rgba(8, 14, 30, 0.85);
+  border: 1px solid rgba(120, 180, 255, 0.5);
+  border-radius: 3px;
+  color: var(--c-pink);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.vistest-select:hover { border-color: rgba(160, 210, 255, 0.9); color: #fff; }
 .vistest-hint {
   position: absolute;
   top: 12px; left: 50%;

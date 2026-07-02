@@ -11,9 +11,10 @@ import {
   BOLT_SPEED, BOMB_LIFE,
 } from './battle/constants'
 import {
-  NEBULA_VERT, NEBULA_FRAG, buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital,
+  buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital,
   buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield,
   buildGasGiantModel, buildRingedPlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel,
+  SKIES, makeNebulaSky,
 } from './battle/geometry'
 import { buildStation, buildCathedra, buildRelay, buildWorldEngine } from './cutscene/models'
 import './battle/battle.css'
@@ -166,6 +167,9 @@ export default function VisualTestScreen({ onReturn }) {
   const [flares, setFlares]     = useState(false)   // unlimited flares (capital/bomber decoy every missile)
   const flaresRef = useRef(flares)
   useEffect(() => { flaresRef.current = flares }, [flares])
+  const [sky, setSky] = useState(SKIES[0].key)      // combat-mode nebula backdrop
+  const skyRef = useRef(null)                       // live sky handle from the scene
+  useEffect(() => { skyRef.current?.setSky(sky) }, [sky])
 
   useEffect(() => {
     if (mode !== 'combat') return       // the duel scene only runs in combat mode
@@ -194,19 +198,10 @@ export default function VisualTestScreen({ onReturn }) {
       const key = new THREE.DirectionalLight(0xcfe0ff, 0.85); key.position.set(6, 12, 8); scene.add(key)
       const rim = new THREE.DirectionalLight(0x4060a0, 0.4); rim.position.set(-10, -4, -12); scene.add(rim)
 
-      // nebula skydome + stars (matches the battle backdrop)
-      const nebGeo = new THREE.SphereGeometry(330, 32, 32)
-      const nebMat = new THREE.ShaderMaterial({
-        vertexShader: NEBULA_VERT, fragmentShader: NEBULA_FRAG,
-        uniforms: {
-          uColA: { value: new THREE.Color(0.030, 0.055, 0.140) },
-          uColB: { value: new THREE.Color(0.090, 0.035, 0.150) },
-          uColWarm: { value: new THREE.Color(0.180, 0.070, 0.030) },
-        },
-        side: THREE.BackSide, depthWrite: false, depthTest: false,
-      })
-      const neb = new THREE.Mesh(nebGeo, nebMat); neb.renderOrder = -10; scene.add(neb)
-      disposables.push(nebGeo, nebMat)
+      // nebula skydome + stars (matches the battle backdrop); the dropdown swaps
+      // the sky palette live via skyRef
+      const nebulaSky = makeNebulaSky(scene, disposables, sky)
+      skyRef.current = nebulaSky
       const starCount = 900, sp = new Float32Array(starCount * 3)
       for (let i = 0; i < starCount; i++) {
         const rr = 120 + Math.random() * 180, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1)
@@ -346,8 +341,11 @@ export default function VisualTestScreen({ onReturn }) {
       }
 
       const clock = new THREE.Clock()
+      let sceneT = 0
       const frame = () => {
         const dt = Math.min(clock.getDelta(), 0.05)
+        sceneT += dt
+        nebulaSky.tick(sceneT)   // slow nebula cloud drift
 
         for (const s of ships) {
           const e = s === blue ? red : blue
@@ -444,6 +442,7 @@ export default function VisualTestScreen({ onReturn }) {
 
       return () => {
         cancelAnimationFrame(raf); ro.disconnect(); controls.dispose()
+        skyRef.current = null
         disposables.forEach(d => d.dispose && d.dispose())
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() }); puffs.forEach(p => p.mat.dispose()); flameFX.forEach(f => f.mat.dispose())
         composer.dispose && composer.dispose(); renderer.dispose()
@@ -483,6 +482,12 @@ export default function VisualTestScreen({ onReturn }) {
                 <label className="vistest-check">
                   <input type="checkbox" checked={flares} onChange={(e) => setFlares(e.target.checked)} />
                   Flares: {flares ? 'unlimited' : 'off'}
+                </label>
+                <label className="vistest-check vistest-sky">
+                  Sky:
+                  <select className="vistest-select" value={sky} onChange={(e) => setSky(e.target.value)}>
+                    {SKIES.map(s => <option key={s.key} value={s.key}>{s.name}</option>)}
+                  </select>
                 </label>
               </div>
               {typeRow('red', redType, setRedType)}
