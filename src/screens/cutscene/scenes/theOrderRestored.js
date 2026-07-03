@@ -10,6 +10,22 @@ const LINE2 = 'Long live the Throne, where she hears alone. Caelum canit.'
 
 export default {
   label: 'CUTSCENE / THE ORDER RESTORED',
+  establishing: { name: 'ORDER RESTORED', sub: 'The Song Returns', stamp: 'AUDITIO FEED · ALL STATIONS · STRATCON 4' },
+  feed: [
+    { t: 1.2,  level: 'ok',   text: '[OK] Stellar output recovering · all monitored classes' },
+    { t: 4.0,  level: 'ok',   text: '[OK] Carrier re-acquired · 10.3 GHz · the chord holds' },
+    { t: 6.8,  level: 'info', text: 'Auditio channel singing · she hears alone' },
+    { t: 10.0, level: 'info', text: 'Fleet stands down · DEFCON-5 · muster honours recorded' },
+    { t: 13.0, level: 'ok',   text: '✦ CAELUM CANIT · ILLA AVDIT ✦' },
+  ],
+  readout: {
+    id: 'Auditio Monitor',
+    rows: [
+      { label: 'Song',      value: (t) => `${Math.min(42, t * 3.5).toFixed(1)} dB` },
+      { label: 'Starfield', value: (t) => `${Math.min(92, Math.floor(4 + t * 8))}%` },
+      { label: 'State',     value: (t) => (t < 6 ? 'RECOVERING' : 'RESTORED') },
+    ],
+  },
   bloom: 0.6,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient, lights, backdrop } = ctx

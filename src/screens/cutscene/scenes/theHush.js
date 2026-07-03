@@ -10,6 +10,23 @@ const LINE3 = 'Throne preserve us. I can no longer hear the Song.'
 
 export default {
   label: 'CUTSCENE / THE HUSH',
+  establishing: { name: 'THE HUSH', sub: 'The Song of the Stars Fails', stamp: 'AUDITIO FEED · PRIORITY OMEGA' },
+  feed: [
+    { t: 1.0,  level: 'warn',    text: 'Stellar output falling across all monitored classes' },
+    { t: 3.2,  level: 'crit',    text: 'Carrier lost · 10.3 GHz · re-acquisition failed' },
+    { t: 5.4,  level: 'crit',    text: '[FAIL] Auditio channel silent · the chord does not answer' },
+    { t: 8.0,  level: 'discord', text: 'YE SHALL BE AS GODS' },
+    { t: 10.5, level: 'warn',    text: 'Chronology protection scan inconclusive · σ rising' },
+    { t: 12.5, level: 'crit',    text: 'Sky luminance 4% of baseline · the Hush descends' },
+  ],
+  readout: {
+    id: 'Auditio Ultima Monitor',
+    rows: [
+      { label: 'Song',      value: (t) => (t > 12 ? 'SILENT' : `${Math.max(0.4, 42 - t * 3.4).toFixed(1)} dB`) },
+      { label: 'Starfield', value: (t) => `${Math.max(4, Math.floor(100 - t * 14))}%` },
+      { label: 'Tachyon',   value: (t) => `${(0.8 + t * 0.35).toFixed(2)} σ` },
+    ],
+  },
   bloom: 0.55,
   create(ctx) {
     const { scene, camera, comms, end, lights, backdrop } = ctx

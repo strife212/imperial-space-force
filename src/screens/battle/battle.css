@@ -258,6 +258,83 @@
   text-transform: uppercase;
   color: rgba(160, 190, 230, 0.82);
 }
+.cut-establish-stamp {
+  margin-top: 7px;
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(130, 160, 205, 0.6);
+}
+
+/* Cutscene telemetry feed — the old HMSS fire-control bus log riding the stage */
+.cut-feed {
+  position: absolute;
+  left: 20px; top: 14px;
+  z-index: 5;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 480px;
+}
+.cut-feed-line {
+  color: rgba(168, 198, 240, 0.78);
+  background: rgba(2, 6, 18, 0.55);
+  border-left: 2px solid rgba(120, 180, 255, 0.35);
+  padding: 3px 9px 3px 8px;
+  text-transform: uppercase;
+  animation: cut-feed-in 0.35s ease both;
+}
+.cut-feed-t { color: rgba(120, 150, 200, 0.6); margin-right: 7px; }
+.cut-feed-line--ok    { color: #8fe6b0; border-left-color: rgba(110, 230, 160, 0.55); }
+.cut-feed-line--warn  { color: #ffd27d; border-left-color: rgba(255, 205, 110, 0.6); }
+.cut-feed-line--crit  { color: #ff9a86; border-left-color: rgba(255, 120, 95, 0.65); }
+.cut-feed-line--discord {
+  color: #ff6f9e;
+  border-left-color: rgba(255, 90, 150, 0.8);
+  text-shadow: 0 0 8px rgba(255, 80, 140, 0.75);
+  animation: cut-feed-in 0.35s ease both, cut-feed-glitch 0.9s steps(2) infinite;
+}
+@keyframes cut-feed-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+@keyframes cut-feed-glitch { 50% { opacity: 0.5; } }
+
+/* Cutscene corner readout — a compact PNL- telemetry block */
+.cut-readout {
+  position: absolute;
+  right: 18px; top: 14px;
+  z-index: 5;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  background: rgba(2, 6, 18, 0.62);
+  border: 1px solid rgba(120, 180, 255, 0.28);
+  border-radius: 3px;
+  padding: 7px 10px 8px;
+  min-width: 200px;
+}
+.cut-readout-title {
+  color: rgba(140, 175, 235, 0.75);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(120, 180, 255, 0.2);
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+}
+.cut-readout-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  color: rgba(190, 215, 250, 0.9);
+  padding: 1.5px 0;
+  text-transform: uppercase;
+}
+.cut-readout-label { color: rgba(140, 165, 210, 0.65); }
+.cut-readout-value { font-weight: 700; text-transform: none; }   /* keep units/σ as authored */
 
 /* Cutscene controls (skip + replay, bottom-right of the stage) */
 .cut-controls {

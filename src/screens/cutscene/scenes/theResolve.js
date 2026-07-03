@@ -10,7 +10,21 @@ const LINE2 = 'From the Cathedra high, to the listening below — falls the Lanc
 
 export default {
   label: 'CUTSCENE / THE FINAL HEARING',
-  establishing: { name: 'NOVARAYA', sub: 'Imperial Throneworld' },
+  establishing: { name: 'NOVARAYA', sub: 'Imperial Throneworld', stamp: 'THE FINAL HEARING · SYNOD WITNESS RECORD' },
+  feed: [
+    { t: 1.2,  level: 'info', text: 'The Cathedra in session · honour guard on station' },
+    { t: 4.0,  level: 'info', text: 'She has heard it · the Discord, as it was foretold' },
+    { t: 7.2,  level: 'warn', text: 'The Synod defers · prophecy invoked: AUDITIO ULTIMA' },
+    { t: 10.8, level: 'crit', text: 'Her word: the Lance is to be cast · STRATCON 1 in effect' },
+  ],
+  readout: {
+    id: 'Synod Record · CLR-Ω',
+    rows: [
+      { label: 'Hearing',  value: 'FINAL' },
+      { label: 'Stratcon', value: (t) => (t < 10.8 ? '2' : '1') },
+      { label: 'Assent',   value: (t) => (t < 10.8 ? 'IN SESSION' : 'GIVEN') },
+    ],
+  },
   bloom: 0.7,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx

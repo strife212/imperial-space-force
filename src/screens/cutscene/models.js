@@ -213,6 +213,97 @@ export function buildCathedra() {
   return g
 }
 
+// The Annunciator — an RKV platform: a spinal railgun that casts physics
+// packages across interstellar distances at 0.9 c. The barrel runs +X with the
+// muzzle face at x≈31 (the cutscene's charge FX anchor); twin launch rails and
+// EM accelerator coils forward, breech + fusor torus + capacitor banks aft,
+// waste-heat radiators glowing amidships. ~64 units long, deterministic.
+export function buildAnnunciator() {
+  const g = new THREE.Group()
+  const metal = new THREE.MeshStandardMaterial({ color: 0x5a6470, emissive: 0x0a1422, emissiveIntensity: 0.4, metalness: 0.85, roughness: 0.45 })
+  const panel = new THREE.MeshStandardMaterial({ color: 0x39424e, emissive: 0x070d18, emissiveIntensity: 0.35, metalness: 0.78, roughness: 0.55 })
+  const coilM = new THREE.MeshStandardMaterial({ color: 0x6b7686, emissive: 0x16305a, emissiveIntensity: 0.7, metalness: 0.8, roughness: 0.4 })
+  const radM  = new THREE.MeshStandardMaterial({ color: 0x2a1a14, emissive: 0x571e08, emissiveIntensity: 0.85, metalness: 0.4, roughness: 0.7 })
+  const lit = new THREE.MeshBasicMaterial({ color: 0xfff0c4 })
+  const nav = new THREE.MeshBasicMaterial({ color: 0xff6a52 })
+  const glow = new THREE.MeshBasicMaterial({ color: 0x9fd8ff })
+  const add = (mesh, x, y, z) => { mesh.position.set(x, y, z); g.add(mesh); return mesh }
+  const alongX = (mesh) => { mesh.rotation.z = Math.PI / 2; return mesh }
+
+  // ── primary rail assembly: core tube, twin launch rails, truss stringers ──
+  add(alongX(new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 46, 12), metal)), 4, 0, 0)
+  for (const s of [1, -1]) add(new THREE.Mesh(new THREE.BoxGeometry(50, 1.5, 0.5), panel), 4, 0, s * 1.75)
+  for (const a of [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4]) {
+    add(new THREE.Mesh(new THREE.BoxGeometry(46, 0.32, 0.32), metal), 4, Math.sin(a) * 2.45, Math.cos(a) * 2.45)
+  }
+  // conduit greebles riding the spine between coils
+  for (let i = 0; i < 5; i++) add(new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.7, 1.1), i % 2 ? panel : metal), -12 + i * 7.5, 1.55, 0)
+
+  // ── EM accelerator coils: dense aft, sparser toward the muzzle ──
+  for (let i = 0; i < 10; i++) {
+    const x = -16 + i * (i < 6 ? 3.4 : 4.6) + (i >= 6 ? -7.2 : 0)   // -16..+? dense→sparse
+    const major = i % 2 === 0
+    const c = alongX(new THREE.Mesh(new THREE.CylinderGeometry(major ? 2.75 : 2.3, major ? 2.75 : 2.3, major ? 0.85 : 0.6, 8), major ? coilM : panel))
+    add(c, x, 0, 0)
+  }
+
+  // ── muzzle assembly: reinforced collar, four choke prongs, lit aperture ──
+  add(alongX(new THREE.Mesh(new THREE.CylinderGeometry(3.0, 3.0, 1.6, 8), metal)), 27.5, 0, 0)
+  for (const a of [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4]) {
+    add(new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.7, 0.7), metal), 29.2, Math.sin(a) * 1.9, Math.cos(a) * 1.9)
+  }
+  const muzzleRing = add(new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.16, 8, 24), glow), 31.2, 0, 0)
+  muzzleRing.rotation.y = Math.PI / 2
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), nav), 31.6, 2.1, 0)
+
+  // ── targeting sensor array on a dorsal stalk near the muzzle ──
+  add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.2, 0.3), panel), 24, 3.4, 0)
+  const tDish = add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.12, 0.32, 12), metal), 24, 4.7, 0)
+  tDish.rotation.z = -0.9
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), lit), 24.5, 5.1, 0)
+
+  // ── breech block and containment collar ──
+  add(new THREE.Mesh(new THREE.BoxGeometry(7, 6.5, 6.5), metal), -22, 0, 0)
+  add(alongX(new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.2, 1.2, 8), panel)), -18.4, 0, 0)
+
+  // ── D-³He fusor torus aft, with core glow and support struts ──
+  const fusor = add(new THREE.Mesh(new THREE.TorusGeometry(3.2, 1.0, 10, 24), coilM), -28.5, 0, 0)
+  fusor.rotation.y = Math.PI / 2
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 10), lit), -28.5, 0, 0)
+  for (const a of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
+    add(new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.5, 0.5), panel), -26.2, Math.sin(a) * 2.6, Math.cos(a) * 2.6)
+  }
+  // station-keeping block + thruster glows at the stern
+  add(new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 2.2), panel), -32.2, 0, 0)
+  for (const s of [1, -1]) add(new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 6), glow), -33.1, 0, s * 0.7)
+
+  // ── capacitor bank clusters riding the breech, lit end caps ──
+  for (const sy of [1, -1]) for (let i = 0; i < 3; i++) {
+    const z = (i - 1) * 1.75
+    add(alongX(new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 3.8, 10), i % 2 ? metal : panel)), -22, sy * 4.15, z)
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 6), lit), -20, sy * 4.15, z)
+  }
+  // reaction-mass tanks (liquid Xe) saddled either side
+  for (const s of [1, -1]) add(new THREE.Mesh(new THREE.SphereGeometry(1.9, 14, 14), metal), -25.8, 0, s * 4.6)
+
+  // ── fire-control module: dorsal tower, lit windows, comms dish, beacon ──
+  add(new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 2.4), metal), -16.5, 4.5, 0)
+  for (let i = 0; i < 3; i++) add(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.06), lit), -17.3 + i * 0.9, 4.7, 1.24)
+  const cDish = add(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.1, 0.28, 12), panel), -15.4, 6.1, 0.6)
+  cDish.rotation.x = 0.7
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), nav), -16.5, 6.1, -0.6)
+
+  // ── waste-heat radiators: a cross of four dull-red fins amidships-aft ──
+  for (const s of [1, -1]) {
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.4, 0.4), panel), -11, s * 2.6, 0)
+    add(new THREE.Mesh(new THREE.BoxGeometry(8.5, 4.4, 0.16), radM), -11, s * 6.2, 0)
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), nav), -11, s * 8.5, 0)
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 3.4), panel), -11, 0, s * 2.6)
+    add(new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.16, 4.4), radM), -11, 0, s * 6.2)
+  }
+  return g
+}
+
 // A deep-space sensor relay / buoy — what the Cassiopeia was sent to investigate.
 // Same envelope as the simple build (core at the origin, tilted dish above, a
 // tripod below, ~7 units tall) dressed for close-ups: hex core with collars,

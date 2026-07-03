@@ -12,6 +12,11 @@ const titleCase = (s) => s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()
 
 const COMMS_DWELL_MS = 4200   // how long a line lingers after it's fully typed
 const FADE_MS = 1300          // matches the .cut-fade transition before we resolve
+const FEED_TICK_MS = 200      // shell clock driving the telemetry feed + readout
+const FEED_MAX_LINES = 6
+
+// "[T+0:04]" — mission-elapsed stamp for the telemetry feed
+const fmtT = (t) => `T+${Math.floor(t / 60)}:${String(Math.floor(Math.max(0, t) % 60)).padStart(2, '0')}`
 
 // Per-character comms portraits, keyed by speaker name. These are cropped from
 // the encyclopedia art and override the generic team portrait when that speaker
@@ -38,8 +43,20 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true }
   const [fadeBlack, setFadeBlack] = useState(false)
   const [urgent, setUrgent] = useState(null)   // overlay config while shown
   const endedRef = useRef(false)
+  const [now, setNow] = useState(0)            // shell clock (≈ scene T) for telemetry
+  // telemetry feed + PNL readout are opt-in (campaign debug: "advanced cutscenes")
+  const advanced = !!getFlag('advancedCutscenes')
 
   const advance = () => (onComplete ?? onReturn)?.()
+
+  // telemetry clock — drives scene.feed reveal and scene.readout live values
+  useEffect(() => {
+    setNow(0)
+    if (!advanced || (!scene.feed && !scene.readout)) return
+    const t0 = performance.now()
+    const iv = setInterval(() => setNow((performance.now() - t0) / 1000), FEED_TICK_MS)
+    return () => clearInterval(iv)
+  }, [scene])
 
   // typewriter: type the line out, let it sit, then (unless it persists) hide
   useEffect(() => {
@@ -106,6 +123,29 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true }
           <div className="cut-establish">
             <div className="cut-establish-name">{scene.establishing.name}</div>
             {scene.establishing.sub && <div className="cut-establish-sub">{scene.establishing.sub}</div>}
+            {scene.establishing.stamp && <div className="cut-establish-stamp">{scene.establishing.stamp}</div>}
+          </div>
+        )}
+
+        {advanced && scene.feed && !urgent && (
+          <div className="cut-feed">
+            {scene.feed.filter((l) => l.t <= now).slice(-FEED_MAX_LINES).map((l) => (
+              <div key={l.t} className={`cut-feed-line${l.level && l.level !== 'info' ? ` cut-feed-line--${l.level}` : ''}`}>
+                <span className="cut-feed-t">[{fmtT(l.t)}]</span>{l.text}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {advanced && scene.readout && !urgent && (
+          <div className="cut-readout">
+            <div className="cut-readout-title">{scene.readout.id}</div>
+            {scene.readout.rows.map((r) => (
+              <div key={r.label} className="cut-readout-row">
+                <span className="cut-readout-label">{r.label}</span>
+                <span className="cut-readout-value">{typeof r.value === 'function' ? r.value(now) : r.value}</span>
+              </div>
+            ))}
           </div>
         )}
 

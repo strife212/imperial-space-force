@@ -246,6 +246,19 @@
   box-shadow: 0 0 16px rgba(60, 200, 130, 0.4);
 }
 .cmap-unlocknext:disabled { opacity: 0.35; cursor: default; }
+/* debug: toggle the cutscene telemetry/readout overlays — top of the stack, cyan */
+.cmap-advcut {
+  bottom: 160px;
+  background: rgba(90, 200, 235, 0.07);
+  border-color: rgba(90, 200, 235, 0.45);
+  color: rgba(175, 230, 250, 0.9);
+}
+.cmap-advcut:hover {
+  background: rgba(90, 200, 235, 0.18);
+  border-color: rgba(130, 220, 255, 0.9);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(60, 180, 230, 0.4);
+}
 
 /* map-style toggle (bottom-right, above reset): sector map <-> stellar chart */
 .cmap-viewtoggle {

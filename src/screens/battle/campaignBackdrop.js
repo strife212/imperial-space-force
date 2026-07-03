@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import { buildAleph, makeGasGiant, makeRingedPlanet, makeBlackHoleLensed } from './geometry'
-import { buildStation, buildCathedra, buildWorldEngine } from '../cutscene/models'
+import { buildAleph, makeGasGiant, makeRingedPlanet, makeEarthlike, makeMachinePlanet, makeBlackHoleLensed } from './geometry'
+import { buildStation, buildCathedra, buildWorldEngine, buildAnnunciator } from '../cutscene/models'
 
 // ── Campaign battle backdrops ────────────────────────────────────────────────
 // Each node's engagement features the signature object from its cutscene in the
@@ -16,10 +16,10 @@ const NODE_BACKDROP = [
   { hero: 'station',  body: 'ringed' },  // 2 The Muster     — the muster drydock
   { hero: 'blackhole'                },  // 3 The Warfront   — a black hole
   { hero: 'aleph'                    },  // 4 The Hush       — the silent Aleph, alone
-  { hero: 'engine',   body: 'gas'    },  // 5 The Great Litany — the World Engine
+  { hero: 'litany'                   },  // 5 The Great Litany — the machine planet + Throneworld beyond
   { hero: 'ringed'                   },  // 6 The Fall       — a ringed planet
   { hero: 'cathedra', body: 'gas'    },  // 7 The Final Hearing — the Cathedra
-  { hero: 'station',  body: 'ringed' },  // 8 The Annunciator — the staging station
+  { hero: 'rkv'                      },  // 8 The Annunciator — the RKV platform itself
   { hero: 'blackhole'                },  // 9 The Lance      — a black hole
   { hero: 'ringed'                   },  // 10 Order Restored — a ringed planet
 ]
@@ -60,11 +60,12 @@ export function makeCampaignBackdrop(scene, disposables, lightDir, camera, nodeI
   const ticks = []
 
   // a celestial body (uses the existing skirmish backdrop builders)
-  const addBody = (kind, ndcX, ndcY) => {
-    const bodyR = kind === 'gas' ? 40 : kind === 'ringed' ? 26 : 16   // black hole: shadow r ≈ 2.6 rs
-    const pos = placePos(ndcX, ndcY, bodyR, 150 + Math.random() * 30)
+  const addBody = (kind, ndcX, ndcY, baseDist = 150 + Math.random() * 30) => {
+    const bodyR = kind === 'gas' ? 40 : kind === 'ringed' ? 26 : kind === 'earth' ? 22 : 16   // black hole: shadow r ≈ 2.6 rs
+    const pos = placePos(ndcX, ndcY, bodyR, baseDist)
     if (kind === 'gas')    return makeGasGiant(scene, disposables, pos, lightDir)
     if (kind === 'ringed') return makeRingedPlanet(scene, disposables, pos, lightDir)
+    if (kind === 'earth')  return makeEarthlike(scene, disposables, pos, lightDir)
     return makeBlackHoleLensed(scene, disposables, pos)
   }
 
@@ -93,7 +94,30 @@ export function makeCampaignBackdrop(scene, disposables, lightDir, camera, nodeI
     case 'aleph':     addStructure(buildAleph,       48, -0.32, 0.42, 0, true); break
     case 'station':   addStructure(buildStation,     52,  0.40, 0.34, 0);    break
     case 'cathedra':  addStructure(buildCathedra,    54, -0.34, 0.30, 0);    break
+    case 'rkv':       addStructure(buildAnnunciator, 112, 0.38, 0.34, 0, true); break   // broadside profile
     case 'engine':    addStructure(buildWorldEngine, 58, -0.30, 0.36, 0.05); break
+    case 'litany': {
+      // the machine planet girdled by its diadem, the Throneworld far beyond
+      const pos = placePos(-0.30, 0.36, 40, 190)
+      const tk = makeMachinePlanet(scene, disposables, pos, lightDir)
+      if (tk) ticks.push(tk)
+      const diademMat = new THREE.MeshBasicMaterial({ color: 0x6f86ff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+      disposables.push(diademMat)
+      for (const [rad, tube, rx] of [[58, 0.8, -1.1], [66, 0.4, -1.0]]) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(rad, tube, 8, 120), diademMat)
+        ring.position.copy(pos); ring.rotation.set(rx, 0.4, 0)
+        scene.add(ring); disposables.push(ring.geometry)
+      }
+      // the Throneworld it serves: far beyond, peeking out from behind the disc
+      const dirM = pos.clone().sub(camera.position).normalize()
+      const right = new THREE.Vector3().crossVectors(dirM, camera.up).normalize()
+      const up = new THREE.Vector3().crossVectors(right, dirM).normalize()
+      const posE = camera.position.clone().addScaledVector(dirM, 430)
+        .addScaledVector(right, 88).addScaledVector(up, 55)
+      const tk2 = makeEarthlike(scene, disposables, posE, lightDir)
+      if (tk2) ticks.push(tk2)
+      break
+    }
     case 'gas':       { const tk = addBody('gas',    0.0, 0.4); if (tk) ticks.push(tk); break }
     case 'ringed':    { const tk = addBody('ringed', 0.25, 0.35); if (tk) ticks.push(tk); break }
     case 'blackhole': { const tk = addBody('blackhole', -0.05, 0.34); if (tk) ticks.push(tk); break }

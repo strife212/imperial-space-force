@@ -71,7 +71,9 @@ function boom() {
 //   discharge()       → cut the charge (quick fade) AND fire the explosion
 //   discharge(false)  → cut the charge only (e.g. the charge was aborted)
 // The returned function is idempotent. When `muted`, it's a silent no-op.
-export function playLanceCharge({ muted = false } = {}) {
+// `rate` stretches the sample (playbackRate — pitch drops with it: 0.6 plays
+// ~1.7× longer and deeper); `volume` scales the charge level only.
+export function playLanceCharge({ muted = false, rate = 1, volume = 1 } = {}) {
   if (muted) return () => {}
   const c = init(); if (!c) return () => {}
   if (c.state === 'suspended') c.resume()
@@ -79,13 +81,15 @@ export function playLanceCharge({ muted = false } = {}) {
   let src = null, o1 = null, o2 = null, g
   if (buffers.charge) {
     src = c.createBufferSource(); src.buffer = buffers.charge
-    g = c.createGain(); g.gain.value = 0.95
+    src.playbackRate.value = rate
+    g = c.createGain(); g.gain.value = 0.95 * volume
     src.connect(g); g.connect(master); send(g, 0.15); src.start()
   } else {
-    g = c.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(0.16, now + 0.5)
-    o1 = c.createOscillator(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(110, now); o1.frequency.exponentialRampToValueAtTime(880, now + 3)
-    o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(220, now); o2.frequency.exponentialRampToValueAtTime(1760, now + 3)
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(700, now); lp.frequency.exponentialRampToValueAtTime(4200, now + 3); lp.Q.value = 7
+    const T = 3 / rate   // stretch the synth swell to match
+    g = c.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(0.16 * volume, now + 0.5 / rate)
+    o1 = c.createOscillator(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(110 * rate, now); o1.frequency.exponentialRampToValueAtTime(880 * rate, now + T)
+    o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(220 * rate, now); o2.frequency.exponentialRampToValueAtTime(1760 * rate, now + T)
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(700, now); lp.frequency.exponentialRampToValueAtTime(4200, now + T); lp.Q.value = 7
     o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(master); send(g, 0.2); o1.start(now); o2.start(now)
   }
   let done = false

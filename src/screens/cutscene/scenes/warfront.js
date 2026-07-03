@@ -11,6 +11,22 @@ const LINE2 = 'All batteries, open fire. For the Universal Order!'
 
 export default {
   label: 'CUTSCENE / THE WARFRONT',
+  establishing: { name: 'THE WARFRONT', sub: 'The First Fleet Engagement in a Generation', stamp: 'TAC-SIM LIVE · DEFCON-2 IN EFFECT' },
+  feed: [
+    { t: 0.6,  level: 'crit', text: 'Contact · uncatalogued hulls · closing at combat velocity' },
+    { t: 2.6,  level: 'warn', text: 'Firing solutions degraded · Schwarzschild correction unstable' },
+    { t: 4.8,  level: 'info', text: 'All batteries release · doctrine: ATTRITION' },
+    { t: 7.5,  level: 'warn', text: 'Losses within projection · line holding' },
+    { t: 11.0, level: 'crit', text: 'Line integrity 71% · the Discord does not parade' },
+  ],
+  readout: {
+    id: 'Fire Control · HMSS',
+    rows: [
+      { label: 'Solutions', value: (t) => `${120 + Math.floor(58 * Math.abs(Math.sin(t * 0.9)))}/s` },
+      { label: 'Line',      value: (t) => `${Math.max(71, 100 - Math.floor(t * 2))}%` },
+      { label: 'Doctrine',  value: 'ATTRITION' },
+    ],
+  },
   bloom: 0.7,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx

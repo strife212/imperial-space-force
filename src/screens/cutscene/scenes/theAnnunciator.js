@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import { TEAMS } from '../../battle/constants'
 import { makeRingedPlanet, buildBlueModel } from '../../battle/geometry'
-import { buildStation } from '../models'
+import { buildAnnunciator } from '../models'
+import { playLanceCharge, preloadLanceSfx } from '../../../lib/lanceSfx'
 
 // The last resort of the Empire, never yet fired in anger: the Annunciator-class
 // battlestation spins up its mass driver and loads a black-hole package.
@@ -11,20 +12,36 @@ const MUZZLE = new THREE.Vector3(31, 0, 0)
 
 export default {
   label: 'CUTSCENE / THE ANNUNCIATOR',
-  establishing: { name: 'HER ANNUNCIATOR', sub: 'The Last Resort of the Empire' },
+  establishing: { name: 'HER ANNUNCIATOR', sub: 'The Last Resort of the Empire', stamp: 'HMSS FIRE-CONTROL BUS v6.2.41 · DEFCON-1' },
+  feed: [
+    { t: 1.0,  level: 'ok',   text: '[OK] HMSS fire-control bus online · v6.2.41' },
+    { t: 3.0,  level: 'info', text: 'PHYSICS PACKAGE ARMED · Kerr–Newman warhead' },
+    { t: 5.2,  level: 'info', text: 'EM accelerator coils ×24 · capacitor bank 14.2 GJ · charging' },
+    { t: 7.5,  level: 'warn', text: 'Driver spin 0.90 c · rail thermal at ceiling' },
+    { t: 10.0, level: 'ok',   text: '[OK] GEODESIC INTERCEPT SOLUTION COMMITTED' },
+    { t: 12.5, level: 'crit', text: 'ARMED — LAUNCH ENABLED · awaiting Her word' },
+  ],
+  readout: {
+    id: 'PNL-007 · Driver',
+    rows: [
+      { label: 'Rail V',   value: (t) => `${Math.min(0.90, t * 0.075).toFixed(2)} c` },
+      { label: 'Cap bank', value: (t) => `${Math.min(100, Math.floor(t * 11))}%` },
+      { label: 'Package',  value: 'TYPE-IV · K–N' },
+    ],
+  },
   bloom: 0.75,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx
-    const metal = new THREE.MeshStandardMaterial({ color: 0x5a6470, emissive: 0x0a1422, emissiveIntensity: 0.4, metalness: 0.85, roughness: 0.45 })
-    const station = new THREE.Group(); scene.add(station)
+    const station = buildAnnunciator(); scene.add(station)   // muzzle at x≈31 — matches MUZZLE
 
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 60, 20), metal); barrel.rotation.z = Math.PI / 2; station.add(barrel)
-    for (const x of [-20, -6, 8, 22]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.4, 8, 24), metal); ring.rotation.y = Math.PI / 2; ring.position.x = x; station.add(ring) }
-    for (const [w, h, d, x, y] of [[7, 7, 9, -34, 0], [3, 3, 5, -34, 6], [3, 3, 5, -34, -6]]) { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), metal); b.position.set(x, y, 0); station.add(b) }
-
-    // a support station and a quiet world behind the great gun
-    const support = buildStation(); support.position.set(-46, -2, -22); support.scale.setScalar(1.3); support.rotation.z = Math.PI / 2; scene.add(support)
+    // a quiet world behind the great gun
     makeRingedPlanet(scene, [], new THREE.Vector3(40, -40, -170), new THREE.Vector3(0.4, 0.5, 0.6).normalize())
+
+    // the admiral-skill charge tone accompanies the round being fed; cut silently
+    // on teardown so skipping mid-charge doesn't leave it playing
+    preloadLanceSfx()
+    let discharge = null
+    ctx.track({ dispose: () => discharge && discharge(false) })
 
     // escorts holding station alongside
     const escMat = new THREE.MeshStandardMaterial({ color: TEAMS.blue.color, emissive: TEAMS.blue.color, emissiveIntensity: 0.5, metalness: 0.6, roughness: 0.4 })
@@ -50,10 +67,14 @@ export default {
     }
 
     const _from = new THREE.Vector3(-56, 22, 52), _to = new THREE.Vector3(12, 7, 34), _p = new THREE.Vector3(), _d = new THREE.Vector3()
-    let T = 0, c1 = false, c2 = false, ended = false, streamCd = 0
+    let T = 0, c1 = false, c2 = false, ended = false, streamCd = 0, chargeStarted = false
     return (dt) => {
       T += dt
       const charged = Math.min(1, T / 9)
+      // charge.mp3 runs 9.55s; stretched to 0.6× it plays ~15.9s — the whole
+      // scene, its crescendo landing as the fade completes (~16.3s) — pitched
+      // down into a heavier spin-up for the great driver, and a touch quieter
+      if (!chargeStarted && T >= 0.4) { chargeStarted = true; discharge = playLanceCharge({ rate: 0.6, volume: 0.7 }) }
       charge.scale.setScalar(0.3 + charged * 2.8); halo.scale.setScalar(1 + charged * 2.4)
       chargeMat.opacity = 0.7 + 0.3 * Math.sin(T * 6) * charged
       for (const e of escorts) e.g.position.y = e.b + Math.sin(T * 1.1 + e.b) * 0.8

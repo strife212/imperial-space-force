@@ -12,7 +12,22 @@ const LINE3 = 'Then it is to be in my reign. I had hoped otherwise.'
 
 export default {
   label: 'CUTSCENE / THE GREAT LITANY',
-  establishing: { name: 'LITANIA MAGNA', sub: 'The Great Litany · World Engine' },
+  establishing: { name: 'LITANIA MAGNA', sub: 'The Great Litany · World Engine', stamp: 'ECUMENOLOGION UPLINK · HER PRIVATE CHANNEL · CLR-Ω' },
+  feed: [
+    { t: 1.2,  level: 'ok',   text: '[OK] Handshake: Litania Magna · entangled uplink established' },
+    { t: 3.6,  level: 'info', text: 'Thought-substrate load 96.2% · liturgical simulations deferred' },
+    { t: 6.5,  level: 'warn', text: 'Model horizon: the Song fails in 90 days · confidence 0.997' },
+    { t: 10.0, level: 'info', text: 'One instrument un-used · cross-reference: AUDITIO ULTIMA' },
+    { t: 14.8, level: 'warn', text: 'Her Annunciator named · STRATCON review convened' },
+  ],
+  readout: {
+    id: 'Ecumenologion · Litania Magna',
+    rows: [
+      { label: 'Substrate',  value: (t) => `${(96.2 + Math.sin(t * 0.7) * 1.6).toFixed(1)}%` },
+      { label: 'Simulation', value: 'SILENCE MODEL Ω' },
+      { label: 'Confidence', value: (t) => `${Math.min(0.999, 0.982 + t * 0.001).toFixed(3)}` },
+    ],
+  },
   bloom: 0.7,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx

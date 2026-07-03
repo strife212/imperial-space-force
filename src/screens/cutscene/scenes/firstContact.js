@@ -23,7 +23,25 @@ const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) 
 
 export default {
   label: 'CUTSCENE / FIRST CONTACT',
-  establishing: { name: 'UNCHARTED SPACE', sub: 'Source of the Unknown Signal' },
+  establishing: { name: 'UNCHARTED SPACE', sub: 'Source of the Unknown Signal', stamp: 'ISV CASSIOPEIA · SENSORIUM FEED · CLR-3' },
+  feed: [
+    { t: 1.0,  level: 'ok',   text: '[OK] Relativistic translation complete · newtonian flight model' },
+    { t: 3.6,  level: 'info', text: 'X-band acq · carrier 10.3 GHz · bearing locked' },
+    { t: 6.4,  level: 'warn', text: 'Radiation flux exceeds instrument ceiling' },
+    { t: 9.2,  level: 'info', text: 'Spectrogram indeterminate · pattern non-repeating' },
+    { t: 13.5, level: 'info', text: 'Scout away · geodetic survey pass α' },
+    { t: 17.0, level: 'ok',   text: '[OK] Survey telemetry relayed to Admiralty' },
+    { t: 19.6, level: 'crit', text: 'PROXIMITY ALERT · multiple uncatalogued contacts' },
+    { t: 21.4, level: 'crit', text: 'DEFCON-2 · point defence unresponsive' },
+  ],
+  readout: {
+    id: 'ISV Cassiopeia · PNL-012-EXT',
+    rows: [
+      { label: 'Range',    value: (t) => `${Math.max(0.08, 4.2 - t * 0.45).toFixed(2)} km` },
+      { label: 'Rad flux', value: (t) => `${(2.4 + Math.min(9, t * 0.6)).toFixed(1)} σ` },
+      { label: 'Carrier',  value: (t) => (t < 3.6 ? 'SEARCHING' : '10.3 GHz · LOCK') },
+    ],
+  },
   bloom: 0.6,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx

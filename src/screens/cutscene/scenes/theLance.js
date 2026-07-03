@@ -11,6 +11,22 @@ const FIRE_T = 3.0
 
 export default {
   label: 'CUTSCENE / THE LANCE',
+  establishing: { name: 'THE DIVINE LANCE', sub: 'Auditio Ultima', stamp: 'PACKAGE TELEMETRY · STRATCON 1 IN EFFECT' },
+  feed: [
+    { t: 0.6, level: 'info', text: 'Final hold released · tube clear · range to seat 4.7 ls' },
+    { t: 2.2, level: 'crit', text: 'T−0 · LET IT BE CAST' },
+    { t: 3.2, level: 'ok',   text: '[OK] PACKAGE AWAY · geodesic true' },
+    { t: 4.4, level: 'info', text: 'Impact probability 1.000 · chronology protection holds' },
+    { t: 5.8, level: 'crit', text: 'Kerr–Newman collapse on the veiled seat' },
+  ],
+  readout: {
+    id: 'Package Track · HMSS',
+    rows: [
+      { label: 'Velocity', value: (t) => (t < 3 ? 'HOLD' : '0.90 c') },
+      { label: 'Range',    value: (t) => `${Math.max(0, 4.7 - Math.max(0, t - 3) * 9.4).toFixed(1)} ls` },
+      { label: 'Status',   value: (t) => (t < 3 ? 'IN TUBE' : t < 3.5 ? 'IN FLIGHT' : 'DETONATION') },
+    ],
+  },
   bloom: 0.85,
   create(ctx) {
     const { scene, camera, fx, comms, end } = ctx

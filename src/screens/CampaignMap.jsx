@@ -108,6 +108,8 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet, onCards, on
   const [fleet, setFleet] = useState(getFleet)
   const [confirmReset, setConfirmReset] = useState(false)
   const [showDebug, setShowDebug] = useState(false)      // debug unlock hidden until Z is pressed
+  const [advCutscenes, setAdvCutscenes] = useState(() => !!getFlag('advancedCutscenes'))
+  const toggleAdvCutscenes = () => { const next = !advCutscenes; setAdvCutscenes(next); setFlag('advancedCutscenes', next) }
   const operatorPortrait = getFlag('operatorPortrait')   // set once an operator is chosen
   const operatorName = getFlag('operator')
   const fleetName = getFlag('fleetName') || 'Fleet Polyhymnia'
@@ -465,6 +467,7 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet, onCards, on
         {showDebug && <button className="cmap-unlock cmap-givemacro" onClick={onCards}>⚡ DEBUG · CARD VAULT</button>}
         {showDebug && <button className="cmap-unlock cmap-drawtest" onClick={onDrawTest}>⚡ DEBUG · DRAW TEST</button>}
         {showDebug && <button className="cmap-unlock cmap-unlocknext" onClick={doUnlockNext} disabled={completed >= NODES.length}>⚡ DEBUG · UNLOCK NEXT NODE</button>}
+        {showDebug && <button className="cmap-unlock cmap-advcut" onClick={toggleAdvCutscenes}>⚡ DEBUG · ADVANCED CUTSCENES: {advCutscenes ? 'ON' : 'OFF'}</button>}
         <button className="cmap-viewtoggle" onClick={onToggleView}>✦ STELLAR CHART</button>
         <button className="cmap-reset" onClick={() => setConfirmReset(true)}>⟲ RESET PROGRESS</button>
 

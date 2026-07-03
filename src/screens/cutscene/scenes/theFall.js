@@ -10,6 +10,22 @@ const LINE2 = 'Fall back to the Throneworld. We make our stand where she hears.'
 
 export default {
   label: 'CUTSCENE / THE FALL',
+  establishing: { name: 'THE FALL', sub: 'The Line Breaks', stamp: 'FLEET LOSS RECORD · STRATCON 2 IN EFFECT' },
+  feed: [
+    { t: 1.0,  level: 'crit', text: 'Escort screen collapsing · half the line gone' },
+    { t: 3.5,  level: 'warn', text: 'Flagship shields buckling · armour ablating' },
+    { t: 6.0,  level: 'crit', text: '[FAIL] Damage control overwhelmed · decks 4–9 open to vacuum' },
+    { t: 9.0,  level: 'crit', text: 'Flag bridge: abandon-ship checklist unsealed' },
+    { t: 12.0, level: 'warn', text: 'Withdrawal geodesic laid · Throneworld anchorage' },
+  ],
+  readout: {
+    id: 'Hull Monitor · Flag',
+    rows: [
+      { label: 'Hull',    value: (t) => `${Math.max(0, Math.floor(62 - t * 2.5))}%` },
+      { label: 'Escorts', value: (t) => `${Math.max(3, 15 - Math.floor(t * 0.55))}` },
+      { label: 'Order',   value: (t) => (t < 12 ? 'HOLD' : 'WITHDRAW') },
+    ],
+  },
   bloom: 0.8,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx

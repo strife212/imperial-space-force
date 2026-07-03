@@ -13,7 +13,22 @@ const LINE1 = 'Every ship the Throne could spare. The first true muster in a gen
 
 export default {
   label: 'CUTSCENE / THE MUSTER',
-  establishing: { name: 'IMPERIAL FLEET DRYDOCK', sub: 'The First Muster in a Generation' },
+  establishing: { name: 'IMPERIAL FLEET DRYDOCK', sub: 'The First Muster in a Generation', stamp: 'FLEET COMMAND BUS · STRATCON 3 IN EFFECT' },
+  feed: [
+    { t: 0.8,  level: 'info', text: 'Muster roll: 3rd, 7th and 11th interceptor wings · present' },
+    { t: 3.2,  level: 'ok',   text: '[OK] Drydock umbilicals retracted · reactors to cruise flux' },
+    { t: 5.6,  level: 'info', text: 'Late arrivals translating in · lanes 4–7 cleared' },
+    { t: 8.9,  level: 'info', text: 'Fleet chord tuned · entangled comms synced via Litania Magna' },
+    { t: 12.2, level: 'ok',   text: '[OK] Advance order committed · geodesic laid for the warfront' },
+  ],
+  readout: {
+    id: 'Fleet Command · PNL-009',
+    rows: [
+      { label: 'Hulls',     value: (t) => `${Math.min(54, 41 + Math.floor(t * 1.2))}` },
+      { label: 'Reactors',  value: 'NOMINAL' },
+      { label: 'Formation', value: (t) => (t < 9 ? 'CONVERGING' : 'LOCKED') },
+    ],
+  },
   bloom: 0.6,
   create(ctx) {
     const { scene, camera, fx, comms, end, orient } = ctx
