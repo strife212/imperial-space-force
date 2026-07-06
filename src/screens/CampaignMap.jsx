@@ -285,15 +285,18 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet, onCards, on
         const hits = raycaster.intersectObjects(nodes.map(n => n.hit))
         return hits.length ? hitMap.get(hits[0].object) : null
       }
+      // while a fresh node is unlocking (route growth + ignition) the map is
+      // locked out — no node, not even a cleared one, can be selected
+      const unlocking = () => !!unlock && (!unlock.done || unlock.ignite > 0)
       const onMove = (e) => {
-        const n = pick(e); const clickable = n && n.i <= completed
+        const n = pick(e); const clickable = n && n.i <= completed && !unlocking()
         const next = clickable ? n.i : -1
         if (next !== -1 && next !== hovered) playTick()   // blip when the pointer finds a node
         hovered = next
         renderer.domElement.style.cursor = clickable ? 'pointer' : 'default'
       }
       const onDown = (e) => { downX = e.clientX; downY = e.clientY }
-      const onUp = (e) => { if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return; const n = pick(e); if (n && n.i <= completed) { playClick(); onPlay(n.i) } }
+      const onUp = (e) => { if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return; const n = pick(e); if (n && n.i <= completed && !unlocking()) { playClick(); onPlay(n.i) } }
       renderer.domElement.addEventListener('pointermove', onMove)
       renderer.domElement.addEventListener('pointerdown', onDown)
       renderer.domElement.addEventListener('pointerup', onUp)

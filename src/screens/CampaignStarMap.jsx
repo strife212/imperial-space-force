@@ -268,9 +268,12 @@ export default function CampaignStarMap({ onExit, onPlay, onReviewFleet, onCards
         const hits = raycaster.intersectObjects(nodes.map(n => n.hit))
         return hits.length ? hitMap.get(hits[0].object) : null
       }
+      // lock out selection while a fresh node is unlocking (route growth +
+      // ignition) — no node, not even a cleared one, can be picked
+      const unlocking = () => !!unlock && (!unlock.done || unlock.ignite > 0)
       const onMove = (e) => {
         if (warp) return
-        const n = pick(e); const clickable = n && n.i <= completed
+        const n = pick(e); const clickable = n && n.i <= completed && !unlocking()
         const next = clickable ? n.i : -1
         if (next !== -1 && next !== hovered) playTick()
         hovered = next
@@ -281,7 +284,7 @@ export default function CampaignStarMap({ onExit, onPlay, onReviewFleet, onCards
         if (warp) return
         if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return
         const n = pick(e)
-        if (n && n.i <= completed) {
+        if (n && n.i <= completed && !unlocking()) {
           playClick()
           hovered = -1
           controls.autoRotate = false
