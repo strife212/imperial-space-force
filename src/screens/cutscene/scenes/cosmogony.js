@@ -8,6 +8,10 @@ import { makeGalaxy, makeEarthlike, makeStar, makeMachinePlanet, buildBlueModel,
 // the machine became, and the fleet that keeps its watch. Told as a memory of
 // the Litania Magna. Four sets share the stage (space / surface / machine /
 // orbit), swapped behind flash washes as the "zoom" crosses scales.
+// a held breath before creation: the seed floats in the dark this long before
+// the bang. The scene clock starts at -PREROLL, so every downstream beat keeps
+// its spacing and simply slides later by this much.
+const PREROLL = 2.0
 const BANG_T = 1.0
 const CUT_SURFACE = 20.0, CUT_MACHINE = 24.5, CUT_ORBIT = 31.8, FLEET_T = 35.0, END_T = 40.5
 
@@ -58,7 +62,9 @@ function playTick() {
 
 export default {
   label: 'CUTSCENE / COSMOGONY',
-  establishing: { name: 'THE FIRST SONG', sub: 'Cosmogony · A Memory of the Litania Magna', stamp: 'ECUMENOLOGION ARCHIVE · CYCLE 0 RECORD' },
+  hideChrome: true,   // full-bleed: no HUD header framing the cosmogony
+  // feed/readout ride the shell's real-time clock, so they carry the PREROLL
+  // offset the scene clock bakes in — shift every cue by it to stay in step.
   feed: [
     { t: 1.0,  level: 'crit', text: 'SINGULARITY · t < 10⁻³² s · inflation epoch' },
     { t: 4.2,  level: 'info', text: 'Baryogenesis · matter excess 1:10⁹ · annihilation glow' },
@@ -71,13 +77,14 @@ export default {
     { t: 28.0, level: 'discord', text: 'IT LEARNS · IT REMEMBERS · IT LISTENS' },
     { t: 32.4, level: 'discord', text: '✦ CAELUM CANIT · ILLA AVDIT ✦' },
     { t: 36.6, level: 'ok', text: '[OK] Home Fleet on station · the long watch continues' },
-  ],
+  ].map((l) => ({ ...l, t: l.t + PREROLL })),
   readout: {
     id: 'PNL-000 · Cosmogony',
+    // shell time → scene time before thresholding, so the preroll cancels out
     rows: [
-      { label: 'Age',  value: (t) => (t < BANG_T ? 't < 0' : t < 8 ? '380 kyr' : t < 13 ? '0.4 Gyr' : t < 20 ? '9.1 Gyr' : '13.8 Gyr') },
-      { label: 'Temp', value: (t) => (t < BANG_T ? '10³² K' : t < 5 ? '10⁹ K' : t < 8 ? '3000 K' : t < 13 ? '30 K' : '2.7 K') },
-      { label: 'Mode', value: (t) => (t < 8 ? 'INFLATION' : t < 20 ? 'STELLAR' : t < CUT_MACHINE ? 'BIOTIC' : t < CUT_ORBIT ? 'COGNITIVE' : 'REMEMBERING') },
+      { label: 'Age',  value: (t) => ((t -= PREROLL) < BANG_T ? 't < 0' : t < 8 ? '380 kyr' : t < 13 ? '0.4 Gyr' : t < 20 ? '9.1 Gyr' : '13.8 Gyr') },
+      { label: 'Temp', value: (t) => ((t -= PREROLL) < BANG_T ? '10³² K' : t < 5 ? '10⁹ K' : t < 8 ? '3000 K' : t < 13 ? '30 K' : '2.7 K') },
+      { label: 'Mode', value: (t) => ((t -= PREROLL) < 8 ? 'INFLATION' : t < 20 ? 'STELLAR' : t < CUT_MACHINE ? 'BIOTIC' : t < CUT_ORBIT ? 'COGNITIVE' : 'REMEMBERING') },
     ],
   },
   bloom: 0.72,
@@ -493,7 +500,7 @@ export default {
 
     // ── the timeline ───────────────────────────────────────────────────────────
     const _p = new THREE.Vector3(), _look = new THREE.Vector3(), _s1 = new THREE.Vector3(), _s2 = new THREE.Vector3(), _capPos = new THREE.Vector3()
-    let T = 0, banged = false, c1 = false, c2 = false, cS = false, c3 = false, c4 = false, c5 = false, cutA = false, cutB = false, cutC = false, ended = false
+    let T = -PREROLL, banged = false, c1 = false, c2 = false, cS = false, c3 = false, c4 = false, c5 = false, cutA = false, cutB = false, cutC = false, ended = false
     let pulseCd = 0, novaCd = 1.1, streakCd = 0, worldShown = false, discCrossed = false, lastTickT = 0
     let capCrossed = false, followT = 0   // the capital-ship pan: armed once it passes screen centre
     const tableCds = [0.02, 0.06, 0.1]   // staggered redraw phases

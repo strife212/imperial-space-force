@@ -128,7 +128,7 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
 
   return (
     <div id="cutscene-screen">
-      <HudHeader onLogout={onReturn} right={<span className="label">{scene.label}</span>} />
+      {!scene.hideChrome && <HudHeader onLogout={onReturn} right={<span className="label">{scene.label}</span>} />}
       <div className="sb-stage">
         <div className="sb-canvas" ref={mountRef} />
 

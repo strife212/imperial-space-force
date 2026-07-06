@@ -254,7 +254,7 @@ export default function App() {
         ? <SpaceBattleScreen key={`camp-${campaignNode}`} campaign={campaignBattle(campaignNode)} onReturn={exitCampaign} />
         : <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />)}
       {screen === 'vistest'         && <VisualTestScreen onReturn={() => setScreen('debug')} />}
-      {screen === 'cosmogony'       && <Cutscene key="cosmogony-standalone" scene={SCENES.cosmogony} standalone onReturn={() => setScreen('home')} />}
+      {screen === 'cosmogony'       && <Cutscene key="cosmogony-standalone" scene={SCENES.cosmogony} standalone canSkip={false} onReturn={() => setScreen('home')} />}
       {screen === 'cutscene'        && (() => {
           // A campaign replay (re-watching a cleared node) may be skipped; a
           // first run of the current node must be watched. Debug always skippable.
@@ -262,7 +262,11 @@ export default function App() {
           // intro is always skippable — even after a campaign-progress reset.
           const isCampaignReplay = cutsceneSource === 'campaign' && campaignNode !== null && campaignNode < (getFlag('campaignProgress') || 0)
           const node1Veteran = cutsceneSource === 'campaign' && campaignNode === 0 && !!getFlag('everSelectedOperator')
-          const canSkip = cutsceneSource !== 'campaign' || isCampaignReplay || node1Veteran
+          // Cosmogony hides its skip when viewed on its own (debug); only the
+          // campaign intro (source 'campaign-map') keeps it.
+          const canSkip = cutsceneId === 'cosmogony'
+            ? cutsceneSource === 'campaign-map'
+            : cutsceneSource !== 'campaign' || isCampaignReplay || node1Veteran
           return <Cutscene key={cutsceneId} scene={SCENES[cutsceneId]} canSkip={canSkip} onReturn={() => setScreen(cutsceneSource === 'campaign' ? 'campaign-map' : cutsceneSource)} onComplete={() => {
             // First Contact picks the operator — but only if one hasn't been
             // chosen yet; once selected, go straight from the cutscene to the shipyard
