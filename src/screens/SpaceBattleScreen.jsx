@@ -9,7 +9,7 @@ import HudFooter from '../components/HudFooter'
 import {
   FLEET_SIZE, SHIP_HP, BOMBER_COUNT, CRUISER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN, BOMBER_SCALE,
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED, MISS_CHANCE,
-  BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
+  CAP_ENGAGE_MISS_CHANCE, BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF, FIGHTER_RANGE, TURN_RATE,
   FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH, ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER,
   FLARES_BOMBER, FLARES_FLAGSHIP,
   CRUISER_HP, CRUISER_SPEED, CRUISER_MIN, CRUISER_SCALE, CRUISER_STANDOFF, CRUISER_TURN_RATE,
@@ -849,7 +849,12 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       }
 
       const fireBolt = (shooter, target, big = false, bomb = !!shooter.isBomber) => {
-        const willHit = Math.random() > (bomb ? BOMB_MISS_CHANCE : MISS_CHANCE)   // lasers (incl. bomber PD) use fighter accuracy
+        // lasers (incl. bomber PD) use fighter accuracy. The player flagship's
+        // broadside tightens to 80% hit while 'directly engage' is active — the
+        // reward for driving into the melee, offsetting the bomber exposure.
+        const engaged = big && shooter.isCapital && shooter.team === 'blue' && capTacticRef.current === 'engage'
+        const missChance = bomb ? BOMB_MISS_CHANCE : engaged ? CAP_ENGAGE_MISS_CHANCE : MISS_CHANCE
+        const willHit = Math.random() > missChance
         _tmp.set(0, 0, 1).applyQuaternion(shooter.mesh.quaternion)        // muzzle direction
         const start = shooter.pos.clone().addScaledVector(_tmp, big ? 2.6 : 1.0)
         if (big) start.add(new THREE.Vector3((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 3))  // spread across hardpoints

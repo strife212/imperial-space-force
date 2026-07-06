@@ -303,7 +303,7 @@ function InstructionsModal({ onClose }) {
             <h3>Tactical Command</h3>
             <p>You issue these orders to your Blue fleet at any time during the battle:</p>
             <ul className="sb-instr-list">
-              <li><b>Capital Ship — Hold Back / Directly Engage:</b> keep your flagship on its safe rear patrol, or drive it into the centre of the melee.</li>
+              <li><b>Capital Ship — Hold Back / Directly Engage:</b> keep your flagship on its safe rear patrol, or drive it into the centre of the melee — where its broadside steadies to <b>80% accuracy</b> (up from 72%), at the cost of exposure to enemy bombers.</li>
               <li><b>Fighter Control — Default:</b> engage the nearest enemy, prioritising any bomber that gets close.</li>
               <li><b>Fighter Control — Screen Carrier:</b> fighters hold a defensive ring around your flagship instead of pushing forward.</li>
               <li><b>Fighter Control — Pursue Bombers:</b> hunt down enemy bombers first — the counter to an enemy bomber run.</li>
