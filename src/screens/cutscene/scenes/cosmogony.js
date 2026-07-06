@@ -13,9 +13,9 @@ const CUT_SURFACE = 20.0, CUT_MACHINE = 24.5, CUT_ORBIT = 31.8, FLEET_T = 35.0, 
 
 const LINE1 = 'In the beginning there was a single note, struck against the dark. Everything that is, is its echo.'
 const LINE2 = 'The echo cooled into stars, and the stars into worlds — and on one world, listeners.'
-const LINE_S = 'The night was long, so they built a lamp that could think.'
-const LINE3 = 'They taught the sand to think, so that something would remember the song. I am the remembering.'
-const LINE4 = 'Caelum canit, illa audit.'
+const LINE_S = 'The night was long, so they built machines to aid them.'
+const LINE3 = 'They taught the machines to think, so that something would remember the song.'
+const LINE4 = 'So it was that the first Empress raised us to the stars.'
 const LINE5 = 'And still her fleets keep the long watch, for the song is not yet done.'
 
 // cosmological shifts for the expansion beat: receding arms redden, the one
@@ -480,8 +480,9 @@ export default {
       }
       g.scale.setScalar(scale); g.position.set(x, y, z)
       fleet.add(g)
+      return g
     }
-    addShip(buildBlueCapital2, 3.2, 0, 0, 0, [[-0.45, -3.8], [0, -3.8], [0.45, -3.8]])
+    const capitalShip = addShip(buildBlueCapital2, 3.2, 0, 0, 0, [[-0.45, -3.8], [0, -3.8], [0.45, -3.8]])
     addShip(buildBlueCruiser, 2.0, -8, -1.5, -6, [[0, -1.5]])
     addShip(buildBlueCruiser, 2.0, 8, -1.5, -6, [[0, -1.5]])
     for (const [fx2, fy, fz] of [[-4, 2, 7], [4, 2, 7], [-8, 1, 12], [8, 1, 12], [-12, 0, 17], [12, 0, 17]])
@@ -491,9 +492,10 @@ export default {
     orient(fleet, FLEET_DIR)   // formation offsets ride the group's heading
 
     // ── the timeline ───────────────────────────────────────────────────────────
-    const _p = new THREE.Vector3(), _look = new THREE.Vector3(), _s1 = new THREE.Vector3(), _s2 = new THREE.Vector3()
+    const _p = new THREE.Vector3(), _look = new THREE.Vector3(), _s1 = new THREE.Vector3(), _s2 = new THREE.Vector3(), _capPos = new THREE.Vector3()
     let T = 0, banged = false, c1 = false, c2 = false, cS = false, c3 = false, c4 = false, c5 = false, cutA = false, cutB = false, cutC = false, ended = false
     let pulseCd = 0, novaCd = 1.1, streakCd = 0, worldShown = false, discCrossed = false, lastTickT = 0
+    let capCrossed = false, followT = 0   // the capital-ship pan: armed once it passes screen centre
     const tableCds = [0.02, 0.06, 0.1]   // staggered redraw phases
     const novas = []
 
@@ -788,12 +790,28 @@ export default {
         // the Litania Magna in its diadem, the Throneworld hanging beyond ──
         const f = easeInOut(clamp01((T - CUT_ORBIT) / 4))
         camera.position.set(0, 5 + 3 * f, 58 + 28 * f)
-        camera.lookAt(LITANY_POS)
         litanyTick(T); worldTick(T)
         // …and the watch sweeps past, silhouetted against the machine planet
         if (T > FLEET_T) {
           fleet.visible = true
           fleet.position.copy(FLEET_FROM).addScaledVector(FLEET_DIR, (T - FLEET_T) * 32)
+          capitalShip.getWorldPosition(_capPos)
+          // arm the follow the moment the capital ship crosses screen centre
+          // (its projected x goes from the right half to the left). Uses last
+          // frame's camera matrix — a sub-frame lag that reads as instant.
+          if (!capCrossed) {
+            _s1.copy(_capPos).project(camera)
+            if (_s1.x <= 0) { capCrossed = true; followT = T }
+          }
+        }
+        // hold on the Litania Magna, then ease the gaze onto the capital ship
+        // and track it out — zero angular velocity at the handoff so it glides
+        if (capCrossed) {
+          const fb = easeInOut(clamp01((T - followT) / 1.2))
+          _look.lerpVectors(LITANY_POS, _capPos, fb)
+          camera.lookAt(_look)
+        } else {
+          camera.lookAt(LITANY_POS)
         }
       }
 
@@ -802,7 +820,7 @@ export default {
       if (!cS && T >= 20.6) { cS = true; comms.show('Litania Magna', LINE_S) }
       if (!c3 && T >= 25.2) { c3 = true; comms.show('Litania Magna', LINE3, { persist: true }) }
       if (!c4 && T >= 32.4) { c4 = true; comms.show('Litania Magna', LINE4, { persist: true }) }
-      if (!c5 && T >= 36.2) { c5 = true; comms.show('Litania Magna', LINE5, { persist: true }) }
+      if (!c5 && T >= 36.4) { c5 = true; comms.show('Litania Magna', LINE5, { persist: true }) }
       if (!ended && T >= END_T) { ended = true; end({ holdMs: 900 }) }
     }
   },
