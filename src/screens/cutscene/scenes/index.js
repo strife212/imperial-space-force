@@ -8,6 +8,7 @@ import theResolve from './theResolve'
 import theAnnunciator from './theAnnunciator'
 import theLance from './theLance'
 import theOrderRestored from './theOrderRestored'
+import cosmogony from './cosmogony'
 
 // Registry of cutscene definitions. Each is a plain
 // `{ label, bloom?, create(ctx) -> update(dt) }` object; the <Cutscene> shell
@@ -16,6 +17,7 @@ import theOrderRestored from './theOrderRestored'
 export const SCENES = {
   firstContact, muster, warfront, theHush, theLitany,
   theFall, theResolve, theAnnunciator, theLance, theOrderRestored,
+  cosmogony,   // standalone (debug / extras) — not part of STORY
 }
 
 // The campaign, in order. Finishing one scene advances to the next; the last

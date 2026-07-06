@@ -39,7 +39,7 @@ const countTrueFlags = () => Object.values(getFlags()).filter(Boolean).length
 // ── Deep links: a bare path (e.g. /battlesim) opens straight to that screen ───
 // On GitHub Pages the unknown path is served by 404.html, which bounces it back
 // to index.html where a snippet restores the real URL before React mounts.
-const DEEP_LINKS = { battlesim: 'home', fleetbuilder: 'fleetbuilder' }
+const DEEP_LINKS = { battlesim: 'home', fleetbuilder: 'fleetbuilder', cosmogony: 'cosmogony' }
 const pathScreen = () => {
   const slug = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase()
   return DEEP_LINKS[slug] || null
@@ -187,6 +187,16 @@ export default function App() {
     if (cutsceneChain && i >= 0 && i < STORY.length - 1) { setCutsceneId(STORY[i + 1]); setScreen('cutscene'); return }
     setScreen(cutsceneSource)
   }
+  // Open the campaign from the main menu. The very first time (per save), play the
+  // Cosmogony intro, which then routes on to the map; thereafter go straight there.
+  // Cleared by resetCampaign(), so wiping the save shows it again.
+  const openCampaign = () => {
+    if (getFlag('cosmogonySeen')) { setScreen('campaign-map'); return }
+    setFlag('cosmogonySeen', true)
+    setCutsceneSource('campaign-map'); setCutsceneId('cosmogony'); setCutsceneChain(false)
+    setScreen('cutscene')
+  }
+
   // Enter a campaign node from the map: always play the story cutscene. A first
   // run must watch it; a replay of a cleared node may skip (see canSkip below).
   const playCampaignNode = (i) => {
@@ -213,7 +223,7 @@ export default function App() {
       <div className="crt-overlay" />
       <div className="scanlines" />
       <div className="vignette" />
-      {screen === 'home'    && <StartScreen onCampaign={() => setScreen('campaign-map')} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
+      {screen === 'home'    && <StartScreen onCampaign={openCampaign} onSkirmish={() => { setBattleSource('home'); setScreen('battle') }} onPlay={() => setScreen('login')} onDebug={() => setScreen('debug')} />}
       {screen === 'campaign-map' && (() => {
         // two campaign-map styles: the classic sector map and the rotatable
         // 3D stellar chart; the choice persists across sessions
@@ -244,6 +254,7 @@ export default function App() {
         ? <SpaceBattleScreen key={`camp-${campaignNode}`} campaign={campaignBattle(campaignNode)} onReturn={exitCampaign} />
         : <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />)}
       {screen === 'vistest'         && <VisualTestScreen onReturn={() => setScreen('debug')} />}
+      {screen === 'cosmogony'       && <Cutscene key="cosmogony-standalone" scene={SCENES.cosmogony} standalone onReturn={() => setScreen('home')} />}
       {screen === 'cutscene'        && (() => {
           // A campaign replay (re-watching a cleared node) may be skipped; a
           // first run of the current node must be watched. Debug always skippable.

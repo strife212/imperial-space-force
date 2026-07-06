@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import { RIM_VERT, RIM_FRAG, DISK_VERT, DISK_FRAG, LENSED_BH_VERT, LENSED_BH_FRAG } from '../../lib/shaders'
+import { RIM_VERT, RIM_FRAG, DISK_VERT, DISK_FRAG, LENSED_BH_VERT, LENSED_BH_FRAG, GALAXY_VERT, GALAXY_FRAG, STAR_VERT, STAR_FRAG, STAR_CORONA_VERT, STAR_CORONA_FRAG } from '../../lib/shaders'
 
 // ── Shared GLSL value-noise / fbm (for the nebula skydome and the planet) ──────
 const GLSL_NOISE = /* glsl */`
@@ -30,6 +30,7 @@ const NEBULA_FRAG = /* glsl */`
   uniform vec3 uColC;                      // ridged dust-lane accent
   uniform vec3 uGlowDir; uniform vec3 uGlowCol;   // distant luminous core
   uniform float uTime;                     // slow cloud drift
+  uniform vec3 uBaseShift;                 // zero-safe: added to the deep-space base tint
 ` + GLSL_NOISE + /* glsl */`
   void main() {
     vec3 d = normalize(vDir);
@@ -37,7 +38,7 @@ const NEBULA_FRAG = /* glsl */`
     float n  = fbm(dd * 2.4 + 3.1);
     float n2 = fbm(dd * 5.3 + 9.7);
     float clouds = smoothstep(0.30, 0.95, n * 0.75 + n2 * 0.35);
-    vec3 col = vec3(0.012, 0.020, 0.045);                 // deep-space base
+    vec3 col = max(vec3(0.0), vec3(0.012, 0.020, 0.045) + uBaseShift);   // deep-space base
     col = mix(col, uColA, clouds * 0.7);                  // cool nebula body
     col = mix(col, uColB, smoothstep(0.55, 1.05, n) * 0.55);  // denser cores
     float warm = smoothstep(0.15, 1.0, d.x * 0.5 + 0.5) * smoothstep(0.45, 0.95, n2);
@@ -829,6 +830,203 @@ function makeBlackHoleLensed(scene, disposables, pos) {
   return (t) => { qMat.uniforms.uTime.value = t }
 }
 
+// A spiral galaxy on a camera-facing quad, same construction as the lensed black
+// hole above: the fragment shader marches the true camera ray through a flattened
+// disc volume (see GALAXY_FRAG), so the image responds correctly as the camera
+// orbits. Every look parameter is a uniform; the returned tick carries a handle
+// (uniforms + params) so the model viewer's sliders retune the material live.
+const GALAXY_MAX_R = 44   // quad is sized for the largest uRadius the sliders allow
+const GALAXY_DEFAULTS = {
+  radius: 30, thick: 0.085, arms: 2, twist: 4.6, bulge: 0.30, dust: 0.55,
+  glow: 1.0, spin: 1.0, coreCol: '#ffe2b8', armCol: '#7fa8ff', dustCol: '#8a5a3a',
+}
+function makeGalaxy(scene, disposables, pos, opts = {}) {
+  const P = { ...GALAXY_DEFAULTS, ...opts }
+  // quad sized for the largest radius this instance will use — the viewer keeps
+  // the full slider range; fixed-size scene dressing passes maxRadius: radius
+  const half = (P.maxRadius ?? GALAXY_MAX_R) * 1.15
+  const qGeo = new THREE.PlaneGeometry(half * 2, half * 2)
+  const qMat = new THREE.ShaderMaterial({
+    vertexShader: GALAXY_VERT, fragmentShader: GALAXY_FRAG,
+    uniforms: {
+      uTime:    { value: 0 },
+      uCenter:  { value: pos.clone() },
+      uPlaneN:  { value: (P.normal ?? new THREE.Vector3(0.22, 0.62, 0.76)).clone().normalize() },   // ~45° inclination toward the default camera
+      uRadius:  { value: P.radius },
+      uThick:   { value: P.thick },
+      uArms:    { value: P.arms },
+      uTwist:   { value: P.twist },
+      uBulge:   { value: P.bulge },
+      uDust:    { value: P.dust },
+      uGlow:    { value: P.glow },
+      uCoreCol: { value: new THREE.Color(P.coreCol) },
+      uArmCol:  { value: new THREE.Color(P.armCol) },
+      uDustCol: { value: new THREE.Color(P.dustCol) },
+    },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  })
+  const quad = new THREE.Mesh(qGeo, qMat)
+  quad.position.copy(pos)
+  quad.onBeforeRender = (renderer, sc, camera) => {
+    quad.quaternion.copy(camera.quaternion)
+    quad.getWorldPosition(qMat.uniforms.uCenter.value)
+  }
+  scene.add(quad)
+  disposables.push(qGeo, qMat)
+  // spin is integrated (not uTime = t * spin) so a live speed change never jumps
+  // the pattern; the viewer retunes P.spin through tick.params
+  let phase = 0, last = 0
+  const tick = (t) => { phase += (t - last) * P.spin; last = t; qMat.uniforms.uTime.value = phase }
+  tick.uniforms = qMat.uniforms
+  tick.params = P
+  return tick
+}
+
+// A main-sequence star, built like the planet makers but emissive: a granulated
+// photosphere (STAR_FRAG), a camera-facing corona quad with drifting streamers,
+// erupting prominence sprites, and a real PointLight so nearby hulls catch its
+// glow. Returns a tick driving the surface simmer, flares and light flicker.
+function makeStar(scene, disposables, pos, opts = {}) {
+  const P = { radius: 10, color: 0xffa347, hot: 0xfff3d8, corona: 2.6, light: 2.2, ...opts }
+  const geo = new THREE.SphereGeometry(P.radius, 48, 48)
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: STAR_VERT, fragmentShader: STAR_FRAG,
+    uniforms: {
+      uTime: { value: 0 },
+      uCol:  { value: new THREE.Color(P.color) },
+      uHot:  { value: new THREE.Color(P.hot) },
+    },
+  })
+  const body = new THREE.Mesh(geo, mat); body.position.copy(pos); scene.add(body)
+
+  const half = P.radius * P.corona
+  const cGeo = new THREE.PlaneGeometry(half * 2, half * 2)
+  const cMat = new THREE.ShaderMaterial({
+    vertexShader: STAR_CORONA_VERT, fragmentShader: STAR_CORONA_FRAG,
+    uniforms: {
+      uTime: { value: 0 },
+      uR:    { value: P.radius },
+      uCol:  { value: new THREE.Color(P.color).lerp(new THREE.Color(0xffffff), 0.25) },
+    },
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  })
+  const corona = new THREE.Mesh(cGeo, cMat)
+  corona.position.copy(pos)
+  corona.onBeforeRender = (renderer, sc, camera) => { corona.quaternion.copy(camera.quaternion) }
+  scene.add(corona)
+
+  const light = new THREE.PointLight(P.color, P.light, P.radius * 45, 1.8)
+  light.position.copy(pos); scene.add(light)
+
+  // prominences — stretched blobs that erupt off the limb, arc, and sink back
+  const yAxisL = new THREE.Vector3(0, 1, 0)
+  const flares = []
+  for (let i = 0; i < 5; i++) {
+    const fMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(P.color).lerp(new THREE.Color(0xffffff), 0.3), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+    const m = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 10), fMat)
+    m.visible = false; scene.add(m)
+    disposables.push(m.geometry, fMat)
+    flares.push({ m, fMat, phase: i * 1.37, dir: new THREE.Vector3() })
+  }
+  disposables.push(geo, mat, cGeo, cMat)
+
+  const _fd = new THREE.Vector3()
+  return (t) => {
+    mat.uniforms.uTime.value = t
+    cMat.uniforms.uTime.value = t
+    light.intensity = P.light * (0.92 + 0.08 * Math.sin(t * 2.7))
+    for (const fl of flares) {
+      const cyc = t * 0.55 + fl.phase
+      const k = (cyc % 3) / 1.2               // active for the first 1.2s of each 3s cycle
+      if (k >= 1) { fl.m.visible = false; continue }
+      const seed = Math.floor(cyc / 3) * 12.9898 + fl.phase * 78.233
+      const rnd = Math.abs(Math.sin(seed) * 43758.5453) % 1
+      const th = rnd * Math.PI * 2, ph = ((rnd * 7.13) % 1) * 1.6 - 0.8
+      _fd.set(Math.cos(ph) * Math.cos(th), Math.sin(ph), Math.cos(ph) * Math.sin(th))
+      const lift = Math.sin(k * Math.PI)
+      fl.m.visible = true
+      fl.m.position.copy(pos).addScaledVector(_fd, P.radius * (0.96 + 0.28 * lift))
+      fl.m.quaternion.setFromUnitVectors(yAxisL, _fd)
+      const s = P.radius * 0.11 * (0.6 + lift)
+      fl.m.scale.set(s * 0.5, s * 1.7, s * 0.5)
+      fl.fMat.opacity = 0.85 * lift
+    }
+  }
+}
+
+// ── Cheap distant-object sprites ─────────────────────────────────────────────
+// Billboarded stand-ins for stars and galaxies seen from far away: a Sprite with
+// a pre-baked grayscale texture, tinted / scaled / rotated per instance. Vastly
+// cheaper than makeStar / makeGalaxy (no shaders, lights, raymarch or per-frame
+// tick), so dozens can dress the deep field. The textures are baked once and
+// shared across every instance and scene.
+let _starSpriteTex = null, _galaxySpriteTexes = null
+function _starSprTex() {
+  if (_starSpriteTex) return _starSpriteTex
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64
+  const g = cv.getContext('2d')
+  const core = g.createRadialGradient(32, 32, 0, 32, 32, 18)
+  core.addColorStop(0, 'rgba(255,255,255,1)')
+  core.addColorStop(0.4, 'rgba(255,255,255,0.4)')
+  core.addColorStop(1, 'rgba(255,255,255,0)')
+  g.fillStyle = core; g.fillRect(0, 0, 64, 64)
+  g.globalCompositeOperation = 'lighter'          // faint 4-point diffraction spikes
+  for (const [dx, dy] of [[1, 0], [0, 1]]) {
+    const gr = g.createLinearGradient(32 - dx * 30, 32 - dy * 30, 32 + dx * 30, 32 + dy * 30)
+    gr.addColorStop(0, 'rgba(255,255,255,0)')
+    gr.addColorStop(0.5, 'rgba(255,255,255,0.55)')
+    gr.addColorStop(1, 'rgba(255,255,255,0)')
+    g.strokeStyle = gr; g.lineWidth = 1.3
+    g.beginPath(); g.moveTo(32 - dx * 30, 32 - dy * 30); g.lineTo(32 + dx * 30, 32 + dy * 30); g.stroke()
+  }
+  _starSpriteTex = new THREE.CanvasTexture(cv)
+  return _starSpriteTex
+}
+function _galaxySprTexes() {
+  if (_galaxySpriteTexes) return _galaxySpriteTexes
+  const spiral = (arms, twist, seed) => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128
+    const g = cv.getContext('2d')
+    let s = seed
+    const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647 }
+    const core = g.createRadialGradient(64, 64, 0, 64, 64, 24)
+    core.addColorStop(0, 'rgba(255,255,255,0.95)')
+    core.addColorStop(0.4, 'rgba(255,255,255,0.30)')
+    core.addColorStop(1, 'rgba(255,255,255,0)')
+    g.fillStyle = core; g.fillRect(0, 0, 128, 128)
+    g.globalCompositeOperation = 'lighter'
+    for (let a = 0; a < arms; a++) {
+      const a0 = a * (Math.PI * 2 / arms)
+      for (let t = 0.05; t < 1; t += 0.011) {
+        const ang = a0 + twist * t, r = t * 57
+        const x = 64 + Math.cos(ang) * r + (rnd() - 0.5) * 9 * t
+        const y = 64 + Math.sin(ang) * r + (rnd() - 0.5) * 9 * t
+        const rad = 2.5 + (1 - t) * 4, b = (1 - t) * 0.45
+        const dot = g.createRadialGradient(x, y, 0, x, y, rad)
+        dot.addColorStop(0, `rgba(255,255,255,${b})`); dot.addColorStop(1, 'rgba(255,255,255,0)')
+        g.fillStyle = dot; g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill()
+      }
+    }
+    return new THREE.CanvasTexture(cv)
+  }
+  _galaxySpriteTexes = [spiral(2, 6.2, 11), spiral(3, 5.0, 37), spiral(2, 7.6, 71)]
+  return _galaxySpriteTexes
+}
+// A far-off star: a small tintable glow sprite (opts: color, size).
+function buildSimpleStar({ color = 0xffffff, size = 3 } = {}) {
+  const mat = new THREE.SpriteMaterial({ map: _starSprTex(), color, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false })
+  const spr = new THREE.Sprite(mat); spr.scale.set(size, size, 1)
+  return spr
+}
+// A far-off spiral galaxy: a tintable sprite; `tilt` (<1) foreshortens it into an
+// inclined disc and `rotation` spins that disc (opts: color, size, variant, tilt, rotation).
+function buildSimpleGalaxy({ color = 0xc8d6ff, size = 8, variant = 0, tilt = 0.5, rotation = 0 } = {}) {
+  const texes = _galaxySprTexes()
+  const mat = new THREE.SpriteMaterial({ map: texes[variant % texes.length], color, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, rotation })
+  const spr = new THREE.Sprite(mat); spr.scale.set(size, size * tilt, 1)
+  return spr
+}
+
 // Pick a random background body and place it at a random spot that is on-screen
 // in the opening shot (by unprojecting a random point of the camera's view).
 function makeBackdrop(scene, disposables, lightDir, camera) {
@@ -886,12 +1084,26 @@ function buildBlackHoleLensedModel() {
   g.userData.tick = makeBlackHoleLensed(g, [], new THREE.Vector3())
   return g
 }
+function buildGalaxyModel() {
+  const g = new THREE.Group()
+  const tick = makeGalaxy(g, [], new THREE.Vector3())
+  g.userData.tick = tick
+  g.userData.galaxy = { uniforms: tick.uniforms, params: tick.params }   // live-tuning handle
+  return g
+}
+function buildStarModel() {
+  const g = new THREE.Group()
+  g.userData.tick = makeStar(g, [], new THREE.Vector3())
+  return g
+}
 
 export {
   NEBULA_VERT, NEBULA_FRAG,
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital, buildBlueBomber, buildRedBomber,
   buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield, makeBackdrop,
-  makeGasGiant, makeRingedPlanet, makeEarthlike, makeMachinePlanet, makeBlackHole, makeBlackHoleLensed,
-  buildGasGiantModel, buildRingedPlanetModel, buildEarthlikeModel, buildMachinePlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel,
+  makeGasGiant, makeRingedPlanet, makeEarthlike, makeMachinePlanet, makeBlackHole, makeBlackHoleLensed, makeGalaxy, makeStar,
+  buildGasGiantModel, buildRingedPlanetModel, buildEarthlikeModel, buildMachinePlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel, buildGalaxyModel, buildStarModel,
+  buildSimpleStar, buildSimpleGalaxy,
+  GALAXY_DEFAULTS,
   SKIES, makeNebulaSky,
 }

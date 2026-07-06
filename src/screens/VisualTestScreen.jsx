@@ -13,7 +13,8 @@ import {
 import {
   buildBlueModel, buildRedModel, buildBlueCapital, buildRedCapital,
   buildBlueBomber, buildRedBomber, buildBlueCruiser, buildRedCruiser, buildScienceVessel, buildBlueCapital2, buildAleph, makeShield,
-  buildGasGiantModel, buildRingedPlanetModel, buildEarthlikeModel, buildMachinePlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel,
+  buildGasGiantModel, buildRingedPlanetModel, buildEarthlikeModel, buildMachinePlanetModel, buildBlackHoleModel, buildBlackHoleLensedModel, buildGalaxyModel, buildStarModel,
+  GALAXY_DEFAULTS,
   SKIES, makeNebulaSky,
 } from './battle/geometry'
 import { buildStation, buildCathedra, buildRelay, buildWorldEngine, buildAnnunciator } from './cutscene/models'
@@ -34,16 +35,53 @@ const PROP_BUILD = {
   ringedplanet: buildRingedPlanetModel,
   earthlike:   buildEarthlikeModel,
   machineplanet: buildMachinePlanetModel,
+  star:        buildStarModel,
+  galaxy:      buildGalaxyModel,
 }
 const PROP_LABEL = {
   aleph: 'Aleph', worldengine: 'World Engine', station: 'Orbital Station', cathedra: 'Cathedra', relay: 'Sensor Relay', annunciator: 'Annunciator · RKV',
   blackhole: 'Black Hole', blackhole2: 'Black Hole · Lensed', gasgiant: 'Gas Giant', ringedplanet: 'Ringed Planet',
-  earthlike: 'Earthlike Planet', machineplanet: 'Litania Magna',
+  earthlike: 'Earthlike Planet', machineplanet: 'Litania Magna', star: 'Star · Main Sequence', galaxy: 'Spiral Galaxy',
 }
 const PROP_RIM = {
   aleph: 0xffcf5a, worldengine: 0x6f86ff, station: 0xffd28a, cathedra: 0xfff0c4, relay: 0x9fe0ff, annunciator: 0xffb08a,
   blackhole: 0xacdcff, blackhole2: 0xffd9a0, gasgiant: 0x5fa0ff, ringedplanet: 0xd8b88a, earthlike: 0x74b8ff,
-  machineplanet: 0x6f86ff,
+  machineplanet: 0x6f86ff, star: 0xffb060, galaxy: 0x9fb0ff,
+}
+
+// ── Galaxy tuning panel ──────────────────────────────────────────────────────
+// Every galaxy look parameter is a shader uniform, so the sliders retune the
+// live material through userData.galaxy without rebuilding the model.
+const GAL_SLIDERS = [
+  { key: 'radius', label: 'Size',    min: 14,   max: 44,   step: 1,     fmt: v => v.toFixed(0) },
+  { key: 'arms',   label: 'Arms',    min: 1,    max: 7,    step: 1,     fmt: v => v.toFixed(0) },
+  { key: 'twist',  label: 'Twist',   min: -9,   max: 9,    step: 0.1,   fmt: v => v.toFixed(1) },
+  { key: 'bulge',  label: 'Core',    min: 0.12, max: 0.55, step: 0.01,  fmt: v => v.toFixed(2) },
+  { key: 'thick',  label: 'Thick',   min: 0.03, max: 0.22, step: 0.005, fmt: v => v.toFixed(2) },
+  { key: 'dust',   label: 'Dust',    min: 0,    max: 1.4,  step: 0.05,  fmt: v => v.toFixed(2) },
+  { key: 'glow',   label: 'Glow',    min: 0.2,  max: 2.5,  step: 0.05,  fmt: v => v.toFixed(2) },
+  { key: 'spin',   label: 'Spin',    min: 0,    max: 3,    step: 0.1,   fmt: v => v.toFixed(1) },
+]
+const GAL_COLORS = [
+  { key: 'coreCol', label: 'Core' },
+  { key: 'armCol',  label: 'Arms' },
+  { key: 'dustCol', label: 'Dust' },
+]
+const GAL_PRESETS = [
+  { name: 'Azure',     coreCol: '#ffe2b8', armCol: '#7fa8ff', dustCol: '#8a5a3a' },
+  { name: 'Ember',     coreCol: '#ffd9a0', armCol: '#ff9a5a', dustCol: '#6e3a2a' },
+  { name: 'Verdigris', coreCol: '#fff2c8', armCol: '#63e0c0', dustCol: '#2a4a44' },
+  { name: 'Heretic',   coreCol: '#ffc8ee', armCol: '#c86bff', dustCol: '#4a2a5e' },
+]
+function applyGalaxy(obj, p) {
+  const gx = obj?.userData?.galaxy
+  if (!gx || !p) return
+  const u = gx.uniforms
+  u.uRadius.value = p.radius; u.uThick.value = p.thick
+  u.uArms.value = p.arms; u.uTwist.value = p.twist; u.uBulge.value = p.bulge
+  u.uDust.value = p.dust; u.uGlow.value = p.glow
+  u.uCoreCol.value.set(p.coreCol); u.uArmCol.value.set(p.armCol); u.uDustCol.value.set(p.dustCol)
+  gx.params.spin = p.spin
 }
 
 const TYPES = ['fighter', 'bomber', 'cruiser', 'capital']
@@ -71,15 +109,16 @@ const MODELS = [
   ...TYPES.flatMap(kind => ['blue', 'red'].map(team => ({ kind, team }))),
   { kind: 'capital2', team: 'blue' },
   { kind: 'science', team: 'blue' },
-  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay', 'annunciator', 'blackhole', 'blackhole2', 'gasgiant', 'ringedplanet', 'earthlike', 'machineplanet'].map(kind => ({ kind, team: 'prop' })),
+  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay', 'annunciator', 'blackhole', 'blackhole2', 'gasgiant', 'ringedplanet', 'earthlike', 'machineplanet', 'star', 'galaxy'].map(kind => ({ kind, team: 'prop' })),
 ]
 
 // A single large viewer that renders the selected ship on an orbitable turntable.
 // One WebGL context for the whole gallery — the hull is swapped in place when the
 // selection changes, so the list scales to any number of models.
-function ModelStage({ kind, team }) {
+function ModelStage({ kind, team, galaxy }) {
   const mountRef = useRef(null)
   const sceneRef = useRef(null)
+  const galRef = useRef(galaxy)   // latest galaxy params, for applying after a model swap
 
   // set up the renderer / scene / controls once
   useEffect(() => {
@@ -142,6 +181,7 @@ function ModelStage({ kind, team }) {
     if (team === 'prop') {
       // self-contained cutscene prop (its own materials) — recentre via bounding box
       const obj = (PROP_BUILD[kind] || buildAleph)()
+      applyGalaxy(obj, galRef.current)
       holder.add(obj)
       const box = new THREE.Box3().setFromObject(obj)
       obj.position.sub(box.getCenter(new THREE.Vector3()))
@@ -161,6 +201,13 @@ function ModelStage({ kind, team }) {
     camera.position.set(0, r * 0.5, r * 2.8); controls.target.set(0, 0, 0); controls.update()
   }, [kind, team])
 
+  // retune the live galaxy material as the sliders move (no rebuild)
+  useEffect(() => {
+    galRef.current = galaxy
+    const st = sceneRef.current
+    if (st) applyGalaxy(st.holder.children[0], galaxy)
+  }, [galaxy])
+
   return <div className="vistest-stage-canvas" ref={mountRef} />
 }
 
@@ -177,6 +224,7 @@ export default function VisualTestScreen({ onReturn }) {
   const [sky, setSky] = useState(SKIES[0].key)      // combat-mode nebula backdrop
   const skyRef = useRef(null)                       // live sky handle from the scene
   useEffect(() => { skyRef.current?.setSky(sky) }, [sky])
+  const [gal, setGal] = useState({ ...GALAXY_DEFAULTS })   // galaxy-viewer tuning params
 
   useEffect(() => {
     if (mode !== 'combat') return       // the duel scene only runs in combat mode
@@ -520,11 +568,43 @@ export default function VisualTestScreen({ onReturn }) {
               })}
             </div>
             <div className="vistest-stage-main">
-              <ModelStage kind={selected.kind} team={selected.team} />
+              <ModelStage kind={selected.kind} team={selected.team} galaxy={gal} />
               <div className={`vistest-stage-label vistest-stage-label--${selected.team}`}>
                 <span className="vistest-stage-team">{selected.team.toUpperCase()}</span>
                 <span className="vistest-stage-class">{CLASS_NAME(selected.kind, selected.team)}</span>
               </div>
+              {selected.team === 'prop' && selected.kind === 'galaxy' && (
+                <div className="vistest-gal-panel">
+                  <div className="vistest-gal-title">GALAXY PARAMETERS</div>
+                  {GAL_SLIDERS.map(({ key, label, min, max, step, fmt }) => (
+                    <label className="vistest-gal-row" key={key}>
+                      <span className="vistest-gal-label">{label}</span>
+                      <input
+                        type="range" min={min} max={max} step={step} value={gal[key]}
+                        onChange={(e) => { const v = parseFloat(e.target.value); setGal(g => ({ ...g, [key]: v })) }}
+                      />
+                      <span className="vistest-gal-val">{fmt(gal[key])}</span>
+                    </label>
+                  ))}
+                  <div className="vistest-gal-colors">
+                    {GAL_COLORS.map(({ key, label }) => (
+                      <label className="vistest-gal-col" key={key}>
+                        <input type="color" value={gal[key]} onChange={(e) => { const v = e.target.value; setGal(g => ({ ...g, [key]: v })) }} />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="vistest-gal-presets">
+                    {GAL_PRESETS.map(p => (
+                      <button key={p.name} className="vistest-gal-preset" onClick={() => setGal(g => ({ ...g, coreCol: p.coreCol, armCol: p.armCol, dustCol: p.dustCol }))}>
+                        <span className="vistest-gal-swatch" style={{ background: `linear-gradient(90deg, ${p.coreCol}, ${p.armCol})` }} />
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="vistest-gal-reset" onClick={() => setGal({ ...GALAXY_DEFAULTS })}>⟳ RESET</button>
+                </div>
+              )}
             </div>
           </div>
         )}

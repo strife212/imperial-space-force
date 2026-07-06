@@ -209,6 +209,85 @@
   color: var(--c-ash);
 }
 
+/* Galaxy tuning panel (model viewer, Spiral Galaxy only) */
+.vistest-gal-panel {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 236px;
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: rgba(4, 10, 24, 0.82);
+  border: 1px solid rgba(130, 165, 255, 0.35);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  backdrop-filter: blur(3px);
+}
+.vistest-gal-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #9fb0ff;
+  margin-bottom: 3px;
+}
+.vistest-gal-row { display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--c-ash); }
+.vistest-gal-label { width: 44px; flex-shrink: 0; letter-spacing: 0.1em; text-transform: uppercase; }
+.vistest-gal-row input[type="range"] { flex: 1 1 auto; min-width: 0; height: 12px; accent-color: #7fa8ff; cursor: pointer; }
+.vistest-gal-val { width: 34px; flex-shrink: 0; text-align: right; color: #cdd8ff; }
+.vistest-gal-colors { display: flex; gap: 12px; margin-top: 3px; }
+.vistest-gal-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-ash);
+  cursor: pointer;
+}
+.vistest-gal-col input {
+  width: 48px; height: 22px;
+  padding: 0;
+  border: 1px solid rgba(130, 165, 255, 0.4);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+}
+.vistest-gal-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+.vistest-gal-preset {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: rgba(8, 16, 34, 0.8);
+  border: 1px solid rgba(130, 165, 255, 0.3);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-ash);
+  cursor: pointer;
+}
+.vistest-gal-preset:hover { border-color: rgba(160, 210, 255, 0.8); color: #eaf4ff; }
+.vistest-gal-swatch { width: 16px; height: 8px; border-radius: 2px; }
+.vistest-gal-reset {
+  margin-top: 4px;
+  align-self: flex-start;
+  padding: 3px 10px;
+  background: rgba(8, 16, 34, 0.8);
+  border: 1px solid rgba(130, 165, 255, 0.4);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--c-ash);
+  cursor: pointer;
+}
+.vistest-gal-reset:hover { border-color: rgba(160, 210, 255, 0.9); color: #fff; }
+
 /* ===================================================================== */
 /*  SPACE BATTLE SIMULATION SCREEN                                        */
 /* ===================================================================== */
@@ -1669,6 +1748,37 @@
   transition: opacity 1.2s ease;
 }
 .cut-fade--on { opacity: 1; }
+
+/* Standalone (deep-linked) replay end-card: a black screen over the fade layer */
+.cut-replay {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: cut-replay-in 0.8s ease both;
+}
+@keyframes cut-replay-in { from { opacity: 0; } to { opacity: 1; } }
+.cut-replay-btn {
+  background: rgba(4, 10, 24, 0.9);
+  border: 1px solid rgba(130, 165, 255, 0.55);
+  color: rgba(200, 216, 255, 0.95);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  padding: 16px 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.cut-replay-btn:hover {
+  border-color: rgba(170, 210, 255, 0.95);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(60, 140, 255, 0.5);
+}
 
 /* ── Urgent Message Overlay ────────────────────────────────────────── */
 .urg-dim {

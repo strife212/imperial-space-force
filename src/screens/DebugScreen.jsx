@@ -35,6 +35,7 @@ const CUTSCENES = [
   { key: 'cut:theAnnunciator',   label: '8 · The Annunciator'  },
   { key: 'cut:theLance',         label: '9 · The Lance'        },
   { key: 'cut:theOrderRestored', label: '10 · Order Restored'  },
+  { key: 'cut:cosmogony',        label: 'Ω · Cosmogony'        },
 ]
 
 // ── LEGACY: the 2D UI narrative game ─────────────────────────────────────────

@@ -34,7 +34,7 @@ const CHAR_PORTRAIT = {
 // dialogue and the ending through the ctx passed to their `create()`:
 //   ctx.comms.show(name, text, { persist, team, portrait, segments })
 //   ctx.end({ holdMs, overlay })   // overlay → urgent transmission, else advance
-export default function Cutscene({ scene, onReturn, onComplete, canSkip = true }) {
+export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, standalone = false }) {
   const mountRef = useRef(null)
   const [comms, setComms] = useState(null)
   const [commsText, setCommsText] = useState('')
@@ -42,12 +42,25 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true }
   const [ending, setEnding] = useState(null)   // { holdMs, overlay } once the scene ends
   const [fadeBlack, setFadeBlack] = useState(false)
   const [urgent, setUrgent] = useState(null)   // overlay config while shown
+  const [showReplay, setShowReplay] = useState(false)   // standalone: black end-card + replay
+  const [replayNonce, setReplayNonce] = useState(0)     // bump to re-run the scene
   const endedRef = useRef(false)
   const [now, setNow] = useState(0)            // shell clock (≈ scene T) for telemetry
   // telemetry feed + PNL readout are opt-in (campaign debug: "advanced cutscenes")
   const advanced = !!getFlag('advancedCutscenes')
 
-  const advance = () => (onComplete ?? onReturn)?.()
+  // standalone (deep-linked) playback ends on a black replay card instead of
+  // navigating anywhere; the campaign version advances as before
+  const advance = () => {
+    if (standalone) { setShowReplay(true); return }
+    ;(onComplete ?? onReturn)?.()
+  }
+  const replay = () => {
+    endedRef.current = false
+    setShowReplay(false); setEnding(null); setFadeBlack(false)
+    setUrgent(null); setComms(null); setCommsText('')
+    setReplayNonce((n) => n + 1)
+  }
 
   // telemetry clock — drives scene.feed reveal and scene.readout live values
   useEffect(() => {
@@ -56,7 +69,7 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true }
     const t0 = performance.now()
     const iv = setInterval(() => setNow((performance.now() - t0) / 1000), FEED_TICK_MS)
     return () => clearInterval(iv)
-  }, [scene])
+  }, [scene, replayNonce])
 
   // typewriter: type the line out, let it sit, then (unless it persists) hide
   useEffect(() => {
@@ -111,7 +124,7 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true }
     try { teardown = createStage(mount, scene, { comms: commsApi, end }) }
     catch (err) { console.error('Cutscene failed to initialise:', err) }
     return () => { try { teardown && teardown() } catch (_) { /* noop */ } }
-  }, [scene])
+  }, [scene, replayNonce])
 
   return (
     <div id="cutscene-screen">
@@ -167,6 +180,12 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true }
       </div>
 
       <div className={`cut-fade${fadeBlack ? ' cut-fade--on' : ''}`} />
+
+      {standalone && showReplay && (
+        <div className="cut-replay">
+          <button className="cut-replay-btn" onClick={replay}>⟳ REPLAY</button>
+        </div>
+      )}
 
       {urgent && (
         <UrgentMessageOverlay sender={urgent.sender} body={urgent.body} dismissLabel={urgent.dismissLabel} onClose={advance} />

@@ -161,6 +161,7 @@ export function recordBattle(nodeIndex, won) {
 }
 
 export function resetCampaign() {
+  setFlag('cosmogonySeen', false)   // erasing the save replays the Cosmogony intro
   setFlag('campaignProgress', 0)
   setFlag('credits', 0)
   setFlag('campaignFleet', { ...STARTING_FLEET })

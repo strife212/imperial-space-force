@@ -200,6 +200,232 @@ export const LENSED_BH_FRAG = /* glsl */`
   }
 `
 
+// ── Spiral galaxy — ray-marched disc volume on a camera-facing quad ────────────
+// Same trick as the lensed black hole: each fragment marches its true camera ray,
+// here through a flattened galactic disc — log-spiral arms, clumpy interstellar
+// medium, dust lanes, a spheroidal bulge — so the galaxy reads correctly from any
+// angle (face-on spiral, edge-on a thin blade split by its dust lane). Every look
+// parameter is a uniform so it can be retuned live without a rebuild.
+export const GALAXY_VERT = LENSED_BH_VERT
+export const GALAXY_FRAG = /* glsl */`
+  precision highp float;
+  uniform float uTime;      // pattern rotation phase (pre-integrated with spin speed)
+  uniform vec3  uCenter;    // galaxy centre (world)
+  uniform vec3  uPlaneN;    // disc plane normal (world, unit)
+  uniform float uRadius;    // disc radius (world units)
+  uniform float uThick;     // disc half-thickness as a fraction of radius
+  uniform float uArms;      // spiral arm count — keep integer-valued: the arm wave
+                            // is evaluated across the atan branch cut
+  uniform float uTwist;     // arm winding; sign sets handedness, 0 = radial spokes
+  uniform float uBulge;     // central bulge radius as a fraction of radius
+  uniform float uDust;      // dust-lane absorption strength
+  uniform float uGlow;      // overall emission multiplier
+  uniform vec3  uCoreCol;   // old-star bulge colour
+  uniform vec3  uArmCol;    // young-star arm colour
+  uniform vec3  uDustCol;   // dust tint (lanes absorb its complement)
+  varying vec3 vWorld;
+
+  float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p){
+    vec2 i = floor(p), f = fract(p);
+    float a = hash(i), b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+  }
+  float fbm(vec2 p){
+    return noise(p) * 0.5 + noise(p * 2.17 + 3.1) * 0.3 + noise(p * 4.31 + 7.7) * 0.2;
+  }
+
+  void main(){
+    vec3 rd = normalize(vWorld - cameraPosition);
+    vec3 ro = cameraPosition - uCenter;
+
+    // entry/exit of the galaxy's bounding sphere
+    float R = uRadius * 1.12;
+    float bq = dot(-ro, rd);
+    float det = bq * bq - dot(ro, ro) + R * R;
+    if (det < 0.0) { gl_FragColor = vec4(0.0); return; }
+    float sq = sqrt(det);
+    float t0 = max(bq - sq, 0.0), t1 = bq + sq;
+    if (t1 <= t0) { gl_FragColor = vec4(0.0); return; }
+
+    // disc-plane basis
+    vec3 T1 = normalize(cross(uPlaneN, abs(uPlaneN.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+    vec3 T2 = cross(uPlaneN, T1);
+
+    float ds = (t1 - t0) / 60.0;
+    // break slab-sampling banding into grain — interleaved gradient noise stays
+    // uniform at large frag coords where the sin-based hash loses precision
+    float jit = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5;
+    vec3 acc = vec3(0.0);
+    vec3 trans = vec3(1.0);
+    vec3 ext = clamp(vec3(1.05) - uDustCol, 0.0, 1.0);   // dust absorbs its complement
+
+    for (int i = 0; i < 60; i++){
+      vec3 p = ro + rd * (t0 + (float(i) + 0.5 + jit) * ds);
+      float x = dot(p, T1), y = dot(p, T2), z = dot(p, uPlaneN);
+      float rr = length(vec2(x, y));
+      float r01 = rr / uRadius;
+      if (r01 > 1.06) continue;
+
+      // thin disc: vertical gaussian (flaring outward) × radial exponential
+      float hz = uRadius * uThick * (0.30 + 0.80 * r01) + 1e-3;
+      float vert = exp(-z * z / (hz * hz));
+      float radial = exp(-r01 * 3.2) * (1.0 - smoothstep(0.86, 1.06, r01));
+
+      // log-spiral arm wave, the whole pattern slowly rotating with uTime
+      float th = atan(y, x) + uTime * 0.10;
+      float w = uArms * th + uTwist * log(r01 + 0.045);
+      float armWave = 0.5 + 0.5 * cos(w);
+      float arm = 0.18 + 0.82 * pow(armWave, 2.6);
+      arm = mix(1.0, arm, smoothstep(uBulge * 0.5, uBulge * 1.7, r01));   // arms fade into the bulge
+
+      // clumpy interstellar medium, sheared by differential rotation
+      float thN = th + uTime * 0.16 / (r01 + 0.3);
+      vec2 pn = vec2(cos(thN), sin(thN)) * r01;
+      float n = fbm(pn * 7.0 + 13.1);
+      float clump = 0.45 + 0.9 * n;
+
+      float disc = vert * radial * arm * clump;
+
+      // flattened spheroidal bulge of old stars
+      float qb = length(vec3(x, y, z * 2.4)) / (uRadius * uBulge + 1e-3);
+      float bulge = exp(-qb * qb * 1.8);
+
+      // warm core -> cool arms; young star clusters spark along the arm ridges
+      vec3 col = mix(uCoreCol, uArmCol, smoothstep(0.08, 0.50, r01));
+      float spark = smoothstep(0.80, 0.95, noise(pn * 26.0 + 4.7)) * max(arm - 0.3, 0.0) * vert * radial;
+      vec3 em = col * disc + uCoreCol * bulge * 0.55 + (uArmCol * 0.6 + vec3(0.4)) * spark * 1.2;
+
+      // dust lanes hugging the inner edge of each arm, pinched to the midplane
+      float lane = smoothstep(0.25, 0.9, 0.5 + 0.5 * cos(w + 1.1))
+                 * smoothstep(0.06, 0.18, r01) * (1.0 - smoothstep(0.72, 0.95, r01));
+      float dust = uDust * lane * exp(-z * z / (hz * hz * 0.22)) * (0.5 + 0.8 * n);
+
+      acc += em * trans * (ds * 0.62);
+      trans *= exp(-dust * ext * (ds * 0.55));
+    }
+
+    // hue-preserving cap keeps the core from nuking the bloom pass
+    acc *= uGlow;
+    float mx = max(acc.r, max(acc.g, acc.b));
+    if (mx > 2.4) acc *= 2.4 / mx;
+    gl_FragColor = vec4(acc, 1.0);   // additive — pure light over the scene
+  }
+`
+
+// ── Star — emissive photosphere: granulation, sunspots, limb darkening ─────────
+// A main-sequence star as a sibling of the planet makers: the body shader paints
+// convection granules, dark sunspot groups with bright faculae rims and real limb
+// darkening; a camera-facing corona quad (below) adds streamers, and makeStar
+// pairs them with a PointLight + prominence sprites for actual light emission.
+export const STAR_VERT = /* glsl */`
+  varying vec3 vPosL;
+  varying vec3 vWN;
+  varying vec3 vWPos;
+  void main() {
+    vPosL = position;
+    vWN = normalize(mat3(modelMatrix) * normal);
+    vWPos = (modelMatrix * vec4(position, 1.0)).xyz;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+export const STAR_FRAG = /* glsl */`
+  precision highp float;
+  uniform float uTime;
+  uniform vec3 uCol;    // chromosphere base (deep orange)
+  uniform vec3 uHot;    // granule peaks (near white)
+  varying vec3 vPosL;
+  varying vec3 vWN;
+  varying vec3 vWPos;
+
+  float hash3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+  float noise3(vec3 p){
+    vec3 i = floor(p), f = fract(p);
+    vec3 u = f * f * (3.0 - 2.0 * f);
+    float a = hash3(i),                    b = hash3(i + vec3(1.0, 0.0, 0.0));
+    float c = hash3(i + vec3(0.0, 1.0, 0.0)), d = hash3(i + vec3(1.0, 1.0, 0.0));
+    float e = hash3(i + vec3(0.0, 0.0, 1.0)), f2 = hash3(i + vec3(1.0, 0.0, 1.0));
+    float g = hash3(i + vec3(0.0, 1.0, 1.0)), h = hash3(i + vec3(1.0, 1.0, 1.0));
+    return mix(mix(mix(a, b, u.x), mix(c, d, u.x), u.y),
+               mix(mix(e, f2, u.x), mix(g, h, u.x), u.y), u.z);
+  }
+  float fbm3(vec3 p){
+    return noise3(p) * 0.5 + noise3(p * 2.13 + 3.7) * 0.3 + noise3(p * 4.42 + 9.1) * 0.2;
+  }
+
+  void main(){
+    vec3 p = normalize(vPosL);
+    float ca = cos(uTime * 0.03), sa = sin(uTime * 0.03);   // slow stellar rotation
+    p = vec3(ca * p.x + sa * p.z, p.y, -sa * p.x + ca * p.z);
+
+    // convection: large slow cells + fine simmering granules
+    float g1 = fbm3(p * 5.0 + vec3(0.0, uTime * 0.02, 0.0));
+    float g2 = fbm3(p * 14.0 - vec3(uTime * 0.035));
+    float gran = g1 * 0.62 + g2 * 0.38;
+    float cells = smoothstep(0.30, 0.75, gran);
+
+    // sunspot groups, ringed by bright faculae
+    float sp = fbm3(p * 3.2 + vec3(7.7));
+    float spot = smoothstep(0.66, 0.78, sp);
+    float fac = smoothstep(0.58, 0.66, sp) * (1.0 - spot);
+
+    vec3 vd = normalize(cameraPosition - vWPos);
+    float mu = clamp(dot(normalize(vWN), vd), 0.0, 1.0);
+    float limb = 0.35 + 0.65 * pow(mu, 0.7);   // limb darkening — stars dim at the edge
+
+    vec3 col = mix(uCol * 0.72, uHot, cells * 0.75 + fac * 0.45);
+    col *= (0.62 + 0.55 * gran);
+    col = mix(col, uCol * 0.16, spot * 0.85);   // dark umbra
+    col *= limb * 1.15;                          // it is a star — let it bloom
+    float mx = max(col.r, max(col.g, col.b));
+    if (mx > 1.7) col *= 1.7 / mx;
+    gl_FragColor = vec4(col, 1.0);
+  }
+`
+export const STAR_CORONA_VERT = /* glsl */`
+  varying vec2 vLocal;
+  void main() {
+    vLocal = position.xy;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+export const STAR_CORONA_FRAG = /* glsl */`
+  precision highp float;
+  uniform float uTime;
+  uniform float uR;      // photosphere radius (quad-local units)
+  uniform vec3 uCol;
+  varying vec2 vLocal;
+
+  float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p){
+    vec2 i = floor(p), f = fract(p);
+    float a = hash(i), b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+  }
+  float fbm(vec2 p){
+    return noise(p) * 0.5 + noise(p * 2.17 + 3.1) * 0.3 + noise(p * 4.31 + 7.7) * 0.2;
+  }
+
+  void main(){
+    float r = length(vLocal) / uR;   // 1.0 = photosphere edge
+    if (r < 0.98) { gl_FragColor = vec4(0.0); return; }   // the body draws itself
+    float th = atan(vLocal.y, vLocal.x);
+    vec2 dir = vec2(cos(th), sin(th));   // angle sampled through cos/sin — no branch cut
+    float fil = fbm(dir * 3.1 + vec2(uTime * 0.05, -uTime * 0.04));
+    float fil2 = fbm(dir * 6.4 - vec2(uTime * 0.03, 0.0));
+    float streak = 0.45 + 0.55 * smoothstep(0.35, 0.85, fil * 0.6 + fil2 * 0.4);
+    float fall = exp(-(r - 1.0) * (2.6 - 1.2 * streak));   // long streamers reach further
+    float ring = exp(-abs(r - 1.02) * 22.0) * 0.9;         // thin chromosphere rim
+    float edge = 1.0 - smoothstep(2.05, 2.5, r);           // die out before the quad edge
+    vec3 col = uCol * (fall * 0.55 * streak + ring) * edge;
+    gl_FragColor = vec4(col, 1.0);   // additive — pure light
+  }
+`
+
 // ── Fresnel rim — photon-ring glow hugging the event-horizon silhouette ────────
 export const RIM_VERT = /* glsl */`
   varying vec3 vN;
