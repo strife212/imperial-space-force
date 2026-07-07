@@ -11,6 +11,7 @@
 //   npm run sim -- --sweep3 --workers 12   # parallelise the sweep across 12 threads (default 16; 1 = sequential)
 //   npm run sim -- --sweep4           # CROSS-MATRIX: 25 blue × 25 red = 625 match-ups × 50 runs
 //   npm run sim -- --sweep4 --runs 200 --workers 16   # full-precision matrix (125,000 sims)
+//   npm run sim -- --sweep4 --cap-tactic engage       # blue flagship on 'directly engage' (default 'hold')
 //   npm run sim -- --campaign         # each campaign node: sensible all-requisition fleet vs its enemy, 20 runs
 //   npm run sim -- --campaign --runs 50
 //
@@ -30,7 +31,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 import {
   FLEET_SIZE, SHIP_HP, BOMBER_COUNT, CRUISER_COUNT, BOMBER_HP, BOMBER_SPEED, BOMBER_MIN,
   BOMB_DMG, BOMB_RANGE, BOMB_LIFE, PD_RANGE, CAP_HP, CAP_SPEED, CAP_WEAPONS, BOLT_SPEED,
-  MISS_CHANCE, BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF,
+  MISS_CHANCE, CAP_ENGAGE_MISS_CHANCE, BOMB_MISS_CHANCE, MAX_SPEED, MIN_SPEED, SEP_RADIUS, BOUND_R, STANDOFF,
   FIGHTER_RANGE, TURN_RATE, FIELD_FIGHTER_CAP, REINFORCE_INTERVAL, BOMBER_AUTO_DISPATCH,
   ARMOR_FIGHTER, ARMOR_BOMBER, ARMOR_FLAGSHIP, ARMOR_CRUISER, FLARES_BOMBER, FLARES_FLAGSHIP, PTS_FIGHTER, PTS_BOMBER, PTS_CRUISER, PTS_FLAGSHIP,
   PTS_FLAGSHIP_MIN, FLEET_BUDGET, RETREAT_STRENGTH, MORALE_BROKEN_STRENGTH,
@@ -60,6 +61,11 @@ const VERBOSE       = hasFlag('verbose') || (!hasFlag('quiet') && RUNS <= 20)
 const WORKERS       = num('workers', 16)   // parallel worker threads for --sweep3 / --sweep4
 const CRUISER_SPEED_OVR = argVal('cruiser-speed', null)   // override cruiser move speed (experiments)
 const CRUISER_STEER = argVal('cruiser-steer', 'arc')      // 'arc' (turning circle) | 'force' (old flocking)
+// Blue flagship posture (mirrors the in-game tactic). 'engage' → drives to the
+// centre of the melee and its broadside tightens to CAP_ENGAGE_MISS_CHANCE;
+// 'hold' → orbits its patrol slot at the standing MISS_CHANCE. Default 'hold',
+// matching the game's opening state and the harness's prior behaviour.
+const CAP_TACTIC = argVal('cap-tactic', 'hold')
 
 const DT = 1 / 60
 const MAX_T = 300
@@ -159,7 +165,10 @@ function runBattle(cfg) {
 
   const bolts = []
   const fireBolt = (shooter, target, big = false, bomb = !!shooter.isBomber) => {
-    const willHit = Math.random() > (bomb ? BOMB_MISS_CHANCE : MISS_CHANCE)
+    // blue flagship's broadside tightens to 80% hit while 'directly engage' is set
+    const engaged = big && shooter.isCapital && shooter.team === 'blue' && cfg.capTactic === 'engage'
+    const missChance = bomb ? BOMB_MISS_CHANCE : engaged ? CAP_ENGAGE_MISS_CHANCE : MISS_CHANCE
+    const willHit = Math.random() > missChance
     _tmp.set(0, 0, 1).applyQuaternion(shooter.quat)
     const start = shooter.pos.clone().addScaledVector(_tmp, big ? 2.6 : 1.0)
     const dir = target.pos.clone().sub(start).normalize()
@@ -214,7 +223,9 @@ function runBattle(cfg) {
 
       if (s.route) {
         const rt = s.route; rt.angle += rt.omega * DT
-        const tx = Math.cos(rt.angle) * rt.R, ty = rt.y, tz = Math.sin(rt.angle) * rt.R
+        let tx = Math.cos(rt.angle) * rt.R, ty = rt.y, tz = Math.sin(rt.angle) * rt.R
+        // 'directly engage': the blue flagship leaves its patrol and pushes to the centre
+        if (s.team === 'blue' && cfg.capTactic === 'engage') { tx = 0; ty = 0; tz = 0 }
         const dx = tx - s.pos.x, dy = ty - s.pos.y, dz = tz - s.pos.z
         const dist = Math.hypot(dx, dy, dz), step = CAP_SPEED * DT
         if (dist > 1e-4) { const f = Math.min(step, dist) / dist; s.pos.x += dx * f; s.pos.y += dy * f; s.pos.z += dz * f; orient(s.quat, _dir.set(dx, dy, dz), 1 - Math.exp(-1.5 * DT)) }
@@ -418,6 +429,7 @@ const runBuildsBatch = (builds, runs, params) => builds.map(([c, b]) => {
   }
   cfg.cruiserSpeed = params.cruiserSpeed
   cfg.cruiserArc = params.cruiserArc
+  cfg.capTactic = params.capTactic
   const a = { wing, blueW: 0, redW: 0, draw: 0, sumT: 0, blueSurv: 0, redSurv: 0, blueCap: 0, n: runs }
   for (let i = 0; i < runs; i++) {
     const r = runBattle(cfg)
@@ -439,6 +451,7 @@ const runMatrixBatch = (cells, runs, params) => cells.map(cell => {
     blueCruisers: cell.blue.cruisers, redCruisers: cell.red.cruisers,
     blueLaunch: params.blueLaunch, redLaunch: params.redLaunch,
     cruiserSpeed: params.cruiserSpeed, cruiserArc: params.cruiserArc,
+    capTactic: params.capTactic,
   }
   let blueW = 0, redW = 0, draw = 0
   for (let i = 0; i < runs; i++) {
@@ -489,7 +502,7 @@ if (!isMainThread) {
       blueFighters: f.fighters, redFighters: node.enemy.fighters,
       blueBombers: f.bombers, redBombers: node.enemy.bombers,
       blueCruisers: f.cruisers, redCruisers: node.enemy.cruisers,
-      blueLaunch: null, redLaunch: null,
+      blueLaunch: null, redLaunch: null, capTactic: CAP_TACTIC,
     }
     const res = []
     for (let i = 0; i < runsEach; i++) res.push(runBattle(cfg))
@@ -515,12 +528,13 @@ if (!isMainThread) {
   const wings = SWEEP3_BUILDS.map(([c, b]) => wingFor3(c, b))
   const cells = []
   SWEEP3_BUILDS.forEach((_, bi) => SWEEP3_BUILDS.forEach((__, ri) => cells.push({ bi, ri, blue: wings[bi], red: wings[ri] })))
-  const params = { blueLaunch, redLaunch, cruiserSpeed: CRUISER_SPEED_OVR == null ? CRUISER_SPEED : Number(CRUISER_SPEED_OVR), cruiserArc: CRUISER_STEER !== 'force' }
+  const params = { blueLaunch, redLaunch, cruiserSpeed: CRUISER_SPEED_OVR == null ? CRUISER_SPEED : Number(CRUISER_SPEED_OVR), cruiserArc: CRUISER_STEER !== 'force', capTactic: CAP_TACTIC }
   const nWorkers = Math.max(1, Math.min(WORKERS, runsEach))
   const total = cells.length * runsEach
 
   console.log(`\nCross-matrix sweep — ${wings.length} blue × ${wings.length} red = ${cells.length} match-ups × ${runsEach} runs (${total} sims) on ${nWorkers} worker${nWorkers > 1 ? 's' : ''}`)
   console.log(`Both fleets launch bombers ${blueLaunch}s.  Cruiser speed: ${params.cruiserSpeed}, steer: ${params.cruiserArc ? 'arc' : 'force'}.`)
+  console.log(`Blue flagship posture: ${params.capTactic === 'engage' ? 'DIRECTLY ENGAGE (drives to centre, 80% broadside)' : 'HOLD BACK (patrol orbit, 72% broadside)'}.`)
 
   const t0 = Date.now()
   const base = Math.floor(runsEach / nWorkers), rem = runsEach % nWorkers
@@ -566,6 +580,11 @@ if (!isMainThread) {
   // per-build summaries
   const blueMean = wings.map((w, bi) => ({ w, bi, mean: grid[bi].reduce((s, v) => s + v, 0) / N }))
   const redMean  = wings.map((w, ri) => ({ w, ri, mean: cellsAgg.filter(a => a.ri === ri).reduce((s, a) => s + (a.blueW / a.n) * 100, 0) / N }))
+  // headline: mean blue win % weighted by actual runs across every cell (the
+  // single number to compare between flagship postures)
+  const totW = cellsAgg.reduce((s, a) => s + a.blueW, 0), totN = cellsAgg.reduce((s, a) => s + a.n, 0)
+  const totD = cellsAgg.reduce((s, a) => s + a.draw, 0)
+  console.log(`\n▓ OVERALL blue win % across all ${cells.length} match-ups [${params.capTactic}]: ${(totW / totN * 100).toFixed(1)}%  (draws ${(totD / totN * 100).toFixed(1)}%)`)
   console.log('\nMost robust BLUE builds (mean blue win % across all 25 red builds):')
   for (const r of [...blueMean].sort((a, b) => b.mean - a.mean).slice(0, 6)) console.log(`  ${label(r.w).padEnd(9)} — ${r.mean.toFixed(1)}%`)
   console.log('\nToughest RED builds (lowest mean blue win % they concede, across all 25 blue builds):')
@@ -579,7 +598,7 @@ if (!isMainThread) {
   const runsEach = hasFlag('runs') ? RUNS : 100
   const blueLaunch = BLUE_LAUNCH == null ? 10 : Number(BLUE_LAUNCH)
   const builds = SWEEP3_BUILDS
-  const params = { redFighters: RED_FIGHTERS, redBombers: RED_BCOUNT, redCruisers: RED_CCOUNT, blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH), cruiserSpeed: CRUISER_SPEED_OVR == null ? CRUISER_SPEED : Number(CRUISER_SPEED_OVR), cruiserArc: CRUISER_STEER !== 'force' }
+  const params = { redFighters: RED_FIGHTERS, redBombers: RED_BCOUNT, redCruisers: RED_CCOUNT, blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH), cruiserSpeed: CRUISER_SPEED_OVR == null ? CRUISER_SPEED : Number(CRUISER_SPEED_OVR), cruiserArc: CRUISER_STEER !== 'force', capTactic: CAP_TACTIC }
   const nWorkers = Math.max(1, Math.min(WORKERS, runsEach))
 
   console.log(`\nThree-type build sweep — ${builds.length} builds × ${runsEach} runs (${builds.length * runsEach} sims) on ${nWorkers} worker${nWorkers > 1 ? 's' : ''}`)
@@ -639,6 +658,7 @@ if (!isMainThread) {
       blueBombers: wing.bombers, redBombers: RED_BCOUNT,
       blueCruisers: 0, redCruisers: RED_CCOUNT,
       blueLaunch, redLaunch: RED_LAUNCH == null ? null : Number(RED_LAUNCH),
+      capTactic: CAP_TACTIC,
     }
     const res = []
     for (let i = 0; i < runsEach; i++) res.push(runBattle(cfg))
@@ -659,6 +679,7 @@ if (!isMainThread) {
     blueCruisers: BLUE_CCOUNT, redCruisers: RED_CCOUNT,
     blueLaunch: BLUE_LAUNCH == null ? null : Number(BLUE_LAUNCH),
     redLaunch:  RED_LAUNCH  == null ? null : Number(RED_LAUNCH),
+    capTactic: CAP_TACTIC,
   }
   console.log(`\nBattle sim — ${RUNS} run(s)`)
   console.log(`Blue: ${cfg.blueFighters} fighters, ${cfg.blueBombers} bombers, ${cfg.blueCruisers} cruisers, launch ${cfg.blueLaunch == null ? `auto(${BOMBER_AUTO_DISPATCH}s)` : cfg.blueLaunch + 's'}`)
