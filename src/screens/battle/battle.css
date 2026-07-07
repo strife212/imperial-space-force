@@ -1749,6 +1749,36 @@
 }
 .cut-fade--on { opacity: 1; }
 
+/* Standalone (deep-linked) start gate: a black screen whose button supplies the
+   user gesture the browser needs before it will let the scene play audio */
+.cut-start {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cut-start-btn {
+  background: rgba(4, 10, 24, 0.9);
+  border: 1px solid rgba(130, 165, 255, 0.55);
+  color: rgba(200, 216, 255, 0.95);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  padding: 16px 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.cut-start-btn:hover {
+  border-color: rgba(170, 210, 255, 0.95);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(60, 140, 255, 0.5);
+}
+
 /* Standalone (deep-linked) replay end-card: a black screen over the fade layer */
 .cut-replay {
   position: fixed;

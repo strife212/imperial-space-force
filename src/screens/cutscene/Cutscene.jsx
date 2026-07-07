@@ -44,6 +44,10 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
   const [urgent, setUrgent] = useState(null)   // overlay config while shown
   const [showReplay, setShowReplay] = useState(false)   // standalone: black end-card + replay
   const [replayNonce, setReplayNonce] = useState(0)     // bump to re-run the scene
+  // Deep-linked (standalone) playback has no prior user gesture, so the browser
+  // blocks the scene's audio. Gate it behind a START button that supplies the
+  // gesture; the in-game cutscene is always reached by a click, so it starts hot.
+  const [started, setStarted] = useState(!standalone)
   const endedRef = useRef(false)
   const [now, setNow] = useState(0)            // shell clock (≈ scene T) for telemetry
   // telemetry feed + PNL readout are opt-in (campaign debug: "advanced cutscenes")
@@ -65,11 +69,11 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
   // telemetry clock — drives scene.feed reveal and scene.readout live values
   useEffect(() => {
     setNow(0)
-    if (!advanced || (!scene.feed && !scene.readout)) return
+    if (!started || !advanced || (!scene.feed && !scene.readout)) return
     const t0 = performance.now()
     const iv = setInterval(() => setNow((performance.now() - t0) / 1000), FEED_TICK_MS)
     return () => clearInterval(iv)
-  }, [scene, replayNonce])
+  }, [scene, replayNonce, started])
 
   // typewriter: type the line out, let it sit, then (unless it persists) hide
   useEffect(() => {
@@ -97,8 +101,11 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
     return () => clearTimeout(t)
   }, [fadeBlack])
 
-  // three.js stage (re-created on replay)
+  // three.js stage (re-created on replay). Held until the user hits START on a
+  // deep-linked run, and torn down once the replay card appears — tearing down
+  // runs the scene's dispose, which cuts the looping audio dead on the end-card.
   useEffect(() => {
+    if (!started || showReplay) return
     const mount = mountRef.current
     if (!mount) return
     const commsApi = {
@@ -124,13 +131,19 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
     try { teardown = createStage(mount, scene, { comms: commsApi, end }) }
     catch (err) { console.error('Cutscene failed to initialise:', err) }
     return () => { try { teardown && teardown() } catch (_) { /* noop */ } }
-  }, [scene, replayNonce])
+  }, [scene, replayNonce, started, showReplay])
 
   return (
     <div id="cutscene-screen">
       {!scene.hideChrome && <HudHeader onLogout={onReturn} right={<span className="label">{scene.label}</span>} />}
       <div className="sb-stage">
         <div className="sb-canvas" ref={mountRef} />
+
+        {standalone && !started && (
+          <div className="cut-start">
+            <button className="cut-start-btn" onClick={() => setStarted(true)}>▶ START</button>
+          </div>
+        )}
 
         {scene.establishing && !urgent && (
           <div className="cut-establish">
