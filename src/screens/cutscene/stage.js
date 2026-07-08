@@ -4,6 +4,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { NEBULA_VERT, NEBULA_FRAG } from '../battle/geometry'
 import { createFX } from './fx'
+import { createCutsceneSfx } from './sfx'
 
 const UP = new THREE.Vector3(0, 1, 0), _ORIGIN = new THREE.Vector3()
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion()
@@ -58,14 +59,20 @@ export function createStage(mount, sceneDef, hooks) {
   const rimLight = new THREE.DirectionalLight(0x4060a0, 0.4); rimLight.position.set(-10, -4, -12); scene.add(rimLight)
 
   const backdrop = makeBackdrop(scene)
-  const fx = createFX(scene)
+  // passive stages (menu backdrop) pass no comms hook — they get no audio engine
+  const sfx = hooks.comms ? createCutsceneSfx() : null
+  const fx = createFX(scene, sfx)   // bolts + blasts play their own laser/boom
 
   const tracked = []
   const ctx = {
-    scene, camera, fx, orient, rimLight,
+    scene, camera, fx, sfx, orient, rimLight,
     lights: { ambient, key: keyLight, rim: rimLight },
     backdrop: { starMat: backdrop.starMat, nebMat: backdrop.nebMat },
-    comms: hooks.comms,
+    // every comms box opens with the battle's radio chirp (scenes with their own
+    // scored soundtrack opt out via `quietComms`)
+    comms: hooks.comms
+      ? { show: (...a) => { if (!sceneDef.quietComms) sfx.comms(); hooks.comms.show(...a) }, hide: hooks.comms.hide }
+      : { show: () => {}, hide: () => {} },
     end: hooks.end,
     track: (...ds) => { for (const d of ds) tracked.push(d) },
   }
@@ -94,6 +101,7 @@ export function createStage(mount, sceneDef, hooks) {
 
   return () => {
     cancelAnimationFrame(raf); ro.disconnect()
+    sfx?.dispose()
     fx.dispose()
     backdrop.disposables.forEach(d => d.dispose && d.dispose())
     tracked.forEach(d => d.dispose && d.dispose())

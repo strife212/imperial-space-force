@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { TEAMS } from '../../battle/constants'
-import { buildBlueModel, buildRedModel, makeBlackHole } from '../../battle/geometry'
+import { buildBlueModel, buildRedModel, makeBlackHole, makeShield } from '../../battle/geometry'
 import { buildFleet } from '../actors'
 import { asteroidField } from '../models'
 
@@ -38,6 +38,34 @@ export default {
     makeBlackHole(scene, [], new THREE.Vector3(-30, 70, -260))
     const field = asteroidField(ctx, { count: 26, center: new THREE.Vector3(0, 0, 0), inner: 70, outer: 220, scaleMax: 5 })
 
+    // flagship shields — a rim-lit bubble that flares when a broadside lands
+    const shields = {}
+    for (const [team, fleetRef] of [['blue', blue], ['red', red]]) {
+      const sh = makeShield(TEAMS[team].bolt)
+      sh.mesh.scale.set(2.4, 2.0, 4.4)
+      fleetRef.ships[0].add(sh.mesh)
+      shields[team] = sh
+    }
+
+    // charred drifting hulks instead of vanishing ships
+    const charred = new THREE.MeshStandardMaterial({ color: 0x23262c, emissive: 0x180b05, emissiveIntensity: 0.5, metalness: 0.3, roughness: 0.95 })
+    const wrecks = []
+    const wreckify = (s) => {
+      s.userData.dead = true
+      s.children[0].material = charred
+      if (s.children[1]) s.children[1].visible = false      // engine plume dies
+      wrecks.push({ s, sx: (Math.random() - 0.5) * 1.4, sy: (Math.random() - 0.5) * 1.4, vy: (Math.random() - 0.5) * 1.6 })
+    }
+
+    // slow torpedoes arcing across the gap over the laser fire
+    const torps = []
+    const fireTorp = (att, def) => {
+      const s = pick(att), t = pick(def); if (!s || !t) return
+      s.getWorldPosition(_a); t.getWorldPosition(_b)
+      const m = new THREE.Mesh(fx.bombGeo, fx.bombMat); m.position.copy(_a); scene.add(m)
+      torps.push({ m, from: _a.clone(), to: _b.clone(), t: 0, dur: 2.2 + Math.random() * 0.8, smokeCd: 0 })
+    }
+
     // skirmishers tearing across the no-man's-land between the lines
     const skirm = []
     const mkSkirm = (team) => {
@@ -52,12 +80,19 @@ export default {
     for (let i = 0; i < 7; i++) { skirm.push(mkSkirm('blue')); skirm.push(mkSkirm('red')) }
 
     const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _d = new THREE.Vector3()
-    const pick = (f) => f.ships[Math.floor(Math.random() * f.ships.length)]
+    const pick = (f) => { const live = f.ships.filter(s => !s.userData.dead); return live[Math.floor(Math.random() * live.length)] }
     const volley = (att, def, color) => { const s = pick(att), t = pick(def); if (!s || !t) return; s.getWorldPosition(_a); t.getWorldPosition(_b); fx.bolt(_a, _b, color, { speed: 100 }) }
     let shake = 0
-    const detonate = (f) => { const live = f.ships.filter(s => s.visible); if (live.length <= 6) return; const s = live[Math.floor(Math.random() * live.length)]; s.getWorldPosition(_a); fx.blast(_a, true); s.visible = false; shake = Math.min(1.4, shake + 0.7) }
+    const detonate = (f) => { const live = f.ships.filter(s => !s.userData.dead); if (live.length <= 6) return; const s = live[Math.floor(Math.random() * live.length)]; s.getWorldPosition(_a); fx.blast(_a, true); wreckify(s); shake = Math.min(1.4, shake + 0.7) }
+    // the capital duel: a heavy lance every few seconds, flaring the target's shield
+    const broadside = (att, def, defShield, color) => {
+      att.ships[0].getWorldPosition(_a); def.ships[0].getWorldPosition(_b)
+      _b.x += (Math.random() - 0.5) * 4; _b.y += (Math.random() - 0.5) * 3
+      fx.bolt(_a, _b, color, { speed: 130, big: true, size: 3.2, blastOnHit: false })
+      defShield.pending = 0.35 + _a.distanceTo(_b) / 130   // flare when the lance arrives
+    }
 
-    let T = 0, c1 = false, c2 = false, ended = false, fireCd = 0, detCd = 1.5
+    let T = 0, c1 = false, c2 = false, ended = false, fireCd = 0, detCd = 1.5, torpCd = 2.2, bsCd = 0
     return (dt) => {
       T += dt
       field.tick(dt)
@@ -72,19 +107,52 @@ export default {
         if (o.dir > 0 ? o.x > 80 : o.x < -80) reseed(o)
       }
 
-      // main-line gunnery + ships dying
-      if (T > 3) {
+      // main-line gunnery + ships dying — batteries release on the order (T≈4.7)
+      if (T > 4.7) {
         fireCd -= dt
         if (fireCd <= 0) { volley(blue, red, 0x8fc6ff); volley(red, blue, 0xff7a5a); fireCd = 0.05 }
         detCd -= dt
         if (detCd <= 0) { detonate(Math.random() < 0.62 ? red : blue); detCd = 0.5 + Math.random() * 0.5 }   // the Discord gives ground slowly
+        torpCd -= dt
+        if (torpCd <= 0) { fireTorp(Math.random() < 0.5 ? blue : red, Math.random() < 0.5 ? red : blue); torpCd = 1.6 + Math.random() * 1.4 }
+        bsCd -= dt
+        if (bsCd <= 0) { const bf = Math.random() < 0.5; broadside(bf ? blue : red, bf ? red : blue, shields[bf ? 'red' : 'blue'], bf ? 0x8fc6ff : 0xff7a5a); bsCd = 2.6 + Math.random() * 0.8 }
       }
 
-      // camera: side three-quarter on the midpoint, with battle shake
+      // shields: flare as the lance lands, then bleed away
+      for (const team of ['blue', 'red']) {
+        const sh = shields[team]
+        if (sh.pending != null) { sh.pending -= dt; if (sh.pending <= 0) { sh.pending = null; sh.mat.uniforms.uIntensity.value = 1.3; shake = Math.min(1.4, shake + 0.4) } }
+        sh.mat.uniforms.uIntensity.value = Math.max(0, sh.mat.uniforms.uIntensity.value - dt * 1.7)
+      }
+
+      // torpedoes: slow ordnance arcing over the bolt streams, smoke behind
+      for (let i = torps.length - 1; i >= 0; i--) {
+        const tp = torps[i]; tp.t += dt
+        const p = Math.min(1, tp.t / tp.dur)
+        tp.m.position.lerpVectors(tp.from, tp.to, p); tp.m.position.y += Math.sin(p * Math.PI) * 14
+        tp.m.rotation.set(T * 3, T * 2, 0)
+        tp.smokeCd -= dt; if (tp.smokeCd <= 0) { fx.smoke(tp.m.position); tp.smokeCd = 0.05 }
+        if (p >= 1) { fx.blast(tp.m.position.clone(), true); shake = Math.min(1.4, shake + 0.5); scene.remove(tp.m); torps.splice(i, 1) }
+      }
+
+      // wrecks: tumble, drift, shed the odd ember
+      for (const w of wrecks) {
+        w.s.rotation.x += w.sx * dt; w.s.rotation.z += w.sy * dt; w.s.position.y += w.vy * dt
+        if (Math.random() < 0.02) { w.s.getWorldPosition(_a); fx.ember(_a, 0xff6a30) }
+      }
+
+      // camera: ride the no-man's-land head-on while the lines close, then a
+      // hard cut to the side-wide as the batteries open up — dollying in slowly
       const mid = (blue.group.position.x + red.group.position.x) / 2
       shake = Math.max(0, shake - dt * 1.6)
-      camera.position.set(mid - 8 + (Math.random() - 0.5) * shake * 3, 24 + (Math.random() - 0.5) * shake * 2, 82)
-      camera.lookAt(mid, 0, 0)
+      if (T < 4.7) {
+        camera.position.set(mid - 26, 5, 14)
+        camera.lookAt(mid + 40, 2, -6)
+      } else {
+        camera.position.set(mid - 8 + (Math.random() - 0.5) * shake * 3, 24 + (Math.random() - 0.5) * shake * 2, 82 - Math.min(14, (T - 4.7) * 1.3))
+        camera.lookAt(mid, 0, 0)
+      }
 
       if (!c1 && T >= 1.0) { c1 = true; comms.show('Princess Astraia', LINE1) }
       if (!c2 && T >= 4.5) { c2 = true; comms.show('Princess Astraia', LINE2, { persist: true }) }

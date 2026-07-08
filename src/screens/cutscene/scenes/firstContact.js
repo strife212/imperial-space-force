@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { TEAMS } from '../../battle/constants'
-import { buildBlueModel, buildAleph, makeGasGiant, buildBlueCapital } from '../../battle/geometry'
+import { buildBlueModel, buildAleph, makeGasGiant, buildScienceVessel } from '../../battle/geometry'
 import { createFlagship, createBomberWing } from '../actors'
 import { asteroidField } from '../models'
 
@@ -44,7 +44,7 @@ export default {
   },
   bloom: 0.6,
   create(ctx) {
-    const { scene, camera, fx, comms, end, orient } = ctx
+    const { scene, camera, fx, sfx, comms, end, orient } = ctx
 
     // The Aleph — built off-centre, so wrap it in a pivot at the model's centre.
     const alephInner = buildAleph()
@@ -54,15 +54,26 @@ export default {
     aleph.scale.setScalar(0.001); aleph.visible = false   // grows in when revealed
     scene.add(aleph)
 
+    // gold radiance + drifting motes shed by the artifact, lit with the reveal
+    const alephLight = new THREE.PointLight(0xffc878, 0, 260); alephLight.position.set(0, 2, 0); scene.add(alephLight)
+    const moteMat = new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })
+    const motes = []
+    for (let i = 0; i < 10; i++) {
+      const m = new THREE.Mesh(fx.blastGeo, moteMat)
+      m.scale.setScalar(0.12 + Math.random() * 0.1); m.visible = false; scene.add(m)
+      motes.push({ m, r: 10 + Math.random() * 8, a: Math.random() * Math.PI * 2, s: 0.15 + Math.random() * 0.2, y: (Math.random() - 0.5) * 9 })
+    }
+
     // a dim gas giant far off, and a debris field strewn around the find
     makeGasGiant(scene, [], new THREE.Vector3(-150, 50, -240), new THREE.Vector3(0.5, 0.4, 0.7).normalize())
     const field = asteroidField(ctx, { count: 46, center: new THREE.Vector3(0, 0, 0), inner: 46, outer: 190, scaleMin: 0.6, scaleMax: 5.5 })
 
     const flagship = createFlagship(ctx, {
       deathDrift: 0,
-      model: buildBlueCapital,
-      glowPos: [[-0.45, -3.1], [0.45, -3.1]],   // Cassiopeia keeps the original capital hull
+      model: buildScienceVessel,                // the Cassiopeia-class hull — an instrument, not a warship
+      glowPos: [[0.5, -4.85], [-0.5, -4.85]],   // twin aft nacelles of the science spine
       onDestroyed: () => {
+        shake = 1.6
         comms.show(SHIP_NAME, DLG3, { persist: true })
         end({ holdMs: 4200, overlay: { sender: 'Admiralty Command', body: "We've had an urgent distress call from the Science Vessel Cassiopeia, on a classified mission. They've called for immediate assistance. Get ready to deploy the fleet.", dismissLabel: 'TO BATTLE' } })
       },
@@ -70,6 +81,14 @@ export default {
     flagship.ship.pos.set(WARP_FROM_X, 0, SHIP_LANE_Z)
     orient(flagship.group, new THREE.Vector3(1, 0, 0))
     flagship.group.position.copy(flagship.ship.pos)
+
+    // an instrument hull reads by its shapes, not by glow — ease the emissive
+    // so the key light can model the dish, spars and collar rings
+    flagship.group.children[0].material.emissiveIntensity = 0.3
+
+    // every bomb that lands rocks the camera
+    const damage0 = flagship.damage
+    flagship.damage = (n) => { damage0(n); shake = Math.min(1.3, shake + 0.3) }
 
     const wing = createBomberWing(ctx, { count: N_BOMBERS })
 
@@ -107,22 +126,36 @@ export default {
 
     let T = 0, firedDlg1 = false, firedDlg2 = false, revealing = false, revealT = 0
     let stationaryT = 0, scanStarted = false, scanT = 0, scanDone = false, postScanT = 0, bombersSpawned = false, fighterWarped = false
+    let shake = 0, warpDone = false, camAz = 0, camDist = 1, prevSweep = 0
 
     return (dt) => {
       T += dt
       const ship = flagship.ship
       field.tick(dt)
 
-      // artifact: slow tumble, grow in on reveal
+      // artifact: slow tumble, grow in on reveal, gold light breathing
       aleph.rotation.y += 0.28 * dt
       aleph.rotation.x += 0.13 * dt
       if (revealing && revealT < 1) { revealT = Math.min(1, revealT + dt / 1.3); aleph.scale.setScalar(ALEPH_SCALE * easeOut3(revealT)) }
+      if (revealing) {
+        alephLight.intensity = 1.5 * revealT * (0.85 + 0.15 * Math.sin(T * 2.4))
+        for (const mo of motes) {
+          mo.m.visible = true
+          mo.a += mo.s * dt
+          mo.m.position.set(Math.cos(mo.a) * mo.r, mo.y + Math.sin(T * 0.7 + mo.r) * 1.4, Math.sin(mo.a) * mo.r)
+        }
+      }
 
-      // vessel: warp in, cruise to the artifact, pull up alongside (actor owns the wreck)
+      // vessel: warp in (hull stretched by the translation, snapping back on
+      // arrival with the hyperspace howl), cruise to the artifact, pull up
+      // alongside (actor owns the wreck)
       if (!ship.dying) {
         if (T < WARP_DUR) {
           const p = Math.min(1, T / WARP_DUR), e = 1 - Math.pow(1 - p, 3)
           ship.pos.x = THREE.MathUtils.lerp(WARP_FROM_X, WARP_TO_X, e)
+          flagship.group.scale.set(3.2, 3.2, 3.2 * (1 + 9 * Math.pow(1 - p, 2)))
+        } else if (!warpDone) {
+          warpDone = true; flagship.group.scale.setScalar(3.2); sfx.jump(0.8)
         } else if (!ship.stationary) {
           const remaining = STOP_X - ship.pos.x
           if (remaining > 0.06) {
@@ -130,7 +163,7 @@ export default {
             ship.pos.x += Math.min(speed * dt, remaining)
           } else { ship.stationary = true }
         }
-        if (!revealing && ship.pos.x >= REVEAL_X) { revealing = true; aleph.visible = true }
+        if (!revealing && ship.pos.x >= REVEAL_X) { revealing = true; aleph.visible = true; sfx.blip(880, 0.2, 0.5) }
       }
       flagship.tick(dt)
 
@@ -167,6 +200,8 @@ export default {
         }
         if (scanBand) {
           const sweep = ((scanT * 6) % (ALEPH_HALF_H * 2)) - ALEPH_HALF_H   // bottom → top, looping
+          if (sweep < prevSweep) sfx.blip(1500, 0.16, 0.18)                 // sweep wrapped → sensor ping
+          prevSweep = sweep
           scanBand.mesh.position.set(0, sweep, 0)
           scanBand.mat.opacity = 0.5 * (0.6 + 0.4 * Math.sin(T * 8))
         }
@@ -181,7 +216,7 @@ export default {
       wing.tick(dt, flagship)
 
       // scout fighter warps out the moment the vessel is lost
-      if (fighter && ship.dying && !fighterWarped) { fighterWarped = true; fighter.phase = 'warp'; fighter.t = 0; endScanFX() }
+      if (fighter && ship.dying && !fighterWarped) { fighterWarped = true; fighter.phase = 'warp'; fighter.t = 0; endScanFX(); sfx.jump(0.5) }
       if (fighter && fighter.phase === 'warp') {
         fighter.t += dt
         const accel = 30 + fighter.t * 220
@@ -192,9 +227,16 @@ export default {
         if (fighter.t > 0.5) { scene.remove(fighter.group); fighter = null }
       }
 
-      // camera
-      _v.copy(ship.pos).add(CAM_OFF)
+      // camera: chase in, drift round the find once the vessel holds station,
+      // then pull wide and shudder when the ambush lands
+      const azGoal = bombersSpawned ? 0.5 : (ship.stationary ? -0.45 : 0)
+      const distGoal = bombersSpawned ? 1.4 : 1
+      camAz += (azGoal - camAz) * (1 - Math.exp(-0.55 * dt))
+      camDist += (distGoal - camDist) * (1 - Math.exp(-0.8 * dt))
+      _v.copy(CAM_OFF).applyAxisAngle(yAxis, camAz).multiplyScalar(camDist).add(ship.pos)
       camera.position.lerp(_v, 1 - Math.exp(-3 * dt))
+      shake = Math.max(0, shake - dt * 1.6)
+      if (shake > 0) camera.position.add(_tmp.set((Math.random() - 0.5) * shake * 1.6, (Math.random() - 0.5) * shake * 1.2, (Math.random() - 0.5) * shake * 1.6))
       camTarget.lerp(lookGoal(), 1 - Math.exp(-3 * dt)); camera.lookAt(camTarget)
     }
   },

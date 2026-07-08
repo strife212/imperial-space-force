@@ -78,6 +78,7 @@ function playTick() {
 export default {
   label: 'CUTSCENE / COSMOGONY',
   hideChrome: true,   // full-bleed: no HUD header framing the cosmogony
+  quietComms: true,   // scored scene — no radio chirp over its own soundtrack
   // feed/readout ride the shell's real-time clock, so they carry the PREROLL
   // offset the scene clock bakes in — shift every cue by it to stay in step.
   feed: [

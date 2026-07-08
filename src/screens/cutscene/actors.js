@@ -23,7 +23,9 @@ export function createFlagship(ctx, { scale = 3.2, hp = 60, deathDrift = 0, onDe
   group.add(new THREE.Mesh(model(), shipMat))
   const glows = []
   for (const [gx, gz] of glowPos) {
-    const g = new THREE.Mesh(fx.blastGeo, fx.glowMat.blue); g.scale.setScalar(0.7); g.position.set(gx, 0, gz); group.add(g); glows.push(g)
+    // flame-shaped, stretched along the thrust axis — reads as an engine plume
+    // instead of one blown-out orb swallowing the stern
+    const g = new THREE.Mesh(fx.blastGeo, fx.glowMat.blue); g.scale.set(0.34, 0.34, 0.62); g.position.set(gx, 0, gz); group.add(g); glows.push(g)
   }
   const fires = []
   for (let i = 0; i < 6; i++) {
@@ -98,7 +100,7 @@ export function buildFleet(ctx, { team = 'blue', fighters = 18, bombers = 0, cru
   const FWD = new THREE.Vector3(1, 0, 0)
   const add = (geo, scale, rear, x, y, z) => {
     const g = new THREE.Group(); g.add(new THREE.Mesh(geo, hullMat))
-    const glow = new THREE.Mesh(fx.blastGeo, fx.glowMat[team]); glow.scale.setScalar(0.42); glow.position.set(0, 0, -rear); g.add(glow)
+    const glow = new THREE.Mesh(fx.blastGeo, fx.glowMat[team]); glow.scale.set(0.3, 0.3, 0.5); glow.position.set(0, 0, -rear); g.add(glow)   // plume, not orb
     g.scale.setScalar(scale); g.position.set(x, y, z); orient(g, FWD); group.add(g); ships.push(g)
   }
   if (capital) add(geoCap, 3.2, blue ? 3.8 : 3.1, 0, 0, 0)
@@ -115,7 +117,7 @@ export function buildFleet(ctx, { team = 'blue', fighters = 18, bombers = 0, cru
 // with gently-homing bombs. `spawn(center)` warps them in; `tick(dt, flagship)`
 // flies/fires them and drives the bombs (smoke trail, detonate → flagship.damage).
 export function createBomberWing(ctx, { count = 8, dmg = 3, bombSpeed = 36 } = {}) {
-  const { scene, fx, orient } = ctx
+  const { scene, fx, sfx, orient } = ctx
   const bombers = [], bombs = []
   const _dir = new THREE.Vector3(), _tmp = new THREE.Vector3(), _v = new THREE.Vector3()
   let spawned = false
@@ -129,6 +131,7 @@ export function createBomberWing(ctx, { count = 8, dmg = 3, bombSpeed = 36 } = {
   }
   const spawn = (center) => {
     spawned = true
+    sfx?.jump()   // one hyperspace howl for the whole wing arriving
     for (let i = 0; i < count; i++) {
       const ang = (i / count) * Math.PI * 2 + Math.random() * 0.6
       const b = makeBomber()
@@ -136,7 +139,7 @@ export function createBomberWing(ctx, { count = 8, dmg = 3, bombSpeed = 36 } = {
       b.pos.z += Math.sin(ang) * 6
       b.group.position.copy(b.pos); b.group.visible = true
       orient(b.group, _dir.subVectors(center, b.pos))
-      fx.blast(b.pos.clone(), false)   // pop-in flash
+      fx.blast(b.pos.clone(), false, { silent: true })   // pop-in flash, not a detonation
       bombers.push(b)
     }
   }
