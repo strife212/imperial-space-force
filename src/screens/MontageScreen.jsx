@@ -23,7 +23,7 @@ const IMG = (f) => `${BASE}montage/${encodeURIComponent(f)}`
 // magnification · dis = dissolve into this slide (else hard cut) · era = 1..5
 // act index (drives the soundscape's mood) · c = credit line (what / who /
 // when) — shown in the end colophon.
-const REEL = [
+export const REEL = [   // exported for scripts/render-montage-video.mjs
   // ── ACT I · the dawn of time ──
   { f: 'Cosmic_Microwave_Background_(CMB).jpeg', kb: 'in', dis: true, era: 1, c: 'Cosmic Microwave Background — ESA Planck all-sky survey, 2013' },
   { f: 'found_hubble_xdf.jpg', kb: 'out', dis: true, era: 1, c: 'Hubble eXtreme Deep Field — NASA / ESA, 2012' },
@@ -69,7 +69,7 @@ const REEL = [
 ]
 
 // the colophon: every distinct credited work, in order of appearance
-const CREDITS = [...new Map(REEL.filter((s) => s.c).map((s) => [s.f, s.c])).values()]
+export const CREDITS = [...new Map(REEL.filter((s) => s.c).map((s) => [s.f, s.c])).values()]
 
 // The accelerando: hold times decay from a slow contemplative open to rapid-
 // fire flashes at the end of history. Slides may pin their own `hold` (the
