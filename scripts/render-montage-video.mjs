@@ -167,6 +167,7 @@ await page.evaluate(async ({ FPS, W, H }) => {
     ramp(droneGain.gain, 'drone', 0.16, t0 + dur, 1.6)
     ramp(fbk.gain, 'fbk', 0.42, t0 + dur, 1.0)
   }
+  const finaleGains = []
   const finaleChord = (t0) => {
     ramp(droneGain.gain, 'drone', 0.05, t0, 1.2)
     for (const [f, l] of [[146.83, 0.16], [220, 0.13], [293.66, 0.11], [369.99, 0.09], [440, 0.07], [1174.66, 0.02]]) {
@@ -174,6 +175,7 @@ await page.evaluate(async ({ FPS, W, H }) => {
       const g = off.createGain()
       g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(l, t0 + 1.6); g.gain.linearRampToValueAtTime(l * 0.8, t0 + 3.2)
       o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + 12)
+      finaleGains.push(g)
     }
   }
   // the ceremony: drone breathes in from t=0 beneath the title
@@ -181,7 +183,17 @@ await page.evaluate(async ({ FPS, W, H }) => {
   let prevEra = 1
   REEL.forEach((s, i) => {
     const t0 = starts[i], era = s.era || 1
-    if (s.sfx === 'silence') { ramp(master.gain, 'master', 0, t0, 0.08); return }
+    if (s.sfx === 'silence') {
+      // release, not a dead stop: bed and air cut, the finale chord decays
+      // across the held frame and dies in the first seconds of the credits
+      ramp(droneGain.gain, 'drone', 0.0001, t0, 0.12)
+      ramp(airGain.gain, 'air', 0, t0, 0.12)
+      for (const g of finaleGains) {
+        try { g.gain.cancelAndHoldAtTime(t0) } catch (_) { g.gain.cancelScheduledValues(t0); g.gain.setValueAtTime(0.1, t0) }
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 6.5)
+      }
+      return
+    }
     if (era !== prevEra) {
       prevEra = era
       const mood = ERA_MOOD[era]
@@ -195,6 +207,8 @@ await page.evaluate(async ({ FPS, W, H }) => {
     if (s.sfx === 'bell') { for (const [r, l] of [[1, 1], [2.76, 0.5], [5.4, 0.24]]) blip(523.25 * r, t0, 1.1, 0.12 * l, 'sine'); return }
     strike(era, s.dur, t0)
   })
+  // finish(): the master fades out from reel-end, closing the chord's last tail
+  ramp(master.gain, 'master', 0, reelEnd, 2.8)
   log('  rendering audio…')
   const audioBuf = await off.startRendering()
   // encode 16-bit stereo WAV and ship it out in chunks

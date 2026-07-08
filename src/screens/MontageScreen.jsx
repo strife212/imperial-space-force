@@ -64,8 +64,7 @@ export const REEL = [   // exported for scripts/render-montage-video.mjs
   { f: 'neural_network_traditional.png', kb: 'in', era: 5, c: 'Neural network, layered' },
   { f: 'neural_network_cold.png', kb: 'in', dis: true, era: 5, hold: 2.6, sfx: 'finale', c: 'Neural network, dense' },   // the radiant chord
   // ── CODA ──
-  { f: 'Flammarion.jpg', kb: 'in', era: 5, hold: 2.2, sfx: 'bell', pos: '38% 60%', zoom: 1.12, c: 'The Flammarion engraving — unknown artist, 1888' },
-  { f: 'found_hubble_xdf.jpg', kb: 'still', era: 1, hold: 3.0, sfx: 'silence' },   // XDF reprise — one held beat, in silence
+  { f: 'found_hubble_xdf.jpg', kb: 'still', era: 1, hold: 4.5, sfx: 'silence' },   // XDF reprise — one long held beat, in silence
 ]
 
 // the colophon: every distinct credited work, in order of appearance

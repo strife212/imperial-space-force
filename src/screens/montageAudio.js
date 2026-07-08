@@ -100,15 +100,19 @@ export function createMontageAudio() {
     if (dur < 0.7 && era >= 4) blip(1320, t0 + dur / 2, 0.04, 0.05, 'sine')
   }
 
-  // the radiant chord — everything recedes beneath it (sfx: 'finale')
+  // the radiant chord — everything recedes beneath it (sfx: 'finale'). Its
+  // gain nodes are kept so the silence cut can release them into a long decay.
+  let finaleGains = []
   const finaleChord = () => {
     const t0 = now() + 0.05
     ramp(droneGain.gain, 0.05, 1.2)
+    finaleGains = []
     for (const [f, l] of [[146.83, 0.16], [220, 0.13], [293.66, 0.11], [369.99, 0.09], [440, 0.07], [1174.66, 0.02]]) {
       const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
       const g = ctx.createGain()
       g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(l, t0 + 1.6); g.gain.linearRampToValueAtTime(l * 0.8, t0 + 3.2)
       o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + 12)
+      finaleGains.push(g)
     }
   }
 
@@ -180,13 +184,21 @@ export function createMontageAudio() {
   const setSlide = (slide) => {
     const era = slide.era || 1
     if (slide.sfx === 'silence') {
+      // not a dead stop: the bed and air cut, but the finale chord is released
+      // into a long natural decay — the first note's echo dying back into the
+      // field — reaching true silence in the first seconds of the credits
+      // (finish()'s master fade at reel-end closes whatever remains).
       const t = now()
-      master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t)
-      master.gain.linearRampToValueAtTime(0, t + 0.08)   // dead stop (80ms — no click, reads as instant)
-      curEra = era   // retune the (now inaudible) bed so a replay starts coherent
+      ramp(droneGain.gain, 0.0001, 0.12)
+      ramp(airGain.gain, 0, 0.12)
+      for (const g of finaleGains) {
+        try { g.gain.cancelAndHoldAtTime(t) } catch (_) { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(0.1, t) }
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 6.5)
+      }
+      curEra = era   // retune the bed under the tail so a replay starts coherent
       for (const { o, ratio } of oscs) ramp(o.frequency, ERA_ROOT[era] * ratio, 0.5)
       ramp(droneFilter.frequency, ERA_MOOD[era].cutoff, 0.5)
-      ramp(airGain.gain, ERA_MOOD[era].air, 0.5)
+      ramp(airGain.gain, ERA_MOOD[era].air === 0 ? 0 : 0.0001, 0.5)
       ramp(wet.gain, ERA_MOOD[era].wet, 0.5)
       return
     }
