@@ -94,10 +94,15 @@ export function createMontageAudio() {
       blip(880, t0, 0.09, 0.1 + 0.06 * w, 'square')                         // instrument blip
       burst(t0, 0.03, 0.08, 4800, 3)                                        // shutter click
     } else {
-      for (let n = 0; n < 3; n++) blip(330 * (n + 1) * 1.5, t0 + n * 0.042, 0.035, 0.075, 'square')  // machine tick-run
+      // a data-chime: a quick rising triangle arpeggio in the era's key
+      // (B · F♯ · B) over a relay-click — bright with a slight machine edge
+      for (const [r, at, l] of [[4, 0, 1], [6, 0.028, 0.62], [8, 0.056, 0.45]])
+        blip(ERA_ROOT[5] * r, t0 + at, 0.22 + 0.34 * w, (0.08 + 0.06 * w) * l, 'triangle')
+      burst(t0, 0.022, 0.065, 3200, 2.4)
     }
-    // racing pulse: sub-ticks between fast cuts so the sprint is felt in the body
-    if (dur < 0.7 && era >= 4) blip(1320, t0 + dur / 2, 0.04, 0.05, 'sine')
+    // racing pulse: sub-ticks between fast cuts so the sprint is felt in the
+    // body — pitched to the era's root so they ride the drone, not fight it
+    if (dur < 0.7 && era >= 4) blip(ERA_ROOT[era] * 16, t0 + dur / 2, 0.05, 0.028, 'sine')
   }
 
   // the radiant chord — everything recedes beneath it (sfx: 'finale'). Its

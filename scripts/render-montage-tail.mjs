@@ -1,19 +1,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Render Cosmogony II (/cosmogony2) to a video file:
-//   node scripts/render-montage-video.mjs          → renders/cosmogony2-1080p.mp4
+// Render the LAST FIVE slides of Cosmogony II to a high-quality clip + GIF:
+//   node scripts/render-montage-tail.mjs
+//     → public/clips/cosmogony2-last5.mp4   (1080p, CRF 18, finale audio)
+//     → public/clips/cosmogony2-last5.gif   (960w, 20 fps, palette-dithered)
 //
-// Deterministic offline render — no screen capture, no dropped frames:
-//   · drives the system Chrome headless via playwright-core, importing the
-//     REAL reel (REEL/CREDITS from MontageScreen.jsx via the Vite dev server)
-//     so timing, framing and credits can never drift from the app,
-//   · draws every frame to a canvas (cover-crop + object-position, Ken Burns
-//     in/out/up/still with per-slide zoom, dissolves, Trinity + act-boundary
-//     flashes, film grain, vignette, title card, end fade, rolling colophon),
-//   · re-schedules the soundscape into an OfflineAudioContext on an absolute
-//     timeline (same synthesis as montageAudio.js: era-keyed drone bed, air,
-//     strikes, trinity detonation, finale chord, bell, dead silence),
-//   · muxes frames + WAV with ffmpeg (libx264 CRF 21 + AAC 192k).
-// Requires the Vite dev server on :5173.
+// Same deterministic pipeline as render-montage-video.mjs (real REEL via the
+// Vite dev server, canvas frames, OfflineAudioContext port), narrowed to the
+// reel's tail: Reprogramming ENIAC → Connection Machine → the two neural
+// networks (finale chord) → the silent XDF reprise, through the end fade.
+// FILM GRAIN IS OFF here — clean gradients palette-quantise far better.
+// The audio is scheduled across the FULL timeline (so the drone/era state and
+// the finale chord are exactly what the reel plays), then the tail segment is
+// cut out at the mux. Outputs land in public/clips/ (gitignored) so they are
+// reachable on the dev server at /clips/…  Requires Vite on :5173.
 // ─────────────────────────────────────────────────────────────────────────────
 import { chromium } from 'playwright-core'
 import ffmpegPath from 'ffmpeg-static'
@@ -23,16 +22,20 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const OUT_DIR = join(ROOT, 'renders')
-const FRAMES = join(OUT_DIR, 'frames')
-const WAV = join(OUT_DIR, 'cosmogony2.wav')
-const OUT = join(OUT_DIR, 'cosmogony2-1080p.mp4')
+const OUT_DIR = join(ROOT, 'public', 'clips')
+const FRAMES = join(ROOT, 'renders', 'tail-frames')
+const WAV = join(ROOT, 'renders', 'tail.wav')
+const OUT_MP4 = join(OUT_DIR, 'cosmogony2-last5.mp4')
+const OUT_GIF = join(OUT_DIR, 'cosmogony2-last5.gif')
+const PALETTE = join(ROOT, 'renders', 'tail-palette.png')
 const DEV = 'http://localhost:5173'
 const CHROME = 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
 const FPS = 30, W = 1920, H = 1080
+const N_TAIL = 5
 
 rmSync(FRAMES, { recursive: true, force: true })
 mkdirSync(FRAMES, { recursive: true })
+mkdirSync(OUT_DIR, { recursive: true })
 if (existsSync(WAV)) rmSync(WAV)
 
 const browser = await chromium.launch({ executablePath: CHROME, headless: true })
@@ -43,39 +46,40 @@ page.on('pageerror', (e) => console.error('[pageerror]', e.message))
 let frameCount = 0
 await page.exposeBinding('saveFrame', async (_s, name, b64) => {
   writeFileSync(join(FRAMES, name), Buffer.from(b64, 'base64'))
-  if (++frameCount % 300 === 0) console.log(`  frames: ${frameCount}`)
+  if (++frameCount % 100 === 0) console.log(`  frames: ${frameCount}`)
 })
 await page.exposeBinding('saveWavChunk', async (_s, b64) => appendFileSync(WAV, Buffer.from(b64, 'base64')))
 await page.exposeBinding('logNode', async (_s, msg) => console.log(msg))
 
 await page.goto(DEV + '/', { waitUntil: 'domcontentloaded' })
 
-console.log('rendering audio + frames in headless Chrome…')
-await page.evaluate(async ({ FPS, W, H }) => {
+console.log('rendering tail audio + frames in headless Chrome…')
+const seg = await page.evaluate(async ({ FPS, W, H, N_TAIL }) => {
   const log = (m) => window.logNode(m)
   const mod = await import('/src/screens/MontageScreen.jsx')
   const REEL = mod.REEL, CREDITS = mod.CREDITS
   if (!REEL || !CREDITS) throw new Error('REEL/CREDITS not exported')
 
-  // ── the master timeline (video seconds) ──
-  const TITLE = 3.0, BREATH = 1.4, ENDF = 1.4, CRED_DELAY = 1.6, TAIL = 1.0
+  // ── the master timeline (identical to the full renderer) ──
+  const TITLE = 3.0, BREATH = 1.4
   const starts = []
   let acc = TITLE + BREATH
   for (const s of REEL) { starts.push(acc); acc += s.dur }
   const reelEnd = acc
-  const credStart = reelEnd + CRED_DELAY
-  // video-render mode: the web reel rolls its colophon, but the film closes on
-  // a single static card — every credit in two columns, held for ten seconds
-  const credDur = 10
-  const TOTAL = credStart + credDur + TAIL
-  log(`  timeline: reel ${reelEnd.toFixed(1)}s · credits ${credDur.toFixed(1)}s · total ${TOTAL.toFixed(1)}s`)
+  const ENDF = 1.4
+
+  // the clip window: hard cut into the fifth-from-last slide → past the end fade
+  const tail0 = REEL.length - N_TAIL
+  const T0 = starts[tail0]
+  const T1 = reelEnd + 1.5                        // fade done (1.4) + a black beat
+  log(`  window: ${T0.toFixed(2)}s → ${T1.toFixed(2)}s  (${(T1 - T0).toFixed(2)}s)`)
 
   const clamp01 = (v) => Math.min(1, Math.max(0, v))
   const smooth = (v) => { v = clamp01(v); return v * v * (3 - 2 * v) }
 
-  // ══ AUDIO · offline port of montageAudio.js on absolute time ══════════════
+  // ══ AUDIO · full-timeline schedule (state at the tail is then exact) ═══════
   const SR = 44100
-  const off = new OfflineAudioContext(2, Math.ceil(TOTAL * SR), SR)
+  const off = new OfflineAudioContext(2, Math.ceil(T1 * SR), SR)
   const ERA_ROOT = { 1: 36.71, 2: 41.2, 3: 49.0, 4: 55.0, 5: 61.74 }
   const ERA_MOOD = {
     1: { cutoff: 130, air: 0, wet: 0.5 }, 2: { cutoff: 240, air: 0.05, wet: 0.42 },
@@ -107,21 +111,22 @@ await page.evaluate(async ({ FPS, W, H }) => {
   const airGain = off.createGain(); airGain.gain.value = 0
   noise.connect(airBP); airBP.connect(airGain); airGain.connect(bus); noise.start(0)
 
-  // anchored ramps: track each param's current target so ramps chain correctly
   const cur = new Map()
   const ramp = (param, v0key, v, t, tau) => {
     const prev = cur.has(v0key) ? cur.get(v0key) : param.value
     param.setValueAtTime(prev, t); param.linearRampToValueAtTime(v, t + tau); cur.set(v0key, v)
   }
   const blip = (freq, t0, len, level, type = 'sine', glideTo = null) => {
+    if (t0 > T1) return
     const o = off.createOscillator(); o.type = type; o.frequency.setValueAtTime(freq, t0)
     if (glideTo != null) o.frequency.exponentialRampToValueAtTime(Math.max(glideTo, 1), t0 + len)
     const g = off.createGain()
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(Math.max(level, 0.0002), t0 + 0.014); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len)
     o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + len + 0.05)
   }
-  const burst = (t0, len, level, bpFreq, q = 1, loop = false) => {
-    const src = off.createBufferSource(); src.buffer = nbuf; src.loop = loop
+  const burst = (t0, len, level, bpFreq, q = 1) => {
+    if (t0 > T1) return
+    const src = off.createBufferSource(); src.buffer = nbuf
     const bp = off.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = bpFreq; bp.Q.value = q
     const g = off.createGain()
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(Math.max(level, 0.0002), t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + len)
@@ -185,14 +190,11 @@ await page.evaluate(async ({ FPS, W, H }) => {
       finaleGains.push(g)
     }
   }
-  // the ceremony: drone breathes in from t=0 beneath the title
   master.gain.setValueAtTime(0, 0); master.gain.linearRampToValueAtTime(0.55, 1.0); cur.set('master', 0.55)
   let prevEra = 1
   REEL.forEach((s, i) => {
     const t0 = starts[i], era = s.era || 1
     if (s.sfx === 'silence') {
-      // release, not a dead stop: bed and air cut, the finale chord decays
-      // across the held frame and dies in the first seconds of the credits
       ramp(droneGain.gain, 'drone', 0.0001, t0, 0.12)
       ramp(airGain.gain, 'air', 0, t0, 0.12)
       for (const g of finaleGains) {
@@ -214,11 +216,9 @@ await page.evaluate(async ({ FPS, W, H }) => {
     if (s.sfx === 'bell') { for (const [r, l] of [[1, 1], [2.76, 0.5], [5.4, 0.24]]) blip(523.25 * r, t0, 1.1, 0.12 * l, 'sine'); return }
     strike(era, s.dur, t0)
   })
-  // finish(): the master fades out from reel-end, closing the chord's last tail
-  ramp(master.gain, 'master', 0, reelEnd, 2.8)
+  ramp(master.gain, 'master', 0, reelEnd, 2.8)   // finish(): closes the chord's tail
   log('  rendering audio…')
   const audioBuf = await off.startRendering()
-  // encode 16-bit stereo WAV and ship it out in chunks
   {
     const n = audioBuf.length, ch0 = audioBuf.getChannelData(0), ch1 = audioBuf.getChannelData(1)
     const data = new DataView(new ArrayBuffer(44 + n * 4))
@@ -242,17 +242,14 @@ await page.evaluate(async ({ FPS, W, H }) => {
   }
   log('  audio done; drawing frames…')
 
-  // ══ VIDEO · canvas re-creation of the CSS composition ═════════════════════
-  // load sequentially: firing 36 concurrent 4K decode()s trips Chrome's
-  // decoded-image budget and the tail of the list gets rejected. A decode()
-  // rejection with loaded bytes is still drawable (drawImage sync-decodes),
-  // so tolerate it — but fail LOUDLY if any file is truly unavailable.
-  const files = [...new Set(REEL.map((s) => s.f))]
+  // ══ VIDEO · tail frames only, film grain OFF ═══════════════════════════════
+  const tailSlides = REEL.slice(tail0)
+  const files = [...new Set(tailSlides.map((s) => s.f))]
   const imgs = {}
   for (const f of files) {
     const im = new Image(); im.src = '/montage/' + encodeURIComponent(f)
     try { im.decode ? await im.decode() : await new Promise((r, j) => { im.onload = r; im.onerror = j }) }
-    catch (_) { await new Promise((r) => setTimeout(r, 120)) }   // budget rejection — bytes may still be in
+    catch (_) { await new Promise((r) => setTimeout(r, 120)) }
     if (!(im.complete && im.naturalWidth > 0)) await new Promise((r) => { im.onload = r; im.onerror = r; setTimeout(r, 1500) })
     if (im.complete && im.naturalWidth > 0) imgs[f] = im
   }
@@ -262,8 +259,6 @@ await page.evaluate(async ({ FPS, W, H }) => {
 
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H
   const ctx = cv.getContext('2d', { willReadFrequently: false })
-  // vignette overlay, prerendered once (no film grain in the video render —
-  // per-frame noise is what x264 spends most of its bitrate fighting)
   const vig = document.createElement('canvas'); vig.width = W; vig.height = H
   { const g = vig.getContext('2d')
     const r = Math.hypot(W, H) / 2
@@ -274,12 +269,6 @@ await page.evaluate(async ({ FPS, W, H }) => {
     lin.addColorStop(0, 'rgba(0,0,0,0.25)'); lin.addColorStop(0.09, 'rgba(0,0,0,0)')
     lin.addColorStop(0.91, 'rgba(0,0,0,0)'); lin.addColorStop(1, 'rgba(0,0,0,0.25)')
     g.fillStyle = lin; g.fillRect(0, 0, W, H) }
-
-  const flashes = []
-  REEL.forEach((s, i) => {
-    if (s.sfx === 'trinity') flashes.push({ t: starts[i], p: 1, d: 0.55 })
-    else if (i > 0 && REEL[i - 1].era !== s.era && !s.dis && s.sfx !== 'silence') flashes.push({ t: starts[i], p: 0.16, d: 0.22 })
-  })
 
   const parsePos = (pos) => { const m = (pos || '50% 50%').split(' '); return [parseFloat(m[0]) / 100, parseFloat(m[1]) / 100] }
   const drawSlide = (s, tLocal, alpha) => {
@@ -301,83 +290,63 @@ await page.evaluate(async ({ FPS, W, H }) => {
     ctx.drawImage(im, x0, y0, dw, dh)
     ctx.restore()
   }
-  const monoText = (txt, y, size, spacingEm, color, alpha, x = W / 2) => {
-    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color
-    ctx.font = `${size}px Consolas, monospace`
-    try { ctx.letterSpacing = `${(size * spacingEm).toFixed(1)}px` } catch (_) { /* older canvas */ }
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-    ctx.fillText(txt, x + (size * spacingEm) / 2, y)
-    ctx.restore(); try { ctx.letterSpacing = '0px' } catch (_) { /* noop */ }
-  }
 
-  const totalFrames = Math.ceil(TOTAL * FPS)
-  for (let fi = 0; fi < totalFrames; fi++) {
+  const f0 = Math.round(T0 * FPS), f1 = Math.ceil(T1 * FPS)
+  for (let fi = f0; fi < f1; fi++) {
     const t = fi / FPS
     ctx.globalAlpha = 1
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H)
-
-    // the reel
-    if (t >= starts[0] && t < reelEnd) {
+    if (t < reelEnd) {
       let idx = 0
       for (let i = 0; i < REEL.length; i++) if (t >= starts[i]) idx = i
       const s = REEL[idx], tl = t - starts[idx]
-      if (idx > 0 && s.fade > 0 && tl < s.fade + 0.05) drawSlide(REEL[idx - 1], t - starts[idx - 1], 1)
+      if (idx > tail0 && s.fade > 0 && tl < s.fade + 0.05) drawSlide(REEL[idx - 1], t - starts[idx - 1], 1)
       drawSlide(s, tl, s.fade > 0 ? smooth(tl / s.fade) : 1)
     }
-    if (t < credStart) ctx.drawImage(vig, 0, 0)   // vignette rides the film; grain stays web-only
-    // flashes
-    for (const fl of flashes) {
-      if (t >= fl.t && t < fl.t + fl.d) {
-        ctx.save(); ctx.globalAlpha = fl.p * Math.pow(1 - (t - fl.t) / fl.d, 1.6)
-        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.restore()
-      }
-    }
-    // end fade to black
+    ctx.drawImage(vig, 0, 0)                     // vignette stays; grain is off
     if (t >= reelEnd) { ctx.save(); ctx.globalAlpha = smooth((t - reelEnd) / ENDF); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.restore() }
-    // title card — film-sized, in the reel's parchment-and-gold
-    if (t < TITLE) {
-      const q = t / TITLE
-      const a = q < 0.26 ? q / 0.26 : q > 0.74 ? (1 - q) / 0.26 : 1
-      monoText('COSMOGONY II', H / 2 - 30, 68, 0.62, 'rgba(242,231,205,0.95)', clamp01(a))
-      monoText('a reel of first light, deep time, and the minds that followed', H / 2 + 66, 21, 0.3, 'rgba(195,172,122,0.7)', clamp01(a))
-    }
-    // static colophon card: every credit in two columns, held ten seconds
-    if (t >= credStart) {
-      const a = clamp01((t - credStart) / 0.8) * clamp01((credStart + credDur - t) / 0.8)
-      const half = Math.ceil(CREDITS.length / 2)
-      const cols = [CREDITS.slice(0, half), CREDITS.slice(half)]
-      const lineStep = 34
-      const blockH = half * lineStep
-      const y0 = (H - blockH) / 2 + 30                       // columns sit slightly low of centre
-      monoText('COSMOGONY II', y0 - 96, 24, 0.55, 'rgba(242,231,205,0.9)', a)
-      cols.forEach((col, ci) => {
-        const x = ci === 0 ? W * 0.265 : W * 0.735
-        col.forEach((c, li) => monoText(c, y0 + li * lineStep, 15, 0.06, 'rgba(216,200,168,0.82)', a, x))
-      })
-      monoText('THE SONG IS NOT YET DONE', y0 + blockH + 52, 14, 0.34, 'rgba(195,172,122,0.55)', a)
-    }
-
-    const b64 = cv.toDataURL('image/jpeg', 0.92).split(',')[1]
-    await window.saveFrame(`f${String(fi).padStart(6, '0')}.jpg`, b64)
+    const b64 = cv.toDataURL('image/jpeg', 0.95).split(',')[1]
+    await window.saveFrame(`f${String(fi - f0).padStart(5, '0')}.jpg`, b64)
   }
-  log(`  frames done: ${totalFrames}`)
-}, { FPS, W, H })
+  log(`  frames done: ${f1 - f0}`)
+  return { T0, T1 }
+}, { FPS, W, H, N_TAIL })
 
 await browser.close()
 
-console.log('muxing with ffmpeg…')
+const segDur = seg.T1 - seg.T0
+console.log('muxing mp4…')
 execFileSync(ffmpegPath, [
   '-y',
-  '-framerate', String(FPS), '-i', join(FRAMES, 'f%06d.jpg'),
-  '-i', WAV,
-  '-c:v', 'libx264', '-preset', 'medium', '-crf', '21', '-pix_fmt', 'yuv420p',
+  '-framerate', String(FPS), '-i', join(FRAMES, 'f%05d.jpg'),
+  '-ss', seg.T0.toFixed(3), '-t', segDur.toFixed(3), '-i', WAV,
+  '-af', `afade=t=out:st=${(segDur - 0.9).toFixed(2)}:d=0.9`,
+  '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p',
   '-c:a', 'aac', '-b:a', '192k',
   '-movflags', '+faststart',
   '-shortest',
-  OUT,
+  OUT_MP4,
+], { stdio: ['ignore', 'ignore', 'inherit'] })
+
+console.log('building gif palette…')
+execFileSync(ffmpegPath, [
+  '-y',
+  '-framerate', String(FPS), '-i', join(FRAMES, 'f%05d.jpg'),
+  '-vf', 'fps=20,scale=960:-1:flags=lanczos,palettegen=stats_mode=diff',
+  PALETTE,
+], { stdio: ['ignore', 'ignore', 'inherit'] })
+console.log('rendering gif…')
+execFileSync(ffmpegPath, [
+  '-y',
+  '-framerate', String(FPS), '-i', join(FRAMES, 'f%05d.jpg'),
+  '-i', PALETTE,
+  '-lavfi', 'fps=20,scale=960:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=sierra2_4a:diff_mode=rectangle',
+  OUT_GIF,
 ], { stdio: ['ignore', 'ignore', 'inherit'] })
 
 rmSync(FRAMES, { recursive: true, force: true })
-rmSync(WAV)
-const mb = (statSync(OUT).size / 1024 / 1024).toFixed(1)
-console.log(`\ndone → ${OUT}  (${mb} MB)`)
+rmSync(WAV); rmSync(PALETTE)
+const mb = (p) => (statSync(p).size / 1024 / 1024).toFixed(1)
+console.log(`\ndone →`)
+console.log(`  ${OUT_MP4}  (${mb(OUT_MP4)} MB)  → ${DEV}/clips/cosmogony2-last5.mp4`)
+console.log(`  ${OUT_GIF}  (${mb(OUT_GIF)} MB)  → ${DEV}/clips/cosmogony2-last5.gif`)

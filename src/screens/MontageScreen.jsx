@@ -232,9 +232,18 @@ export default function MontageScreen({ onReturn }) {
 
       {!started && (
         <div className="mont-start">
-          <div className="mont-title-name">COSMOGONY&thinsp;II</div>
-          <div className="mont-title-sub">a reel of first light, deep time, and the minds that followed</div>
-          <button className="mont-replay-btn mont-start-btn" onClick={begin} disabled={!ready}>{ready ? '▶ BEGIN' : 'LOADING…'}</button>
+          {/* frontispiece ornament: the Venus–Earth resonance rosette, turning
+              like an orrery once per four minutes, faded into the dark */}
+          <div className="mont-start-fig-wrap" aria-hidden="true">
+            <img className="mont-start-fig" src={IMG('venus_earth_resonance.png')} alt="" />
+          </div>
+          <div className="mont-start-inner">
+            <div className="mont-title-rule" />
+            <div className="mont-title-name">COSMOGONY&thinsp;II</div>
+            <div className="mont-title-sub">a reel of first light, deep time, and the minds that followed</div>
+            <div className="mont-title-rule" />
+            <button className="mont-replay-btn mont-start-btn" onClick={begin} disabled={!ready}>{ready ? '▶ BEGIN' : 'LOADING…'}</button>
+          </div>
         </div>
       )}
 

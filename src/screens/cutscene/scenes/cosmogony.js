@@ -1030,7 +1030,7 @@ export default {
 
         // hero stars ignite with a pop of light, then simmer
         for (const st of stars) {
-          if (!st.lit && T >= st.ignite) { st.lit = true; st.g.visible = true; fx.blast(st.g.position, true) }
+          if (!st.lit && T >= st.ignite) { st.lit = true; st.g.visible = true; fx.blast(st.g.position, true, { silent: true }) }   // the score carries this — no battle boom
           if (st.lit) {
             st.g.scale.setScalar(0.001 + 0.999 * easeOut3(clamp01((T - st.ignite) / 1.4)))
             st.tick(T)
@@ -1190,7 +1190,9 @@ export default {
         roomShown = true
         surfaceSet.visible = false; roomSet.visible = true
         flashMat.color.setHex(0xffffff); fireFlash(1, 0.55)   // window-light wash
+        humAudio.volume = 0; humAudio.play().catch(() => {})  // the machine's room tone lives here
       }
+      if (roomShown && !cutB) humAudio.volume = 0.55 * clamp01((T - WINDOW_CUT) / 0.8)   // fades up with the reveal
       if (cutA && !cutB && !roomShown) {
         // ── the rise of the makers: hard cut from the hut and its fire, to the
         // stone temple, to the watchers as a skyline erupts, then dive at a lit
@@ -1294,10 +1296,11 @@ export default {
         cutB = true; fireFlash()
         surfaceSet.visible = false; roomSet.visible = false; machineSet.visible = true
         scene.fog = null
-        humAudio.volume = 0; humAudio.play().catch(() => {})
+        // the room tone is already running (it starts with the computer room);
+        // carry it across the cut — restart only if it somehow never began
+        if (humAudio.paused) { humAudio.volume = 0.55; humAudio.play().catch(() => {}) }
       }
       if (cutB && !cutC) {
-        humAudio.volume = 0.55 * clamp01((T - CUT_MACHINE) / 0.8)   // room tone fades up
         // ── inside the machine: drift through the thinking lattice, then the
         // long breath out — pulling back before the reveal ──
         const q = clamp01((T - CUT_MACHINE) / 5.5)
@@ -1337,6 +1340,12 @@ export default {
         machineSet.visible = false; orbitSet.visible = true
       }
       if (cutC) {
+        // the room tone stays behind with the machine: fade it out over the
+        // reveal, then stop the element once it is silent
+        if (!humAudio.paused) {
+          humAudio.volume = 0.55 * clamp01(1 - (T - CUT_ORBIT) / 1.8)
+          if (humAudio.volume <= 0.001) humAudio.pause()
+        }
         // ── the reveal: the lattice was the planet all along — pull away from
         // the Litania Magna in its diadem, the Throneworld hanging beyond ──
         const f = easeInOut(clamp01((T - CUT_ORBIT) / 4))
