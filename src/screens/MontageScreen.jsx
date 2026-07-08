@@ -45,12 +45,12 @@ export const REEL = [   // exported for scripts/render-montage-video.mjs
   { f: 'large_1898_0033_0002.jpg', kb: 'still', era: 3, c: 'The Grand Orrery — after John Rowley, c. 1712' },
   { f: 'carte_photographique_de_la_lune_planche_viii_photographic_chart_of_the_moon_plate_viii_2018.22.1.8.jpg', kb: 'in', era: 3, c: 'Carte photographique de la Lune — Loewy & Puiseux, c. 1899' },
   { f: 'art-hilma-af-klint-group-x-no-1-altarpiece-altarbild-1915.jpg', kb: 'up', era: 3, c: 'Group X, No. 1, Altarpiece — Hilma af Klint, 1915' },
-  { f: 'venus_earth_resonance.png', kb: 'in', dis: true, era: 3, c: 'Venus–Earth orbital resonance, 8:13' },
-  { f: 'galilean_resonance.png', kb: 'still', era: 3, c: 'Galilean orbital resonance, 1:2:4 — Io, Europa, Ganymede' },
-  { f: 'harmonograph.png', kb: 'still', era: 3, c: 'Harmonograph figure — machine-drawn harmony' },
-  { f: 'lorenz.png', kb: 'still', era: 3, c: 'The Lorenz attractor — deterministic chaos' },
-  { f: 'a8277a53-e7ef-4702-8f16-9169465eb392.jpg', kb: 'in', era: 3, c: 'Chaotic attractor' },
-  { f: 'hopf_fibration (1).png', kb: 'in', era: 3, c: 'The Hopf fibration — the structure of the 3-sphere' },
+  { f: 'venus_earth_resonance.png', kb: 'in', dis: true, era: 3, c: 'Venus–Earth orbital resonance, 8:13 — Claude Fable, 2026' },
+  { f: 'galilean_resonance.png', kb: 'still', era: 3, c: 'Galilean orbital resonance, 1:2:4 (Io · Europa · Ganymede) — Claude Fable, 2026' },
+  { f: 'harmonograph.png', kb: 'still', era: 3, c: 'Harmonograph figure — Claude Fable, 2026' },
+  { f: 'lorenz.png', kb: 'still', era: 3, c: 'The Lorenz attractor — Claude Fable, 2026' },
+  { f: 'a8277a53-e7ef-4702-8f16-9169465eb392.jpg', kb: 'in', era: 3, c: 'The de Jong attractor — Claude Fable, 2026' },
+  { f: 'hopf_fibration (1).png', kb: 'in', era: 3, c: 'The Hopf fibration — Claude Fable, 2026' },
   // ── ACT IV · the modern eye ──
   { f: 'Photo_51_x-ray_diffraction_image.jpg', kb: 'in', era: 4, c: 'Photo 51 — Rosalind Franklin & Raymond Gosling, 1952' },
   { f: 'CMS_detector-s.jpg', kb: 'in', era: 4, c: 'The CMS detector — CERN, Large Hadron Collider' },
@@ -61,8 +61,8 @@ export const REEL = [   // exported for scripts/render-montage-video.mjs
   { f: 'less-than-p-greater-than-programmers-at-aberdeen-proving-grounds-configure-eniacs-function-tables-which-acted-as-a-form-of-read-only-memory-less-than-p-greater-than.webp', kb: 'in', era: 5, c: 'ENIAC, the function tables — Aberdeen Proving Ground, c. 1946' },
   { f: 'Reprogramming_ENIAC.png', kb: 'in', era: 5, c: 'Reprogramming ENIAC — U.S. Army, c. 1946' },
   { f: 'CM2_HD_1024w-Tamiko-Thiel.webp', kb: 'in', era: 5, c: 'Connection Machine CM-2 — design by Tamiko Thiel, 1987' },
-  { f: 'neural_network_traditional.png', kb: 'in', era: 5, c: 'Neural network, layered' },
-  { f: 'neural_network_cold.png', kb: 'in', dis: true, era: 5, hold: 2.6, sfx: 'finale', c: 'Neural network, dense' },   // the radiant chord
+  { f: 'neural_network_traditional.png', kb: 'in', era: 5, c: 'Neural network, layered — Claude Fable, 2026' },
+  { f: 'neural_network_cold.png', kb: 'in', dis: true, era: 5, hold: 2.6, sfx: 'finale', c: 'Neural network, dense — Claude Fable, 2026' },   // the radiant chord
   // ── CODA ──
   { f: 'found_hubble_xdf.jpg', kb: 'still', era: 1, hold: 4.5, sfx: 'silence' },   // XDF reprise — one long held beat, in silence
 ]
