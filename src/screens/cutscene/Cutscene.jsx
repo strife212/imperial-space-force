@@ -34,7 +34,10 @@ const CHAR_PORTRAIT = {
 // dialogue and the ending through the ctx passed to their `create()`:
 //   ctx.comms.show(name, text, { persist, team, portrait, segments })
 //   ctx.end({ holdMs, overlay })   // overlay → urgent transmission, else advance
-export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, standalone = false }) {
+// `showOverlays`: a scene ending may request an urgent-transmission overlay
+// (e.g. First Contact's distress call). The campaign shows it; chained playback
+// (the /story reel, debug full-story runs) suppresses it and flows straight on.
+export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, standalone = false, hideChrome = false, showOverlays = true }) {
   const mountRef = useRef(null)
   const [comms, setComms] = useState(null)
   const [commsText, setCommsText] = useState('')
@@ -125,7 +128,7 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
     const end = (opts = {}) => {
       if (endedRef.current) return
       endedRef.current = true
-      setEnding({ holdMs: opts.holdMs ?? 0, overlay: opts.overlay ?? null })
+      setEnding({ holdMs: opts.holdMs ?? 0, overlay: showOverlays ? (opts.overlay ?? null) : null })
     }
     let teardown
     try { teardown = createStage(mount, scene, { comms: commsApi, end }) }
@@ -135,7 +138,7 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
 
   return (
     <div id="cutscene-screen">
-      {!scene.hideChrome && <HudHeader onLogout={onReturn} right={<span className="label">{scene.label}</span>} />}
+      {!scene.hideChrome && !hideChrome && <HudHeader onLogout={onReturn} right={<span className="label">{scene.label}</span>} />}
       <div className="sb-stage">
         <div className="sb-canvas" ref={mountRef} />
 

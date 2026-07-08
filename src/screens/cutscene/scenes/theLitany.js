@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import { TEAMS } from '../../battle/constants'
 import { makeMachinePlanet, makeEarthlike, buildBlueModel } from '../../battle/geometry'
 import { buildRelay } from '../models'
 
@@ -81,13 +80,19 @@ export default {
     const hum = sfx.bed('computerhum.mp3', { volume: 0 })
     let humStarted = false
 
-    // the Empress's small craft, stealing in to commune
-    const craftMat = new THREE.MeshStandardMaterial({ color: TEAMS.blue.color, emissive: TEAMS.blue.color, emissiveIntensity: 0.6, metalness: 0.6, roughness: 0.4 })
+    // the Empress's small craft, stealing in to commune — hers is the gold
+    // fighter (the same hull and livery as the battle's Gold Ace)
+    const craftMat = new THREE.MeshStandardMaterial({ color: 0xffc63a, emissive: 0xffae1f, emissiveIntensity: 0.85, metalness: 0.7, roughness: 0.3 })
+    const craftGlowMat = new THREE.MeshBasicMaterial({ color: 0xffd56a, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
     const craft = new THREE.Group(); craft.add(new THREE.Mesh(buildBlueModel(), craftMat))
-    const cglow = new THREE.Mesh(fx.blastGeo, fx.glowMat.blue); cglow.scale.setScalar(0.3); cglow.position.set(0, 0, -0.95); craft.add(cglow)
+    const cglow = new THREE.Mesh(fx.blastGeo, craftGlowMat); cglow.scale.set(0.22, 0.22, 0.38); cglow.position.set(0, 0, -0.95); craft.add(cglow)
     craft.scale.setScalar(1.4); scene.add(craft)
-    const cFrom = new THREE.Vector3(-150, 70, 150), cTo = new THREE.Vector3(0, 34, 48)
-    craft.position.copy(cFrom)   // no light trail — she steals in dark
+    // she comes from the Throneworld (over at +x, −z), sweeping low across the
+    // Engine's face — inside the diadem — to hold station on the near side.
+    // No light trail: she steals in dark.
+    const cFrom = new THREE.Vector3(130, 62, -140), cTo = new THREE.Vector3(0, 34, 48)
+    const TRAVEL = new THREE.Vector3().subVectors(cTo, cFrom).normalize()
+    craft.position.copy(cFrom)
     const _d = new THREE.Vector3()
 
     const _p1 = new THREE.Vector3(), _p2 = new THREE.Vector3(), _l = new THREE.Vector3()
@@ -129,14 +134,18 @@ export default {
         }
       }
 
-      // camera: fly in alongside the Empress's craft, the Engine looming past
-      // it, then ease out into the slow ceremonial orbit
+      // camera: lead the gold craft out from the Throneworld — Her world
+      // shrinking behind her — then swing wide and around, revealing the
+      // Engine she has come to as the ceremonial orbit takes over
       const az = 0.5 + 0.12 * T, d = 165 - Math.min(55, T * 2.6)
-      _p1.copy(craft.position).add(_l.set(-9, 4, 16))
+      // ahead of her, looking back down the geodesic — offset off-axis so she
+      // reads against the planet's limb instead of vanishing into its glare
+      _p1.copy(craft.position).addScaledVector(TRAVEL, 20)
+      _p1.x -= 5.7; _p1.z -= 3.9; _p1.y += 9
       _p2.set(Math.cos(az) * d, 34, Math.sin(az) * d)
       const k = Math.min(1, Math.max(0, (T - 5.2) / 3.2)), ke = k * k * (3 - 2 * k)
       camera.position.lerpVectors(_p1, _p2, ke)
-      _l.copy(craft.position).lerp(ENGINE_LOOK, 0.35).lerp(ENGINE_LOOK, ke)   // past the craft → the Engine core
+      _l.copy(craft.position).lerp(ENGINE_LOOK, ke)   // the craft (planet behind her) → the Engine core
       camera.lookAt(_l)
 
       if (!c1 && T >= 2.0) { c1 = true; comms.show('Litania Magna', LINE1) }

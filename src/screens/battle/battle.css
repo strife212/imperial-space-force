@@ -1760,6 +1760,24 @@
   align-items: center;
   justify-content: center;
 }
+/* /story reel: the start gate and end card carry the chronicle's title */
+.cut-start--story, .cut-replay--story { flex-direction: column; gap: 15px; }
+.cut-start--story .cut-start-btn, .cut-replay--story .cut-replay-btn { margin-top: 28px; }
+.story-gate-title {
+  color: rgba(214, 226, 250, 0.95);
+  font-family: var(--font-mono);
+  font-size: 27px;
+  letter-spacing: 0.6em;
+  text-indent: 0.6em;   /* recentre: letter-spacing trails the last glyph */
+  text-transform: uppercase;
+}
+.story-gate-sub {
+  color: rgba(150, 168, 205, 0.55);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
 .cut-start-btn {
   background: rgba(4, 10, 24, 0.9);
   border: 1px solid rgba(130, 165, 255, 0.55);
