@@ -18,7 +18,7 @@ const NODE_BACKDROP = [
   { hero: 'aleph'                    },  // 4 The Hush       — the silent Aleph, alone
   { hero: 'litany'                   },  // 5 The Great Litany — the machine planet + Throneworld beyond
   { hero: 'ringed'                   },  // 6 The Fall       — a ringed planet
-  { hero: 'cathedra', body: 'gas'    },  // 7 The Final Hearing — the Cathedra
+  { hero: 'throneworld'              },  // 7 The Final Hearing — the Throneworld, Cathedra at its pole
   { hero: 'rkv'                      },  // 8 The Annunciator — the RKV platform itself
   { hero: 'blackhole'                },  // 9 The Lance      — a black hole
   { hero: 'ringed'                   },  // 10 Order Restored — a ringed planet
@@ -93,6 +93,29 @@ export function makeCampaignBackdrop(scene, disposables, lightDir, camera, nodeI
   switch (spec.hero) {
     case 'aleph':     addStructure(buildAleph,       48, -0.32, 0.42, 0, true); break
     case 'station':   addStructure(buildStation,     52,  0.40, 0.34, 0);    break
+    case 'throneworld': {
+      // the Final Hearing below the battle: the earthlike Throneworld with the
+      // Cathedra rooted at its near pole (as in the cutscene), the whole world
+      // tipped so the spire leans into the opening shot instead of floating free
+      const group = new THREE.Group()
+      const tk = makeEarthlike(group, disposables, new THREE.Vector3(0, 0, 0), lightDir)   // R = 22
+      if (tk) ticks.push(tk)
+      const cath = buildCathedra()
+      cath.scale.setScalar(0.5)                       // spire ≈ 17 over a 22-radius world — monumental, not silly
+      cath.position.set(0, 21.5, 0)                   // plinth bedded into the polar crust
+      group.add(cath)
+      collect(cath, disposables)
+      group.scale.setScalar(1.8)                      // planet reads at machine-planet scale (~R 40)
+      const pos = placePos(-0.34, 0.30, 40, 230, 200) // beyond the camera orbit + spire reach
+      group.position.copy(pos)
+      // lean the pole (and its spire) partway toward the camera — enough to read
+      // the silhouette against the sky without staring straight down the crown
+      const tilt = camera.position.clone().sub(pos).normalize().multiplyScalar(0.8)
+      tilt.y += 0.62
+      group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tilt.normalize())
+      scene.add(group)
+      break
+    }
     case 'cathedra':  addStructure(buildCathedra,    54, -0.34, 0.30, 0);    break
     case 'rkv':       addStructure(buildAnnunciator, 112, 0.38, 0.34, 0, true); break   // broadside profile
     case 'engine':    addStructure(buildWorldEngine, 58, -0.30, 0.36, 0.05); break

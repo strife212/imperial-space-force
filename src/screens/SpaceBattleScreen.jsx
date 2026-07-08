@@ -1039,24 +1039,26 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       const hideTargetLines = () => targetLines.forEach(t => (t.line.visible = false))
 
       // ── Capital "Lance Strike" — once-per-battle spinal-cannon special ─────────
-      // The blue flagship halts, swings its bow onto the enemy flagship, charges a
+      // A flagship halts, swings its bow onto the enemy flagship, charges a
       // spinal lance, then looses one devastating beam (20 dmg) with a big show.
+      // One shared rig, parametrized per shot: the player fires it as skill 0,
+      // and from mission 7 the enemy admiral fires it back (see RED_SKILL_SCRIPT).
       let bloomPass = null   // assigned with the composer; pumped during the lance
-      const lance = { active: false, phase: '', t: 0, beamCore: null, beamGlow: null, targetPos: null, discharge: null }
+      const lance = { active: false, phase: '', t: 0, team: 'blue', caster: null, victim: null, beamCore: null, beamGlow: null, targetPos: null, discharge: null }
       const lanceAimAt = new THREE.Vector3()
       const lanceFX = []     // { mesh, mat } — charge orb + beam cylinders, cleaned up together
       let lanceOrb = null
       const LANCE_AIM = 1.4, LANCE_CHARGE = 1.9, LANCE_FIRE = 1.0, LANCE_RECOVER = 0.7
       const _lz = new THREE.Vector3(), _lmz = new THREE.Vector3()
-      const lanceMuzzle = () => {   // a point just ahead of the blue flagship's bow
-        _lz.set(0, 0, 1).applyQuaternion(blueCapital.mesh.quaternion).normalize()
-        return _lmz.copy(blueCapital.pos).addScaledVector(_lz, 16)
+      const lanceMuzzle = () => {   // a point just ahead of the casting flagship's bow
+        _lz.set(0, 0, 1).applyQuaternion(lance.caster.mesh.quaternion).normalize()
+        return _lmz.copy(lance.caster.pos).addScaledVector(_lz, 16)
       }
       const addLanceFX = (mesh, mat) => { scene.add(mesh); lanceFX.push({ mesh, mat }); return mesh }
       const clearLanceFX = () => { for (const f of lanceFX) { scene.remove(f.mesh); f.mat.dispose && f.mat.dispose() } lanceFX.length = 0; lanceOrb = null }
       // a bright spark drawn inward toward the muzzle while the lance charges
       const spawnLanceSpark = (from, to) => {
-        const mat = new THREE.MeshBasicMaterial({ color: 0x9fd4ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
+        const mat = new THREE.MeshBasicMaterial({ color: lance.team === 'red' ? 0xffb09a : 0x9fd4ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
         const m = new THREE.Mesh(blastGeo, mat)
         m.position.copy(from); m.scale.setScalar(0.16 + Math.random() * 0.18)
         scene.add(m)
@@ -1073,30 +1075,31 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         }
       }
       const fireLanceBeam = (mz) => {
-        const tgt = (redCapital && redCapital.alive) ? redCapital.pos : lanceAimAt
+        const red = lance.team === 'red'
+        const tgt = (lance.victim && lance.victim.alive) ? lance.victim.pos : lanceAimAt
         lance.targetPos = tgt
-        const glow = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ color: TEAMS.blue.bolt, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }))
+        const glow = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ color: TEAMS[lance.team].bolt, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }))
         const core = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }))
         glow.userData.w = 3.2; core.userData.w = 1.2
         addLanceFX(glow, glow.material); addLanceFX(core, core.material)
         lance.beamGlow = glow; lance.beamCore = core
         positionLanceBeam(mz, tgt)
         // one heavy hit (bomb=true → ignores flagship armour), then a grand impact
-        damage(redCapital, blueCapital, 20, true)
+        damage(lance.victim, lance.caster, 20, true)
         const tp = tgt.clone()
         spawnBlast(mz.clone(), true)
         spawnBlast(tp, true)
         spawnBlast(_tmp.copy(tp).add(_lz.set(4, 2, -3)).clone(), false)
         spawnBlast(_tmp.copy(tp).add(_lz.set(-3, -2, 3)).clone(), false)
-        for (let i = 0; i < 16; i++) spawnEmber(_tmp.copy(tp).add(_lz.set((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7)).clone(), i % 2 ? 0xbfe2ff : 0x9fd4ff)
+        for (let i = 0; i < 16; i++) spawnEmber(_tmp.copy(tp).add(_lz.set((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7)).clone(), red ? (i % 2 ? 0xffc9b0 : 0xff8a5a) : (i % 2 ? 0xbfe2ff : 0x9fd4ff))
         if (lance.discharge) { lance.discharge(); lance.discharge = null }   // cut the charge tone + fire the boom
-        showComms('blue', 'Lance away — strike true!')
-        if (!gameOver) showPip('blue', 'LANCE STRIKE — IMPACT', () => (lance.targetPos || tp), new THREE.Vector3(0.6, 0.34, 0.6), 26, 8, LANCE_FIRE + 0.4)
+        showComms(lance.team, red ? 'Lance away. Burn with your Throne.' : 'Lance away — strike true!')
+        if (!gameOver) showPip(lance.team, red ? 'ENEMY LANCE — IMPACT' : 'LANCE STRIKE — IMPACT', () => (lance.targetPos || tp), new THREE.Vector3(0.6, 0.34, 0.6), 26, 8, LANCE_FIRE + 0.4)
       }
       const endLance = () => { if (lance.discharge) { lance.discharge(false); lance.discharge = null }; clearLanceFX(); lance.active = false; lance.phase = ''; lance.beamCore = null; lance.beamGlow = null; lance.targetPos = null; if (bloomPass) bloomPass.strength = 0.9 }
       const updateLance = (dt) => {
         if (!lance.active) return
-        if (gameOver || !blueCapital || !blueCapital.alive) { endLance(); return }
+        if (gameOver || !lance.caster || !lance.caster.alive) { endLance(); return }
         lance.t += dt
         const mz = lanceMuzzle()
         if (lanceOrb) lanceOrb.position.copy(mz)
@@ -1132,23 +1135,28 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           if (lance.t >= LANCE_RECOVER) endLance()
         }
       }
-      // wired to the SKILL button: kicks off the sequence if the flagships are live
-      const startLance = () => {
+      // wired to the SKILL button (blue) and the enemy admiral script (red):
+      // kicks off the sequence if both flagships are live and the rig is free
+      const startLance = (team = 'blue') => {
         if (lance.active || gameOver) return false
         if (!blueCapital || !blueCapital.alive || !redCapital || !redCapital.alive) return false
         if (introT < INTRO_TOTAL) return false   // not until both fleets have jumped in
+        const red = team === 'red'
+        lance.team = team
+        lance.caster = red ? redCapital : blueCapital
+        lance.victim = red ? blueCapital : redCapital
         lance.active = true; lance.phase = 'aim'; lance.t = 0
         lance.discharge = playLanceCharge({ muted: mutedRef.current })   // shared charge → cut → boom
-        lanceAimAt.copy(redCapital.pos)
-        const orbMat = new THREE.MeshBasicMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+        lanceAimAt.copy(lance.victim.pos)
+        const orbMat = new THREE.MeshBasicMaterial({ color: red ? 0xffe9dc : 0xeaf6ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
         lanceOrb = new THREE.Mesh(blastGeo, orbMat)
         lanceOrb.scale.setScalar(0.5); lanceOrb.position.copy(lanceMuzzle())
         addLanceFX(lanceOrb, orbMat)
-        showComms('blue', 'All power to the spinal lance. Charging.')
-        if (!gameOver) showPip('blue', 'LANCE STRIKE — CHARGING', () => blueCapital.pos, new THREE.Vector3(0.5, 0.3, 0.72), 42, 11, LANCE_AIM + LANCE_CHARGE)
+        showComms(team, red ? 'Your lance doctrine, perfected. Spinal cannon charging.' : 'All power to the spinal lance. Charging.')
+        if (!gameOver) showPip(team, red ? 'ENEMY LANCE — CHARGING' : 'LANCE STRIKE — CHARGING', () => lance.caster.pos, new THREE.Vector3(0.5, 0.3, 0.72), 42, 11, LANCE_AIM + LANCE_CHARGE)
         return true
       }
-      lanceStrikeRef.current = startLance
+      lanceStrikeRef.current = () => startLance('blue')
 
       // ── "Fighter Ace" — once-per-battle elite reinforcement special ───────────
       // Warps a single gold fighter onto the blue flank: double HP, 1.5× speed,
@@ -1203,10 +1211,10 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         }
         nano.items.length = 0
       }
-      const startNano = () => {
+      const startNano = (team = 'blue') => {
         if (nano.active || gameOver) return false
         if (introT < INTRO_TOTAL) return false
-        const fleet = ships.filter(s => s.alive && s.team === 'blue')
+        const fleet = ships.filter(s => s.alive && s.team === team)
         if (!fleet.length) return false
         // heal first (capped at each ship's max hull)
         for (const s of fleet) { const heal = s.isCapital ? 20 : 1; s.hp = Math.min(shipMaxHp(s), s.hp + heal) }
@@ -1229,10 +1237,10 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           nano.items.push({ ship: s, aura, auraMat, parts })
         }
         audioRef.current?.playComms()
-        showComms('blue', 'Nanite swarm deployed — repairing the fleet.')
+        showComms(team, team === 'red' ? 'Nanite swarms mend our hulls. You cannot bleed us.' : 'Nanite swarm deployed — repairing the fleet.')
         return true
       }
-      nanoRepairRef.current = startNano
+      nanoRepairRef.current = () => startNano('blue')
 
       const updateNano = (dt) => {
         if (!nano.active) return
@@ -1260,13 +1268,14 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       // Marks 10 random enemies one-by-one with red crosshairs over 2s, then
       // looses a missile at each at once — they fan out in arcs to their targets.
       const BARRAGE_N = 10, BARRAGE_LOCK_T = 2.0, BARRAGE_DMG = 5
-      const barrage = { active: false, phase: '', t: 0, locks: [], missiles: [] }
+      const barrage = { active: false, phase: '', t: 0, team: 'blue', caster: null, locks: [], missiles: [] }
       const _bz = new THREE.Vector3(), _be = new THREE.Vector3(), _bc = new THREE.Vector3(), _bp = new THREE.Vector3()
-      // crosshairs are plain DOM "+" symbols (outside the bloom canvas → no glow)
+      // crosshairs are plain DOM "+" symbols (outside the bloom canvas → no glow);
+      // blue's locks are ice-blue on the enemy, the enemy's locks burn red on YOURS
       const makeCrosshair = () => {
         const el = document.createElement('div')
         el.className = 'sb-lock'
-        el.innerHTML = '<svg viewBox="0 0 28 28"><path d="M14 3 V25 M3 14 H25" stroke="#8fd0ff" stroke-width="2" fill="none" /></svg>'
+        el.innerHTML = `<svg viewBox="0 0 28 28"><path d="M14 3 V25 M3 14 H25" stroke="${barrage.team === 'red' ? '#ff7a5a' : '#8fd0ff'}" stroke-width="2" fill="none" /></svg>`
         if (barrageLayerRef.current) barrageLayerRef.current.appendChild(el)
         return { el }
       }
@@ -1276,24 +1285,26 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         if (missileTrailRef.current) { missileTrailRef.current.pause(); missileTrailRef.current.currentTime = 0 }   // cut the trail when no missiles remain
         barrage.locks.length = 0; barrage.missiles.length = 0; barrage.active = false; barrage.phase = ''
       }
-      const startBarrage = () => {
+      const startBarrage = (team = 'blue') => {
         if (barrage.active || gameOver) return false
-        if (!blueCapital || !blueCapital.alive) return false
+        const caster = team === 'red' ? redCapital : blueCapital
+        if (!caster || !caster.alive) return false
         if (introT < INTRO_TOTAL) return false
-        const enemies = ships.filter(s => s.alive && s.team === 'red')
+        const enemies = ships.filter(s => s.alive && s.team === (team === 'red' ? 'blue' : 'red'))
         if (!enemies.length) return false
         for (let i = enemies.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[enemies[i], enemies[j]] = [enemies[j], enemies[i]] }
         const picked = enemies.slice(0, BARRAGE_N), n = picked.length
         barrage.active = true; barrage.phase = 'lock'; barrage.t = 0
+        barrage.team = team; barrage.caster = caster
         barrage.locks = picked.map((target, i) => ({ target, lastPos: target.pos.clone(), revealAt: (i / n) * BARRAGE_LOCK_T, cross: null }))
-        showComms('blue', 'Macro-missile barrage — designating targets.')
+        showComms(team, team === 'red' ? 'Missile barrage — ten of your little lights go out.' : 'Macro-missile barrage — designating targets.')
         return true
       }
-      macroBarrageRef.current = startBarrage
+      macroBarrageRef.current = () => startBarrage('blue')
       const launchBarrage = () => {
         barrage.phase = 'fly'
-        _bz.set(0, 0, 1).applyQuaternion(blueCapital.mesh.quaternion).normalize()
-        const muzzle = blueCapital.pos.clone().addScaledVector(_bz, 14)
+        _bz.set(0, 0, 1).applyQuaternion(barrage.caster.mesh.quaternion).normalize()
+        const muzzle = barrage.caster.pos.clone().addScaledVector(_bz, 14)
         let i = 0
         for (const l of barrage.locks) {
           const end = l.target.alive ? l.target.pos : l.lastPos
@@ -1306,12 +1317,12 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         }
         audioRef.current?.playJump()
         if (!mutedRef.current && missileTrailRef.current) { const a = missileTrailRef.current; a.currentTime = 0; a.volume = 0.2; a.loop = true; a.play().catch(() => {}) }   // looped trail whoosh while they fly
-        // PiP holds on the flagship as the volley launches
-        if (!gameOver) showPip('blue', 'MISSILES AWAY', () => blueCapital.pos, new THREE.Vector3(0.55, 0.35, 0.75), 42, 14, 1.1)
+        // PiP holds on the casting flagship as the volley launches
+        if (!gameOver) showPip(barrage.team, barrage.team === 'red' ? 'ENEMY MISSILES AWAY' : 'MISSILES AWAY', () => barrage.caster.pos, new THREE.Vector3(0.55, 0.35, 0.75), 42, 14, 1.1)
       }
       const updateBarrage = (dt) => {
         if (!barrage.active) return
-        if (gameOver || !blueCapital || !blueCapital.alive) { clearBarrage(); return }
+        if (gameOver || !barrage.caster || !barrage.caster.alive) { clearBarrage(); return }
         barrage.t += dt
         // crosshairs (DOM "+") track their (live) targets, projected to screen
         for (const l of barrage.locks) {
@@ -1320,7 +1331,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
             l.cross = makeCrosshair()
             if (!mutedRef.current && codeTickRef.current) { const s = codeTickRef.current.cloneNode(); s.volume = 0.3; s.play().catch(() => {}) }   // blip on each lock
             // PiP cuts to a very close zoom of each ship as it's marked
-            if (!gameOver) showPip('blue', 'TARGET LOCKED · ' + l.target.name.toUpperCase(), () => (l.target.alive ? l.target.pos : l.lastPos), new THREE.Vector3(0.5, 0.35, 0.78), 6.5, 2.2, 0.5, true)
+            if (!gameOver) showPip(barrage.team, (barrage.team === 'red' ? 'ENEMY LOCK · ' : 'TARGET LOCKED · ') + l.target.name.toUpperCase(), () => (l.target.alive ? l.target.pos : l.lastPos), new THREE.Vector3(0.5, 0.35, 0.78), 6.5, 2.2, 0.5, true)
           }
           if (l.cross) {
             _proj.copy(l.lastPos).project(camera)
@@ -1345,12 +1356,32 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           m.smokeCd -= dt; if (m.smokeCd <= 0) { spawnSmoke(m.mesh.position, true); m.smokeCd = 0.02 }   // bigger, denser barrage trail
           if (tt >= 1) {
             spawnBlast(_bp.clone(), false)
-            if (m.lock.target.alive) damage(m.lock.target, blueCapital, BARRAGE_DMG)
+            if (m.lock.target.alive) damage(m.lock.target, barrage.caster, BARRAGE_DMG)
             if (m.lock.cross) { m.lock.cross.el.remove(); m.lock.cross = null }
             scene.remove(m.mesh); barrage.missiles.splice(k, 1)
           }
         }
         if (!barrage.missiles.length) clearBarrage()
+      }
+
+      // ── Enemy admiral skills (campaign, mission 7 on) ──────────────────────────
+      // From node 6 the enemy admiral fights back with the same once-per-battle
+      // specials, on a per-node timetable read off the battle clock. Each entry
+      // fires only while the red flagship lives (and isn't routing); if the rig
+      // is busy (e.g. the player's own lance is mid-charge) it retries until it
+      // lands. Times are battle-clock seconds — the timer the player can see.
+      const RED_SKILL_SCRIPT = {
+        6: [{ t: 45, cast: () => startLance('red') }],                                          // mission 7
+        7: [{ t: 20, cast: () => startLance('red') }],                                          // mission 8
+        8: [{ t: 20, cast: () => startNano('red') }],                                           // mission 9
+        9: [{ t: 15, cast: () => startBarrage('red') }, { t: 30, cast: () => startLance('red') }], // mission 10
+      }
+      const redScript = isCampaign ? (RED_SKILL_SCRIPT[campaign.nodeIndex] || []).map(e => ({ ...e, done: false })) : []
+      const updateRedScript = (bt) => {
+        if (gameOver || !redCapital || !redCapital.alive || retreatTeam === 'red') return
+        for (const e of redScript) {
+          if (!e.done && bt >= e.t && e.cast()) e.done = true
+        }
       }
 
       // ── Frame loop ───────────────────────────────────────────────────────────
@@ -1670,6 +1701,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         }
 
         // advance the capital lance + nano-repair specials (after ships have moved)
+        if (!intro) updateRedScript(battleSimT)
         updateLance(dt)
         updateNano(dt)
         updateBarrage(dt)

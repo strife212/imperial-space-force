@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useScreenScale, SCREEN_DESIGN_HEIGHT } from '../hooks/useScreenScale'
+import { getUpgrades } from '../lib/campaign'
 import './upgrade.css'
 
 // ── Upgrade icons (themeable line/fill SVGs) ─────────────────────────────────
@@ -203,19 +204,32 @@ const rollRarity = () => {
 // Draw n distinct cards: each slot rolls its own rarity, then picks a random card
 // of that rarity. If a rolled tier has no unused cards left, it falls back to a
 // basic one (then to anything) so the draw always fills.
-export const pickUpgrades = (n = 3) => {
+// Epic and legendary cards are one-per-fleet: once owned, they leave the pool
+// for good (lesser tiers stack, so they stay drawable).
+// `pin` guarantees a specific card in the centre slot (story-scripted spoils,
+// e.g. mission 5 always offers the Barrage) — unless it's already owned, in
+// which case the draw is fully random again.
+export const pickUpgrades = (n = 3, { pin = null } = {}) => {
+  const owned = getUpgrades()
+  const retired = (id) => {
+    const { rarity } = UPGRADE_CARDS[id]
+    return (rarity === 'epic' || rarity === 'legendary') && (owned[id] || 0) > 0
+  }
   const chosen = [], used = new Set()
+  const pinned = pin && UPGRADE_CARDS[pin] && !retired(pin) ? pin : null
+  if (pinned) used.add(pinned)
   let guard = 0
-  while (chosen.length < n && guard++ < 200) {
+  while (chosen.length < n - (pinned ? 1 : 0) && guard++ < 200) {
     const rarity = rollRarity()
-    let bucket = (CARDS_BY_RARITY[rarity] || []).filter(id => !used.has(id))
+    let bucket = (CARDS_BY_RARITY[rarity] || []).filter(id => !used.has(id) && !retired(id))
     if (!bucket.length) bucket = (CARDS_BY_RARITY.basic || []).filter(id => !used.has(id))
-    if (!bucket.length) bucket = Object.keys(UPGRADE_CARDS).filter(id => !used.has(id))
+    if (!bucket.length) bucket = Object.keys(UPGRADE_CARDS).filter(id => !used.has(id) && !retired(id))
     if (!bucket.length) break
     const id = bucket[(Math.random() * bucket.length) | 0]
     used.add(id)
     chosen.push({ id, ...UPGRADE_CARDS[id] })
   }
+  if (pinned) chosen.splice(Math.floor(n / 2), 0, { id: pinned, ...UPGRADE_CARDS[pinned] })
   return chosen
 }
 
@@ -244,9 +258,10 @@ export function UpgradeCard({ card, onClick, cta = 'SELECT ▸', badge = null })
 }
 
 // Post-victory roguelike upgrade pick. `onChoose(id)` applies the choice and
-// continues. The three options are drawn at random from UPGRADE_POOL.
-export default function UpgradeScreen({ onChoose }) {
-  const [options] = useState(() => pickUpgrades(3))
+// continues. The three options are drawn at random from UPGRADE_POOL; `pin`
+// (optional card id) scripts the centre slot.
+export default function UpgradeScreen({ onChoose, pin = null }) {
+  const [options] = useState(() => pickUpgrades(3, { pin }))
   const innerRef = useScreenScale(SCREEN_DESIGN_HEIGHT)
   return (
     <div id="upgrade-screen">

@@ -236,7 +236,7 @@ export default function App() {
       {screen === 'draw-test'    && <DrawTestScreen onBack={() => setScreen('campaign-map')} />}
       {screen === 'fleet-review' && <FleetReview onExit={() => setScreen(fleetReviewSource)} backLabel={fleetReviewSource === 'shipyard' ? '◂ BACK TO BATTLE' : '◂ RETURN TO MAP'} />}
       {screen === 'fleetbuilder' && <FleetReview testMode onExit={() => setScreen('home')} backLabel="◂ HOME" />}
-      {screen === 'upgrade'      && <UpgradeScreen onChoose={(id) => { addUpgrade(id); exitCampaign() }} />}
+      {screen === 'upgrade'      && <UpgradeScreen pin={campaignNode === 4 ? 'macroMissile' : null} onChoose={(id) => { addUpgrade(id); exitCampaign() }} />}   {/* mission 5's spoils always offer the Barrage, centre */}
       {screen === 'shipyard'     && <ShipyardScreen nodeIndex={campaignNode ?? 0} onDeploy={() => setScreen('battle')} onExit={exitCampaign} onPreview={() => { setFleetReviewSource('shipyard'); setScreen('fleet-review') }} />}
       {screen === 'login'   && <LoginScreen onComplete={() => setScreen('menu')} onBack={() => setScreen('home')} />}
       {screen === 'menu'    && <MenuScreen  onManage={() => setScreen('boot')} onLogout={() => setScreen('login')} onEncyclopedia={() => goEncyclopedia('menu')} />}
