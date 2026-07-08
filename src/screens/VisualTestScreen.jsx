@@ -17,7 +17,7 @@ import {
   GALAXY_DEFAULTS,
   SKIES, makeNebulaSky,
 } from './battle/geometry'
-import { buildStation, buildCathedra, buildRelay, buildWorldEngine, buildAnnunciator } from './cutscene/models'
+import { buildStation, buildCathedra, buildRelay, buildWorldEngine, buildAnnunciator, buildSkyscraper } from './cutscene/models'
 import './battle/battle.css'
 
 // Faction-less cutscene props + celestial bodies: each is a self-contained group
@@ -37,16 +37,18 @@ const PROP_BUILD = {
   machineplanet: buildMachinePlanetModel,
   star:        buildStarModel,
   galaxy:      buildGalaxyModel,
+  skyscraper:  buildSkyscraper,
 }
 const PROP_LABEL = {
   aleph: 'Aleph', worldengine: 'World Engine', station: 'Orbital Station', cathedra: 'Cathedra', relay: 'Sensor Relay', annunciator: 'Annunciator · RKV',
   blackhole: 'Black Hole', blackhole2: 'Black Hole · Lensed', gasgiant: 'Gas Giant', ringedplanet: 'Ringed Planet',
   earthlike: 'Earthlike Planet', machineplanet: 'Litania Magna', star: 'Star · Main Sequence', galaxy: 'Spiral Galaxy',
+  skyscraper: 'Skyscraper',
 }
 const PROP_RIM = {
   aleph: 0xffcf5a, worldengine: 0x6f86ff, station: 0xffd28a, cathedra: 0xfff0c4, relay: 0x9fe0ff, annunciator: 0xffb08a,
   blackhole: 0xacdcff, blackhole2: 0xffd9a0, gasgiant: 0x5fa0ff, ringedplanet: 0xd8b88a, earthlike: 0x74b8ff,
-  machineplanet: 0x6f86ff, star: 0xffb060, galaxy: 0x9fb0ff,
+  machineplanet: 0x6f86ff, star: 0xffb060, galaxy: 0x9fb0ff, skyscraper: 0xffe4b0,
 }
 
 // ── Galaxy tuning panel ──────────────────────────────────────────────────────
@@ -109,7 +111,7 @@ const MODELS = [
   ...TYPES.flatMap(kind => ['blue', 'red'].map(team => ({ kind, team }))),
   { kind: 'capital2', team: 'blue' },
   { kind: 'science', team: 'blue' },
-  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay', 'annunciator', 'blackhole', 'blackhole2', 'gasgiant', 'ringedplanet', 'earthlike', 'machineplanet', 'star', 'galaxy'].map(kind => ({ kind, team: 'prop' })),
+  ...['aleph', 'worldengine', 'station', 'cathedra', 'relay', 'annunciator', 'blackhole', 'blackhole2', 'gasgiant', 'ringedplanet', 'earthlike', 'machineplanet', 'star', 'galaxy', 'skyscraper'].map(kind => ({ kind, team: 'prop' })),
 ]
 
 // A single large viewer that renders the selected ship on an orbitable turntable.

@@ -414,6 +414,53 @@ export function buildWorldEngine() {
   return g
 }
 
+// A night-facade texture for the city towers: a structured curtain-wall grid —
+// glazed panes separated by vertical mullions and horizontal floor spandrels,
+// most panes dark reflective glass, the lit ones clustered by floor (occupied
+// floors glow, others sleep) in warm office light with the odd cool-white floor.
+// Tiles seamlessly up the building (RepeatWrapping). `cool` biases warm↔cool.
+export function makeFacadeTexture(seed = 1, { cool = 0.25 } = {}) {
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 192
+  const g = cv.getContext('2d')
+  let s = (seed | 0) || 1; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647 }
+  const COLS = 5, FLOORS = 8, W = cv.width, H = cv.height
+  const floorH = H / FLOORS, colW = W / COLS, slab = 4, mull = 5
+  g.fillStyle = '#10141c'; g.fillRect(0, 0, W, H)                    // steel / mullion structure
+  for (let f = 0; f < FLOORS; f++) {
+    const y0 = f * floorH
+    g.fillStyle = '#0b0e15'; g.fillRect(0, y0, W, slab)              // floor spandrel band
+    const wy = y0 + slab + 1, wh = floorH - slab - 3
+    const occ = rnd(), coolFloor = rnd() < cool                      // per-floor occupancy + tint
+    for (let c = 0; c < COLS; c++) {
+      const wx = c * colW + mull, ww = colW - mull * 2
+      g.fillStyle = '#171d29'; g.fillRect(wx, wy, ww, wh)            // dark reflective glass
+      if (rnd() < 0.1 + occ * 0.72) {                                // lit — clustered by floor
+        const b = 0.55 + rnd() * 0.3                                 // dimmer, so the panes don't blow out
+        g.fillStyle = coolFloor && rnd() < 0.6
+          ? `rgb(${(196 * b) | 0},${(216 * b) | 0},${(255 * b) | 0})`   // cool white
+          : `rgb(${(255 * b) | 0},${(204 * b) | 0},${(148 * b) | 0})`  // warm office
+        g.fillRect(wx, wy, ww, wh)
+      }
+    }
+  }
+  const tex = new THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  return tex
+}
+
+// A representative ("median") skyscraper from the Cosmogony erupting-city grid:
+// a boxy tower dressed in the curtain-wall facade above. Median dimensions from
+// the skyline; centred at the origin for the model viewer.
+export function buildSkyscraper() {
+  const W = 6, D = 6, H = 34
+  const geo = new THREE.BoxGeometry(W, H, D)
+  const uv = geo.attributes.uv, vRep = Math.max(1, Math.round(H / 12))   // window rows scale with height (no stretch)
+  for (let k = 1; k < uv.array.length; k += 2) uv.array[k] *= vRep
+  uv.needsUpdate = true
+  const g = new THREE.Group()
+  g.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: makeFacadeTexture(12345, { cool: 0.3 }) })))
+  return g
+}
+
 // One asteroid geometry: an icosahedron sculpted by coherent low-frequency
 // waves (lumpy potato silhouette), dented with smooth craters and stretched
 // along a random axis. Recessed areas are darkened via vertex colours (fake

@@ -1,6 +1,10 @@
 import * as THREE from 'three'
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { TEAMS } from '../../battle/constants'
 import { makeGalaxy, makeEarthlike, makeStar, makeMachinePlanet, buildBlueModel, buildBlueCapital2, buildBlueCruiser, buildSimpleStar, buildSimpleGalaxy } from '../../battle/geometry'
+import { makeFacadeTexture } from '../models'
 
 // Cosmogony — forty seconds from the first light to the thinking sand: the big
 // bang, matter racing outward, galaxies condensing and flying apart, one world,
@@ -13,7 +17,18 @@ import { makeGalaxy, makeEarthlike, makeStar, makeMachinePlanet, buildBlueModel,
 // its spacing and simply slides later by this much.
 const PREROLL = 2.0
 const BANG_T = 1.0
-const CUT_SURFACE = 20.0, CUT_MACHINE = 24.5, CUT_ORBIT = 31.8, FLEET_T = 35.0, END_T = 40.5
+// the surface scene runs long — three tableaus (hut+fire → stone temple →
+// erupting skyline) panned across — so the machine cut and everything after it
+// sit ~5s later than the original single-tableau timing.
+const CUT_SURFACE = 20.0, CUT_MACHINE = 33.6, CUT_ORBIT = 40.9, FLEET_T = 44.1, END_T = 49.6
+// surface tableau layout + beats (scene clock): three centres strung along +x,
+// with quick pans between them and the skyline erupting on the last
+const TAB_A_X = 0, TAB_B_X = 72, TAB_C_X = 144
+const PAN_DUR = 0.7, PAN_AB = 22.7, PAN_BC = 25.6
+const SKY_RISE_FROM = 26.6, SKY_RISE_SPAN = 2.0
+// the tail of the surface scene: dive into a lit window on a hero tower, and the
+// room beyond it — figures around a computer box whose eye opens on the machine
+const ZOOM_T = 28.0, WINDOW_CUT = 29.7
 
 const LINE1 = 'In the beginning there was a single note, struck against the dark. Everything that is, is its echo.'
 const LINE2 = 'The echo cooled into stars, and the stars into worlds — and on one world, listeners.'
@@ -73,10 +88,11 @@ export default {
     { t: 14.5, level: 'info', text: 'Metric expansion accelerating · Λ > 0' },
     { t: 17.5, level: 'info', text: 'Habitable candidate acquired · liquid-water band' },
     { t: 21.0, level: 'ok',   text: '[OK] Biosphere confirmed · tool-users present' },
-    { t: 25.0, level: 'warn', text: 'Artificial cognition detected · substrate: silicon' },
-    { t: 28.0, level: 'discord', text: 'IT LEARNS · IT REMEMBERS · IT LISTENS' },
-    { t: 32.4, level: 'discord', text: '✦ CAELUM CANIT · ILLA AVDIT ✦' },
-    { t: 36.6, level: 'ok', text: '[OK] Home Fleet on station · the long watch continues' },
+    { t: 24.5, level: 'info', text: 'Civilisation ascending · agora → arcology' },
+    { t: 30.1, level: 'warn', text: 'Artificial cognition detected · substrate: silicon' },
+    { t: 36.6, level: 'discord', text: 'IT LEARNS · IT REMEMBERS · IT LISTENS' },
+    { t: 41.5, level: 'discord', text: '✦ CAELUM CANIT · ILLA AVDIT ✦' },
+    { t: 45.7, level: 'ok', text: '[OK] Home Fleet on station · the long watch continues' },
   ].map((l) => ({ ...l, t: l.t + PREROLL })),
   readout: {
     id: 'PNL-000 · Cosmogony',
@@ -351,50 +367,483 @@ export default {
     glare.scale.set(46, 46, 1); glare.position.copy(sunG.position)
     glare.renderOrder = 10; glare.visible = false; spaceSet.add(glare)
 
-    // ── SET 2 · surface: the small people and the box they built ──────────────
+    // ── SET 2 · surface: the rise of the makers — three tableaus the camera pans
+    // across, each a knot of small figures before what their age has raised: a hut
+    // and its fire, a stone temple, then a skyline erupting up behind them ────────
     const surfaceSet = new THREE.Group(); surfaceSet.visible = false; scene.add(surfaceSet)
-    const ground = new THREE.Mesh(new THREE.CircleGeometry(170, 48), new THREE.MeshStandardMaterial({ color: 0x0d1626, roughness: 1, metalness: 0 }))
-    ground.rotation.x = -Math.PI / 2; surfaceSet.add(ground)
-    const duskMat = new THREE.MeshBasicMaterial({ color: 0xff8a50, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false })
-    const dusk = new THREE.Mesh(fx.blastGeo, duskMat); dusk.scale.set(34, 9, 9); dusk.position.set(-60, 2, -110); surfaceSet.add(dusk)
+    // one long ground strip spanning all three tableaus, and a dim moon for even fill
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(360, 300), new THREE.MeshStandardMaterial({ color: 0x0d1626, roughness: 1, metalness: 0 }))
+    ground.rotation.x = -Math.PI / 2; ground.position.set(TAB_B_X, 0, -40); surfaceSet.add(ground)
+    const moonLight = new THREE.DirectionalLight(0x9fb4e0, 0.8); moonLight.position.set(40, 60, 40); surfaceSet.add(moonLight)
 
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0x27324a, emissive: 0x0e1524, emissiveIntensity: 0.7, roughness: 0.8 })
-    const bodyGeo = new THREE.CylinderGeometry(0.13, 0.17, 0.52, 8)
-    const headGeo = new THREE.SphereGeometry(0.125, 10, 10)
-    const people = []
-    for (let i = 0; i < 16; i++) {
-      const a = i * 2.399 + 0.7                                  // golden-angle scatter
-      const r = 2.4 + (i % 5) * 0.75 + Math.sin(i * 3.1) * 0.3
-      const p = new THREE.Group()
-      const body = new THREE.Mesh(bodyGeo, skinMat); body.position.y = 0.26; p.add(body)
-      const head = new THREE.Mesh(headGeo, skinMat); head.position.y = 0.64; p.add(head)
-      p.position.set(Math.cos(a) * r, 0, Math.sin(a) * r)
-      orient(p, new THREE.Vector3(-Math.cos(a), 0, -Math.sin(a)))   // all eyes on the machine
-      surfaceSet.add(p); people.push({ body, i })
+    // little blocky figures in the fleet's blue — a cubic head on a squared
+    // torso, box arms hanging from the shoulders, box legs planted apart: solid
+    // and toy-like, faintly self-lit so they read charmingly against the dark.
+    // The upper body pivots at the hips (the update sways it); arms pivot at
+    // their shoulders.
+    const figMat = new THREE.MeshStandardMaterial({ color: TEAMS.blue.color, emissive: TEAMS.blue.color, emissiveIntensity: 0.28, roughness: 0.55, metalness: 0.1 })
+    const headGeo = new THREE.BoxGeometry(0.17, 0.16, 0.16)
+    const torsoGeo = new THREE.BoxGeometry(0.2, 0.34, 0.12)
+    const limbGeo = new THREE.BoxGeometry(0.07, 0.3, 0.09)
+    const makeFigure = () => {
+      const g = new THREE.Group()
+      for (const s of [-1, 1]) { const leg = new THREE.Mesh(limbGeo, figMat); leg.position.set(s * 0.055, 0.15, 0); g.add(leg) }
+      const upper = new THREE.Group(); upper.position.y = 0.30; g.add(upper)
+      const torso = new THREE.Mesh(torsoGeo, figMat); torso.position.y = 0.17; upper.add(torso)
+      const head = new THREE.Mesh(headGeo, figMat); head.position.y = 0.44; upper.add(head)
+      const arms = []
+      for (const s of [-1, 1]) {
+        const shoulder = new THREE.Group(); shoulder.position.set(s * 0.135, 0.32, 0); upper.add(shoulder)
+        const arm = new THREE.Mesh(limbGeo, figMat); arm.scale.set(0.8, 0.93, 0.8); arm.position.y = -0.125; shoulder.add(arm)
+        shoulder.rotation.z = s * 0.12   // arms hang just off the torso sides
+        arms.push(shoulder)
+      }
+      return { g, upper, armL: arms[0], armR: arms[1] }
+    }
+    const HSCALE = 2.6
+    const swayers = []
+    const cluster = (cx, n) => {
+      for (let i = 0; i < n; i++) {
+        const a = i * 2.399 + cx * 0.11 + 0.7
+        const fig = makeFigure()
+        const rx = Math.sin(a * 1.7) * 4.6, rz = 1.6 + ((i * 0.618) % 1) * 4.4
+        fig.g.position.set(cx + rx, 0, rz); fig.g.scale.setScalar(HSCALE)
+        orient(fig.g, new THREE.Vector3(rx * 0.15, 0, -1))   // face back toward the structure
+        surfaceSet.add(fig.g); swayers.push({ body: fig.upper, i })
+      }
+    }
+    cluster(TAB_A_X, 3); cluster(TAB_B_X, 8); cluster(TAB_C_X, 9)
+    // a crowd lining the base of the skyline — spread the full width of the frame,
+    // so the bottom of the tableau-C shot is a wall of watchers as the towers rise
+    for (let i = 0; i < 48; i++) {
+      const fig = makeFigure()
+      const x = TAB_C_X - 46 + (i / 47) * 92 + Math.sin(i * 12.9) * 2.2
+      const z = 0.5 + ((i * 0.618) % 1) * 8.5
+      fig.g.position.set(x, 0, z); fig.g.scale.setScalar(HSCALE * (0.9 + ((i * 0.37) % 1) * 0.25))
+      orient(fig.g, new THREE.Vector3(Math.sin(i * 3.1) * 0.2, 0, -1))   // face the rising city
+      surfaceSet.add(fig.g); swayers.push({ body: fig.upper, i: i + 100 })
     }
 
-    // the box: a small computer on a plinth, humming to itself
-    const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.66, 1.15), new THREE.MeshStandardMaterial({ color: 0x141c2e, roughness: 0.6, metalness: 0.3 }))
-    plinth.position.y = 0.33; surfaceSet.add(plinth)
-    const box = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.68, 0.68), new THREE.MeshStandardMaterial({ color: 0x0c1322, roughness: 0.35, metalness: 0.6, emissive: 0x0a1a33, emissiveIntensity: 0.8 }))
-    box.position.y = 1.0; surfaceSet.add(box)
+    // Tableau A · a night camp: a hut and its fire, a small village receding into
+    // the dark, a carved totem, under a large low moon ──────────────────────────
+    const hutWallMat = new THREE.MeshStandardMaterial({ color: 0x2a2016, roughness: 1 })
+    const hutRoofMat = new THREE.MeshStandardMaterial({ color: 0x17110b, roughness: 1 })
+    const hutDoorMat = new THREE.MeshBasicMaterial({ color: 0x080604 })
+    const makeHut = () => {
+      const h = new THREE.Group()
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.9, 2.8, 12), hutWallMat); w.position.y = 1.4; h.add(w)
+      const r = new THREE.Mesh(new THREE.ConeGeometry(3.7, 2.6, 12), hutRoofMat); r.position.y = 4.1; h.add(r)
+      const d = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.7), hutDoorMat); d.position.set(0, 0.85, 2.92); h.add(d)
+      return h
+    }
+    const hut = makeHut(); hut.position.set(TAB_A_X - 5, 0, -10); surfaceSet.add(hut)
+    // the rest of the village — smaller, turned, receding into the fog behind the camp
+    for (const [vx, vz, vs, vr] of [[TAB_A_X - 15, -21, 0.85, 0.6], [TAB_A_X - 24, -31, 0.7, 1.8], [TAB_A_X + 17, -30, 0.66, 0.3]]) {
+      const v = makeHut(); v.position.set(vx, 0, vz); v.scale.setScalar(vs); v.rotation.y = vr; surfaceSet.add(v)
+    }
+    // a carved totem standing near the fire — a first altar, catching the firelight
+    const totemMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9, metalness: 0 })
+    const totem = new THREE.Group(); totem.position.set(TAB_A_X + 2, 0, -1.8)   // behind the fire
+    let ty = 0
+    for (const [rad, hh] of [[0.36, 1.3], [0.44, 0.45], [0.3, 0.9], [0.46, 0.4], [0.32, 0.85]]) {
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 1.06, hh, 8), totemMat); seg.position.y = ty + hh / 2; totem.add(seg); ty += hh
+    }
+    const wings = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.42, 0.34), totemMat); wings.position.y = ty - 1.0; totem.add(wings)   // carved outstretched 'wings'
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.6, 6), totemMat); cap.position.y = ty + 0.3; totem.add(cap)
+    surfaceSet.add(totem)
+    // a large low moon behind the camp — soft pale disc with faint maria and a halo
+    const moonCv = document.createElement('canvas'); moonCv.width = 128; moonCv.height = 128
+    const mg2 = moonCv.getContext('2d')
+    const mGrad = mg2.createRadialGradient(64, 64, 0, 64, 64, 64)
+    mGrad.addColorStop(0, 'rgba(150,160,178,1)'); mGrad.addColorStop(0.85, 'rgba(128,138,158,1)')
+    mGrad.addColorStop(0.95, 'rgba(120,130,150,0.85)'); mGrad.addColorStop(1, 'rgba(120,130,150,0)')
+    mg2.fillStyle = mGrad; mg2.beginPath(); mg2.arc(64, 64, 64, 0, Math.PI * 2); mg2.fill()
+    mg2.globalCompositeOperation = 'source-atop'
+    for (const [cx, cy, cr, a] of [[50, 48, 17, 0.14], [76, 58, 13, 0.1], [58, 82, 20, 0.1], [82, 84, 11, 0.08], [44, 74, 10, 0.09]]) {
+      const cg = mg2.createRadialGradient(cx, cy, 0, cx, cy, cr); cg.addColorStop(0, `rgba(110,124,150,${a})`); cg.addColorStop(1, 'rgba(110,124,150,0)')
+      mg2.fillStyle = cg; mg2.beginPath(); mg2.arc(cx, cy, cr, 0, Math.PI * 2); mg2.fill()
+    }
+    const moonTex = new THREE.CanvasTexture(moonCv); track({ dispose: () => moonTex.dispose() })
+    const moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: moonTex, transparent: true, opacity: 0.3, depthWrite: false, fog: false }))
+    moon.scale.set(30, 30, 1); moon.position.set(TAB_A_X - 12, 13, -100); surfaceSet.add(moon)
+    const moonHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0x8a9ab8, transparent: true, opacity: 0.04, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }))
+    moonHalo.scale.set(52, 52, 1); moonHalo.position.copy(moon.position); surfaceSet.add(moonHalo)
+    // one watcher stands apart from the fire, arm flung up at the sky — the
+    // first astronomer, pointing back at everything the opening act just showed
+    {
+      const pointer = makeFigure()
+      pointer.armL.rotation.set(-0.3, 0, -2.5)   // left arm flung up toward the moon
+      pointer.g.position.set(TAB_A_X + 5.2, 0, -1.2); pointer.g.scale.setScalar(HSCALE)
+      orient(pointer.g, new THREE.Vector3(-0.5, 0, -1))   // faced out toward the moonlit sky
+      surfaceSet.add(pointer.g); swayers.push({ body: pointer.upper, i: 55 })
+    }
+    // fireflies wandering the camp's dark
+    const flies = []
+    for (let i = 0; i < 8; i++) {
+      const mat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffd98a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+      const s = new THREE.Sprite(mat); s.scale.set(0.34, 0.34, 1)
+      surfaceSet.add(s)
+      flies.push({ s, mat, seed: i * 2.1, r: 3 + (i % 4) * 2.4 })
+    }
+    // campfire: a knot of logs and glowing coals, a warm point light, a live
+    // particle flame (warm core → red tongues) and smoke curling up off it
+    const FIRE = new THREE.Vector3(TAB_A_X + 2, 0.4, 1.5)
+    const fireLight = new THREE.PointLight(0xff7420, 3.0, 46, 1.7); fireLight.position.set(FIRE.x, FIRE.y + 1.2, FIRE.z); surfaceSet.add(fireLight)
+    const logMat = new THREE.MeshStandardMaterial({ color: 0x120b06, roughness: 1 })
+    for (const [lx, lr] of [[-0.4, 0.5], [0.45, -0.4]]) { const lg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.5, 6), logMat); lg.position.set(FIRE.x + lx, 0.2, FIRE.z); lg.rotation.set(Math.PI / 2, 0, lr); surfaceSet.add(lg) }
+    const emberMat = new THREE.MeshBasicMaterial({ color: 0xff5a1e, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
+    const emberMesh = new THREE.Mesh(fx.blastGeo, emberMat); emberMesh.scale.setScalar(0.5); emberMesh.position.copy(FIRE); surfaceSet.add(emberMesh)
+    // flame tongues — additive glow sprites rising from the base, tapering and
+    // shading warm → red, respawning at the coals
+    const flames = []
+    for (let i = 0; i < 16; i++) {
+      const mat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffcc55, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+      const spr = new THREE.Sprite(mat); spr.position.copy(FIRE); surfaceSet.add(spr)
+      flames.push({ spr, mat, life: Math.random(), dur: 0.45 + Math.random() * 0.4, seed: Math.random() * 6.283, ox: (Math.random() - 0.5) * 0.5 })
+    }
+    // smoke — soft grey puffs curling up above the flame, drifting, growing, thinning
+    const smokes = []
+    for (let i = 0; i < 10; i++) {
+      const mat = new THREE.SpriteMaterial({ map: glowTex, color: 0x2a2a2e, transparent: true, opacity: 0, depthWrite: false })
+      const spr = new THREE.Sprite(mat); spr.position.copy(FIRE); surfaceSet.add(spr)
+      smokes.push({ spr, mat, life: Math.random(), dur: 2.4 + Math.random() * 1.6, seed: Math.random() * 6.283, drift: (Math.random() - 0.5) * 0.7 })
+    }
+
+    // Tableau B · a Doric temple ─────────────────────────────────────────────────
+    // A proper peripteral temple: a stepped stylobate, a peristyle of fluted
+    // columns (entasis + Doric capitals), a full entablature with a triglyph
+    // frieze, and a gabled roof rising to a framed triangular pediment.
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x87857a, roughness: 0.9, metalness: 0 })
+    const stoneLight = new THREE.MeshStandardMaterial({ color: 0x9c9a8d, roughness: 0.85, metalness: 0 })
+    const stoneDark = new THREE.MeshStandardMaterial({ color: 0x45443e, roughness: 0.95, metalness: 0 })
+    const temple = new THREE.Group(); temple.position.set(TAB_B_X, 0, -13)
+
+    // a fluted shaft: a unit cylinder whose radius is carved into vertical grooves
+    // (Doric arrises between them), with a gentle entasis bulge and upward taper
+    const makeFluted = (rBot, rTop, h, flutes, depth) => {
+      const geo = new THREE.CylinderGeometry(1, 1, h, flutes * 4, 8, true)
+      const pos = geo.attributes.position, v = new THREE.Vector3()
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i)
+        const theta = Math.atan2(v.x, v.z), yN = (v.y + h / 2) / h
+        const taper = rBot + (rTop - rBot) * yN
+        const entasis = 1 + Math.sin(yN * Math.PI) * 0.03
+        const r = taper * entasis - depth * (0.5 - 0.5 * Math.cos(flutes * theta))
+        pos.setX(i, Math.sin(theta) * r); pos.setZ(i, Math.cos(theta) * r)
+      }
+      geo.computeVertexNormals()
+      return geo
+    }
+
+    // stylobate — three steps, widest at the base
+    for (let s = 0; s < 3; s++) {
+      const st = new THREE.Mesh(new THREE.BoxGeometry(16.6 + (2 - s) * 1.6, 0.45, 10.6 + (2 - s) * 1.4), s === 0 ? stoneMat : stoneLight)
+      st.position.y = 0.225 + s * 0.45; temple.add(st)
+    }
+    const STYLO_TOP = 1.35, COL_H = 5.6
+
+    // peristyle — fluted columns around the perimeter, each capped by a Doric
+    // capital (flared echinus + square abacus)
+    const shaftGeo = makeFluted(0.42, 0.34, COL_H, 20, 0.05)
+    const echinusGeo = new THREE.CylinderGeometry(0.5, 0.35, 0.26, 24)
+    const abacusGeo = new THREE.BoxGeometry(1.0, 0.2, 1.0)
+    const colPositions = []
+    const nFront = 8, colHalfX = 7.0, colFrontZ = 4.4, colBackZ = -4.4
+    for (let i = 0; i < nFront; i++) { const x = -colHalfX + (i / (nFront - 1)) * 2 * colHalfX; colPositions.push([x, colFrontZ], [x, colBackZ]) }
+    const nSide = 4
+    for (let i = 1; i <= nSide; i++) { const z = colFrontZ + (i / (nSide + 1)) * (colBackZ - colFrontZ); colPositions.push([-colHalfX, z], [colHalfX, z]) }
+    for (const [cx, cz] of colPositions) {
+      const shaft = new THREE.Mesh(shaftGeo, stoneMat); shaft.position.set(cx, STYLO_TOP + COL_H / 2, cz); temple.add(shaft)
+      const ech = new THREE.Mesh(echinusGeo, stoneMat); ech.position.set(cx, STYLO_TOP + COL_H + 0.13, cz); temple.add(ech)
+      const ab = new THREE.Mesh(abacusGeo, stoneLight); ab.position.set(cx, STYLO_TOP + COL_H + 0.36, cz); temple.add(ab)
+    }
+
+    // cella — the inner sanctuary wall standing behind the front colonnade
+    const cella = new THREE.Mesh(new THREE.BoxGeometry(11, COL_H, 7.6), stoneMat)
+    cella.position.set(0, STYLO_TOP + COL_H / 2, -0.6); temple.add(cella)
+    const door = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 3.6), stoneDark)
+    door.position.set(0, STYLO_TOP + 1.8, 3.21); temple.add(door)
+
+    // entablature — architrave, a triglyph frieze, and a projecting cornice
+    const arch = new THREE.Mesh(new THREE.BoxGeometry(18.6, 0.62, 11.4), stoneMat); arch.position.set(0, 7.72, 0); temple.add(arch)
+    const frieze = new THREE.Mesh(new THREE.BoxGeometry(18.6, 0.7, 11.4), stoneMat); frieze.position.set(0, 8.38, 0); temple.add(frieze)
+    const trigGeo = new THREE.BoxGeometry(0.42, 0.66, 0.16)
+    for (let i = 0; i < 17; i++) { const tg = new THREE.Mesh(trigGeo, stoneLight); tg.position.set(-8.5 + i * 1.0625, 8.38, 5.78); temple.add(tg) }
+    const cornice = new THREE.Mesh(new THREE.BoxGeometry(19.6, 0.44, 12.4), stoneLight); cornice.position.set(0, 8.95, 0); temple.add(cornice)
+    const CORNICE_TOP = 9.17
+
+    // gabled roof + pediment — one extruded triangle spans the depth (its front
+    // face is the pediment), framed by raking cornices with a recessed tympanum
+    const gW = 9.4, gH = 2.7, roofDepth = 12.0
+    const gableShape = new THREE.Shape()
+    gableShape.moveTo(-gW, 0); gableShape.lineTo(gW, 0); gableShape.lineTo(0, gH); gableShape.lineTo(-gW, 0)
+    const gable = new THREE.Mesh(new THREE.ExtrudeGeometry(gableShape, { depth: roofDepth, bevelEnabled: false }), stoneMat)
+    gable.position.set(0, CORNICE_TOP, -roofDepth / 2); temple.add(gable)   // spans z ∈ [-6, 6], front cap at +6
+    // recessed tympanum field (the sculpture panel), set just proud of the gable face
+    const tymShape = new THREE.Shape()
+    const tW = gW - 1.1, tH = gH - 0.45
+    tymShape.moveTo(-tW, 0.15); tymShape.lineTo(tW, 0.15); tymShape.lineTo(0, tH); tymShape.lineTo(-tW, 0.15)
+    const tym = new THREE.Mesh(new THREE.ShapeGeometry(tymShape), stoneDark); tym.position.set(0, CORNICE_TOP, roofDepth / 2 + 0.03); temple.add(tym)
+    // raking cornices framing the two sloping edges
+    const rakeAng = Math.atan2(gH, gW), rakeGeo = new THREE.BoxGeometry(Math.hypot(gW, gH), 0.38, 0.34)
+    const rkL = new THREE.Mesh(rakeGeo, stoneLight); rkL.position.set(-gW / 2, CORNICE_TOP + gH / 2, roofDepth / 2 + 0.06); rkL.rotation.z = rakeAng; temple.add(rkL)
+    const rkR = new THREE.Mesh(rakeGeo, stoneLight); rkR.position.set(gW / 2, CORNICE_TOP + gH / 2, roofDepth / 2 + 0.06); rkR.rotation.z = -rakeAng; temple.add(rkR)
+    // acroteria — apex + corner ornaments
+    const acroGeo = new THREE.ConeGeometry(0.32, 0.8, 4)
+    const acA = new THREE.Mesh(acroGeo, stoneLight); acA.position.set(0, CORNICE_TOP + gH + 0.4, roofDepth / 2); temple.add(acA)
+    for (const sx of [-gW, gW]) { const ac = new THREE.Mesh(acroGeo, stoneLight); ac.position.set(sx, CORNICE_TOP + 0.4, roofDepth / 2); temple.add(ac) }
+    // braziers flanking the steps — firebowls on stands, guttering in the update
+    const braziers = []
+    for (const bxx of [-8.5, 8.5]) {
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.34, 1.15, 8), stoneDark); stand.position.set(bxx, STYLO_TOP + 0.58, 5.6); temple.add(stand)
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.3, 0.5, 10), stoneDark); bowl.position.set(bxx, STYLO_TOP + 1.35, 5.6); temple.add(bowl)
+      const flameMat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffa040, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })
+      const flame = new THREE.Sprite(flameMat); flame.position.set(bxx, STYLO_TOP + 1.95, 5.6); flame.scale.set(1.1, 1.7, 1); temple.add(flame)
+      const light = new THREE.PointLight(0xff8a30, 1.6, 20, 1.8); light.position.set(bxx, STYLO_TOP + 2.1, 5.8); temple.add(light)
+      braziers.push({ flameMat, flame, light, seed: bxx })
+    }
+
+    surfaceSet.add(temple)
+
+    // Tableau C · a skyline erupting behind the watchers — boxed towers dressed in
+    // the shared curtain-wall facade (structured window grid, floors lit in
+    // clusters); four variants, warmer↔cooler, give the city variety. Unlit
+    // MeshBasic so the lit panes bloom.
+    const towerMats = [
+      makeFacadeTexture(7, { cool: 0.2 }), makeFacadeTexture(29, { cool: 0.5 }),
+      makeFacadeTexture(53, { cool: 0.15 }), makeFacadeTexture(91, { cool: 0.45 }),
+    ].map((t) => { track({ dispose: () => t.dispose() }); return new THREE.MeshBasicMaterial({ map: t }) })
+    // a real city layout: rectangular blocks separated by streets, flanking a
+    // central avenue that runs to the downtown core at the back. Each block
+    // hosts one building composition — plain tower, stepped tower (setbacks),
+    // wide slab, podium+tower, or twins — with rooftop plant and aviation
+    // beacons on the tall ones. Heights follow the districts: low-rise at the
+    // front edges, rising toward the tall core at the back near the avenue.
+    // All deterministic from block indices, so footprints never collide.
+    const towers = []   // every composition group — toggled visible at the city cut
+    const hash01 = (a, b) => Math.abs(Math.sin(a * 12.9898 + b * 78.233) * 43758.5453) % 1
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x1b222e, roughness: 0.8, metalness: 0.4 })
+    const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff5548 })
+    const mkBox = (w, h, d, mi) => {
+      const geo = new THREE.BoxGeometry(w, h, d)
+      geo.translate(0, h / 2, 0)
+      const uv = geo.attributes.uv, vRep = Math.max(1, Math.round(h / 12))   // window rows scale with height
+      for (let k = 1; k < uv.array.length; k += 2) uv.array[k] *= vRep
+      uv.needsUpdate = true
+      return new THREE.Mesh(geo, towerMats[mi % towerMats.length])
+    }
+    // one building composition per block, variant-keyed; returns its total height
+    const mkBuilding = (g, v, h, mi, r1, r2) => {
+      if (v === 0) {          // plain tower
+        g.add(mkBox(9 + r1 * 4, h, 9 + r2 * 4, mi))
+      } else if (v === 1) {   // stepped tower — three tiers with setbacks
+        const h1 = h * 0.5, h2 = h * 0.3, h3 = h * 0.25
+        g.add(mkBox(13, h1, 12, mi))
+        const t2 = mkBox(9.5, h2, 8.5, mi + 1); t2.position.y = h1; g.add(t2)
+        const t3 = mkBox(6.5, h3, 6, mi); t3.position.y = h1 + h2; g.add(t3)
+        h = h1 + h2 + h3
+      } else if (v === 2) {   // wide slab
+        h *= 0.7
+        g.add(mkBox(17, h, 7 + r1 * 3, mi))
+      } else if (v === 3) {   // podium + set-back tower
+        const podium = mkBox(15, 4.5, 13, mi + 1); g.add(podium)
+        const tw = mkBox(7.5 + r1 * 2, h, 7 + r2 * 2, mi); tw.position.y = 4.5; g.add(tw)
+        h += 4.5
+      } else {                // twin towers on a shared podium
+        g.add(mkBox(16, 3.5, 11, mi + 1))
+        const hA = h * (0.82 + r1 * 0.18), hB = h * (0.66 + r2 * 0.2)
+        const a = mkBox(6, hA, 6.5, mi); a.position.set(-4.4, 3.5, 0); g.add(a)
+        const b = mkBox(6, hB, 6.5, mi + 2); b.position.set(4.4, 3.5, 0); g.add(b)
+        h = 3.5 + Math.max(hA, hB)
+      }
+      // rooftop dressing: plant boxes on the mid-rises, antenna + beacon on talls
+      if (h > 18 && v !== 4) { const plant = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.1, 2.4), roofMat); plant.position.set(1.2, h + 0.55, -0.8); g.add(plant) }
+      if (h > 34 && r1 > 0.4) {
+        const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, 4.5, 5), roofMat); ant.position.y = h + 2.25; g.add(ant)
+        const bcn = new THREE.Mesh(fx.blastGeo, beaconMat); bcn.scale.setScalar(0.16); bcn.position.y = h + 4.5; g.add(bcn)
+      }
+      return h
+    }
+    // blocks: 3 columns per side of the avenue × 4 rows deep. Avenue is clear at
+    // |x| < 11; block pitch 30 across, 26 deep (20-deep blocks + 6-wide streets).
+    for (const sx of [-1, 1]) {
+      for (let col = 0; col < 3; col++) {
+        for (let row = 0; row < 4; row++) {
+          const bx = TAB_C_X + sx * (23 + col * 30)
+          const bz = -40 - row * 26
+          const depth = row / 3                                  // 0 front → 1 back
+          const core = (2 - col) / 2                             // 1 beside the avenue → 0 outskirts
+          const r1 = hash01(col * 7 + row + (sx > 0 ? 31 : 0), row * 3 + col)
+          const r2 = hash01(row * 11 + col + (sx > 0 ? 17 : 0), col * 5 + row)
+          const v = (col * 7 + row * 5 + (sx > 0 ? 3 : 0)) % 5
+          const h = 8 + depth * 26 + core * 15 + r1 * 10         // downtown: back rows by the avenue
+          const g = new THREE.Group(); g.position.set(bx, 0, bz); g.visible = false
+          mkBuilding(g, v, h, (col * 3 + row * 2 + (sx > 0 ? 1 : 0)), r1, r2)
+          surfaceSet.add(g); towers.push({ m: g })
+        }
+      }
+    }
+    // street dressing: the avenue reads as a lit corridor — a slightly lighter
+    // roadbed and twin rows of warm streetlamp glows running to the core
+    const roadMat = new THREE.MeshBasicMaterial({ color: 0x131923 })
+    const avenue = new THREE.Mesh(new THREE.PlaneGeometry(17, 128), roadMat)
+    avenue.rotation.x = -Math.PI / 2; avenue.position.set(TAB_C_X, 0.03, -82); avenue.visible = false
+    surfaceSet.add(avenue); towers.push({ m: avenue })
+    const lampMat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffc36b, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })
+    for (let li = 0; li < 8; li++) for (const lsx of [-1, 1]) {
+      const lamp = new THREE.Sprite(lampMat)
+      lamp.scale.set(1.3, 1.3, 1); lamp.position.set(TAB_C_X + lsx * 9.6, 2.2, -30 - li * 14); lamp.visible = false
+      surfaceSet.add(lamp); towers.push({ m: lamp })
+    }
+    // the dive target: the city's landmark tower, dead-centre at the head of the
+    // avenue — a stepped crown silhouette with a spire, tallest thing in the core
+    const TGT_Z = -136
+    const targetTower = new THREE.Group(); targetTower.position.set(TAB_C_X, 0, TGT_Z); targetTower.visible = false
+    targetTower.add(mkBox(14, 46, 12, 2))
+    const tt2 = mkBox(10.5, 18, 9, 3); tt2.position.y = 46; targetTower.add(tt2)
+    const tt3 = mkBox(7, 12, 6.5, 2); tt3.position.y = 64; targetTower.add(tt3)
+    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.3, 7, 6), roofMat); spire.position.y = 79.5; targetTower.add(spire)
+    const tbcn = new THREE.Mesh(fx.blastGeo, beaconMat); tbcn.scale.setScalar(0.2); tbcn.position.y = 83; targetTower.add(tbcn)
+    surfaceSet.add(targetTower); towers.push({ m: targetTower })
+    const WINDOW_POS = new THREE.Vector3(TAB_C_X, 38, TGT_Z + 6.1)   // a pane on the base tier's near face (z = TGT_Z + 6)
+    // a cold blue pane (the computer's glow spilling out) — fog-immune so it reads
+    // as a beacon deep in the hazed city; the dive de-fogs the tower around it
+    const heroWin = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 3.2), new THREE.MeshBasicMaterial({ color: 0x7fd4ff, fog: false }))
+    heroWin.position.copy(WINDOW_POS); heroWin.visible = false; surfaceSet.add(heroWin)
+
+    // ── surface dressing · living skies, terrain and mist ────────────────────
+    // each age owns its own sky mood (the tableaus are far enough apart that the
+    // camera only ever sees its own): a horizon glow per age, aurora curtains
+    // over the camp, a smoggy sodium dome over the city. Hills silhouette the
+    // pre-city horizons; boulders and drifting ground mist dress the camps.
+    const skyMat = (color, opacity) => new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })
+    const horizon = (cx, color, op, w = 210, h = 44, y = 4, z = -150) => {
+      const s = new THREE.Sprite(skyMat(color, op)); s.scale.set(w, h, 1); s.position.set(cx, y, z); surfaceSet.add(s)
+    }
+    horizon(TAB_A_X, 0x16384e, 0.42)                        // hut · cold teal night
+    horizon(TAB_B_X, 0x3c4458, 0.4)                         // temple · silver pre-dawn
+    horizon(TAB_C_X, 0xc06e2e, 0.34, 240, 64, 10)           // city · sodium smog dome
+    horizon(TAB_C_X, 0x1e6a6a, 0.16, 260, 90, 26)           // city · teal upper haze
+    // a planetside starfield above every age — fog-immune points high in the sky
+    // band shared by all three tableaus, in two layers (dim many, bright few)
+    const makeStars = (count, size, opacity) => {
+      const pos = new Float32Array(count * 3)
+      for (let i = 0; i < count; i++) {
+        pos[i * 3] = TAB_A_X - 130 + Math.random() * (TAB_C_X - TAB_A_X + 260)
+        pos[i * 3 + 1] = 22 + Math.pow(Math.random(), 0.7) * 150
+        pos[i * 3 + 2] = -70 - Math.random() * 150
+      }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+      const mat = new THREE.PointsMaterial({ color: 0xcfe0ff, size, map: glowTex, sizeAttenuation: true, transparent: true, opacity, depthWrite: false, fog: false })
+      const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; surfaceSet.add(pts)
+    }
+    makeStars(320, 0.9, 0.5)
+    makeStars(60, 1.7, 0.85)
+    // aurora over the camp — slow-breathing curtains low above the hills
+    const aurora = []
+    for (let i = 0; i < 7; i++) {
+      const s = new THREE.Sprite(skyMat(0x39e0a0, 0.12))
+      s.position.set(TAB_A_X - 44 + i * 13, 27, -130); s.scale.set(8, 24, 1)
+      surfaceSet.add(s); aurora.push({ s, seed: i * 1.7 })
+    }
+    // hill silhouettes ringing the hut & temple horizons (squashed spheres; they
+    // fog toward the sky colour and read as dark ridges against the horizon glow)
+    const hillMat = new THREE.MeshBasicMaterial({ color: 0x05080f })
+    for (const [cx, hx, hz, hw, hh] of [
+      [TAB_A_X, -60, -95, 46, 8], [TAB_A_X, -10, -110, 60, 11], [TAB_A_X, 48, -90, 40, 7],
+      [TAB_B_X, -52, -100, 50, 9], [TAB_B_X, 20, -112, 64, 12], [TAB_B_X, 66, -92, 38, 7],
+    ]) {
+      const hill = new THREE.Mesh(fx.blastGeo, hillMat)
+      hill.position.set(cx + hx, 0, hz); hill.scale.set(hw, hh, 14)
+      surfaceSet.add(hill)
+    }
+    // boulders around the camps
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x1a2334, roughness: 1 })
+    for (const [cx, rx, rz, rs] of [[TAB_A_X, -9, -4, 1.0], [TAB_A_X, 7.5, -7, 0.7], [TAB_A_X, 12, -14, 1.5], [TAB_B_X, -13, -2, 0.9], [TAB_B_X, 14, -8, 1.2]]) {
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rs, 0), rockMat)
+      rock.position.set(cx + rx, rs * 0.55, rz); rock.rotation.set(rx, rz, rx * 0.7)
+      surfaceSet.add(rock)
+    }
+    // ground mist — soft banks drifting through the pre-city ages
+    const mists = []
+    for (let i = 0; i < 10; i++) {
+      const mat = new THREE.SpriteMaterial({ map: glowTex, color: 0x46586f, transparent: true, opacity: 0.1, depthWrite: false })
+      const s = new THREE.Sprite(mat)
+      s.scale.set(20 + (i % 3) * 9, 3.6, 1)
+      surfaceSet.add(s)
+      mists.push({ s, mat, cx: i < 5 ? TAB_A_X : TAB_B_X, bx: -26 + (i % 5) * 13, z: -12 - (i % 4) * 9, seed: i * 2.3 })
+    }
+
+    // the room beyond the window: an isolated interior (far off, shown only once
+    // the dive fills the frame) where figures ring a computer box — the same box
+    // as before, its glowing eye the doorway on to the machine's mind.
+    const ROOM = new THREE.Vector3(150, 200, 0)
+    const EYE_LOCAL = new THREE.Vector3(0.14, 1.06, -0.635)   // seated in the lens ring on the faceplate
+    const roomSet = new THREE.Group(); roomSet.visible = false; roomSet.position.copy(ROOM); scene.add(roomSet)
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x1a2436, roughness: 0.9, metalness: 0.1 })
+    const rFloor = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), wallMat); rFloor.rotation.x = -Math.PI / 2; roomSet.add(rFloor)
+    const rCeil = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), wallMat); rCeil.rotation.x = Math.PI / 2; rCeil.position.y = 5; roomSet.add(rCeil)
+    const rBack = new THREE.Mesh(new THREE.PlaneGeometry(12, 5), wallMat); rBack.position.set(0, 2.5, -6); roomSet.add(rBack)
+    const rLeft = new THREE.Mesh(new THREE.PlaneGeometry(12, 5), wallMat); rLeft.rotation.y = Math.PI / 2; rLeft.position.set(-6, 2.5, 0); roomSet.add(rLeft)
+    const rRight = new THREE.Mesh(new THREE.PlaneGeometry(12, 5), wallMat); rRight.rotation.y = -Math.PI / 2; rRight.position.set(6, 2.5, 0); roomSet.add(rRight)
+    // the computer box on its plinth (centred at z=-1, eye facing the +z entrance)
+    const rPlinth = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.66, 1.15), new THREE.MeshStandardMaterial({ color: 0x141c2e, roughness: 0.6, metalness: 0.3 })); rPlinth.position.set(0, 0.33, -1); roomSet.add(rPlinth)
+    const rBox = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.68, 0.68), new THREE.MeshStandardMaterial({ color: 0x0c1322, roughness: 0.35, metalness: 0.6, emissive: 0x0a1a33, emissiveIntensity: 0.8 })); rBox.position.set(0, 1.0, -1); roomSet.add(rBox)
+    // dress the face so nothing floats: a proud faceplate carries the fittings,
+    // the eye sits as a bulb inside a metal lens ring (only its dome protruding),
+    // the seams half-embed in the chassis face, and a cable snakes to the floor
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.03), new THREE.MeshStandardMaterial({ color: 0x0a101e, roughness: 0.3, metalness: 0.65 }))
+    plate.position.set(0, 1.0, -0.645); roomSet.add(plate)   // front at -0.63, proud of the chassis face (-0.66)
     const seamMat = new THREE.MeshBasicMaterial({ color: 0x7fd4ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })
     for (const [w, h, d, x, y, z] of [
-      [0.70, 0.02, 0.02, 0, 1.17, 0.345], [0.70, 0.02, 0.02, 0, 0.83, 0.345],
-      [0.02, 0.36, 0.02, -0.345, 1.0, 0.345], [0.02, 0.36, 0.02, 0.345, 1.0, 0.345],
-    ]) { const seam = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), seamMat); seam.position.set(x, y, z); surfaceSet.add(seam) }
+      [0.70, 0.02, 0.02, 0, 1.17, -0.659], [0.70, 0.02, 0.02, 0, 0.83, -0.659],
+      [0.02, 0.36, 0.02, -0.345, 1.0, -0.659], [0.02, 0.36, 0.02, 0.345, 1.0, -0.659],
+    ]) { const seam = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), seamMat); seam.position.set(x, y, z); roomSet.add(seam) }
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x232c3e, roughness: 0.4, metalness: 0.7 })
+    const lensRing = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.022, 8, 24), metalMat)
+    lensRing.position.set(0.14, 1.06, -0.615); roomSet.add(lensRing)   // faces +z, mounted through the plate
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
-    const eye = new THREE.Mesh(fx.blastGeo, eyeMat); eye.scale.setScalar(0.05); eye.position.set(0.14, 1.06, 0.36); surfaceSet.add(eye)
-    const boxLight = new THREE.PointLight(0x7fd4ff, 3.2, 26, 1.6); boxLight.position.set(0, 2.6, 1.2); surfaceSet.add(boxLight)
-    const moonLight = new THREE.PointLight(0x8aa4d8, 1.1, 60, 1.8); moonLight.position.set(-14, 18, 10); surfaceSet.add(moonLight)
+    const eye = new THREE.Mesh(fx.blastGeo, eyeMat); eye.scale.setScalar(0.05); eye.position.copy(EYE_LOCAL); roomSet.add(eye)
+    // vents and a status-LED row, flush on the plate
+    const ventMat = new THREE.MeshBasicMaterial({ color: 0x05080f })
+    for (let vi = 0; vi < 3; vi++) { const v = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.012, 0.006), ventMat); v.position.set(-0.13, 0.85 - vi * 0.035, -0.628); roomSet.add(v) }
+    for (const [lc, li] of [[0x53ff86, 0], [0xffc45e, 1], [0x7fd4ff, 2]]) {
+      const led = new THREE.Mesh(fx.blastGeo, new THREE.MeshBasicMaterial({ color: lc }))
+      led.scale.setScalar(0.011); led.position.set(0.13 + li * 0.05, 0.82, -0.628); roomSet.add(led)
+    }
+    // power cable: out of the chassis rear, sagging to the floor behind the plinth
+    const cableCurve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0.18, 0.72, -1.32), new THREE.Vector3(0.44, 0.26, -1.52), new THREE.Vector3(0.66, 0.015, -1.66))
+    roomSet.add(new THREE.Mesh(new THREE.TubeGeometry(cableCurve, 12, 0.018, 6), new THREE.MeshStandardMaterial({ color: 0x0c0f16, roughness: 1 })))
+    // the machine's glow hugs the lens — just off the bulb, not out in the room
+    const roomBoxLight = new THREE.PointLight(0x7fd4ff, 3.4, 14, 1.8); roomBoxLight.position.set(0.14, 1.06, -0.52); roomSet.add(roomBoxLight)
+    // figures gathered around the box, all eyes on it — but only on a rear/side
+    // arc (50°..310° off the +z axis), leaving the camera-facing front open so
+    // none of them block the lens's view of the computer
+    const roomSwayers = []
+    const RN = 8
+    for (let i = 0; i < RN; i++) {
+      const phi = (50 + (i / (RN - 1)) * 260) * Math.PI / 180
+      const r = 1.9 + (i % 3) * 0.4
+      const x = Math.sin(phi) * r, z = -1 + Math.cos(phi) * r
+      const fig = makeFigure()
+      fig.g.position.set(x, 0, z); fig.g.scale.setScalar(1.9)
+      orient(fig.g, new THREE.Vector3(-x, 0, -1 - z))   // face the box centre (0, -1)
+      roomSet.add(fig.g); roomSwayers.push({ body: fig.upper, i })
+    }
 
     // ── SET 3 · the machine: a lattice of thought, tables of live numbers ─────
     const machineSet = new THREE.Group(); machineSet.visible = false; scene.add(machineSet)
     const LAYER_N = [4, 6, 8, 6, 3]
+    // solid black outline for every node: an inverted-hull shell (back-faced,
+    // opaque, a touch larger) sits behind the glowing sphere, so a crisp black
+    // rim reads around each node. Shared material; the shell rides the node's
+    // scale as a child, so it pulses with it.
+    const nodeOutlineMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.BackSide })
     const layers = LAYER_N.map((n, li) => Array.from({ length: n }, (_, i) => {
       const mat = new THREE.MeshBasicMaterial({ color: 0x1c5a94, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })
       const m = new THREE.Mesh(fx.blastGeo, mat)
       m.position.set(-12 + li * 6, (i - (n - 1) / 2) * 2.15, Math.sin(i * 2.7 + li * 1.3) * 0.7)
+      const outline = new THREE.Mesh(fx.blastGeo, nodeOutlineMat); outline.scale.setScalar(1.2); m.add(outline)
       m.scale.setScalar(0.32)
       machineSet.add(m)
       return { m, mat, pop: 0 }
@@ -403,10 +852,13 @@ export default {
     for (let li = 0; li < layers.length - 1; li++)
       for (const A of layers[li]) for (const B of layers[li + 1])
         linkPos.push(A.m.position.x, A.m.position.y, A.m.position.z, B.m.position.x, B.m.position.y, B.m.position.z)
-    const linkGeo = new THREE.BufferGeometry()
-    linkGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(linkPos), 3))
-    const linkMat = new THREE.LineBasicMaterial({ color: 0x2f5fd0, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false })
-    machineSet.add(new THREE.LineSegments(linkGeo, linkMat))
+    // fat lines (LineSegments2): plain WebGL lines are locked to 1px, so the
+    // links use screen-space thick lines to render a touch bolder (2px)
+    const linkGeo = new LineSegmentsGeometry()
+    linkGeo.setPositions(linkPos)
+    const linkMat = new LineMaterial({ color: 0x2f5fd0, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false, linewidth: 2 })
+    linkMat.resolution.set(window.innerWidth || 1920, window.innerHeight || 1080)
+    machineSet.add(new LineSegments2(linkGeo, linkMat))
 
     const pulseMat = new THREE.MeshBasicMaterial({ color: 0x86bce8, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })
     const pulses = [], pulsePool = []   // meshes are pooled — no per-pulse allocation
@@ -503,6 +955,8 @@ export default {
     let T = -PREROLL, banged = false, c1 = false, c2 = false, cS = false, c3 = false, c4 = false, c5 = false, cutA = false, cutB = false, cutC = false, ended = false
     let pulseCd = 0, novaCd = 1.1, streakCd = 0, worldShown = false, discCrossed = false, lastTickT = 0
     let capCrossed = false, followT = 0   // the capital-ship pan: armed once it passes screen centre
+    let roomShown = false                 // surface tail: swapped city → interior room once the window fills
+    let flashAB = false, flashBC = false  // white flashes punctuating the hut→temple→city hard cuts
     const tableCds = [0.02, 0.06, 0.1]   // staggered redraw phases
     const novas = []
 
@@ -515,10 +969,10 @@ export default {
       // cut — each cut then decays back out of its own whiteout
       if (!cutA) fo = Math.max(fo, clamp01((T - 19.2) / 0.8))
       else if (!cutB) {
-        const w = clamp01((T - 23.9) / 0.6)
+        const w = clamp01((T - (CUT_MACHINE - 0.6)) / 0.6)
         if (w > 0) { fo = Math.max(fo, w); flashMat.color.setHex(0xd8f2ff) }
       } else if (!cutC) {
-        const w = clamp01((T - 31.2) / 0.6)
+        const w = clamp01((T - (CUT_ORBIT - 0.6)) / 0.6)
         if (w > 0) { fo = Math.max(fo, w); flashMat.color.setHex(0xd8f2ff) }
       }
       flashMat.opacity = fo
@@ -727,28 +1181,117 @@ export default {
         cutA = true; fireFlash()
         bangAudio.pause()
         spaceSet.visible = false; surfaceSet.visible = true
-        scene.fog = new THREE.Fog(0x0a1322, 26, 150)
+        scene.fog = new THREE.Fog(0x0a1322, 30, 220)
       }
-      if (cutA && !cutB) {
-        // ── surface: falling out of the sky, then the last armlength into the
-        // machine's glowing eye — the cut hides inside its cyan wash ──
-        const q = easeInOut(clamp01((T - 23.6) / 0.9))
-        if (q <= 0) {
-          const p = easeInOut(clamp01((T - CUT_SURFACE) / 3.6))
-          camera.position.set(1.9 * p, 34 - 32.6 * p, 30 - 25.4 * p)
-          camera.lookAt(0, 1.0 * p, 0)
-        } else {
-          camera.position.set(1.9 - 1.45 * q, 1.4 - 0.28 * q, 4.6 - 3.2 * q)
-          camera.lookAt(0.14 * q, 1.0 + 0.06 * q, 0.36 * q)
+      // the window→room swap: once the dive has filled the frame with the lit
+      // pane, hide the city and reveal the interior, hiding the jump in a wash
+      if (cutA && !cutB && !roomShown && T >= WINDOW_CUT) {
+        roomShown = true
+        surfaceSet.visible = false; roomSet.visible = true
+        flashMat.color.setHex(0xffffff); fireFlash(1, 0.55)   // window-light wash
+      }
+      if (cutA && !cutB && !roomShown) {
+        // ── the rise of the makers: hard cut from the hut and its fire, to the
+        // stone temple, to the watchers as a skyline erupts, then dive at a lit
+        // window on the far tower ──
+        // figures sway; the fire flickers; the skyline (incl. target tower) erupts
+        for (const u of swayers) u.body.rotation.z = Math.sin(T * 1.2 + u.i) * 0.05
+        // campfire: flickering light + coals, rising flame tongues, curling smoke
+        const fl = 0.75 + 0.25 * Math.sin(T * 17) + 0.12 * Math.sin(T * 6.3)
+        fireLight.intensity = 2.4 + fl * 1.4
+        emberMat.opacity = 0.7 + 0.3 * Math.sin(T * 11)
+        emberMesh.scale.setScalar(0.45 + 0.1 * Math.sin(T * 9))
+        for (const fp of flames) {
+          fp.life += dt / fp.dur
+          if (fp.life >= 1) { fp.life -= 1; fp.dur = 0.45 + Math.random() * 0.4; fp.seed = Math.random() * 6.283; fp.ox = (Math.random() - 0.5) * 0.5 }
+          const k = fp.life
+          const sway = Math.sin(T * 6 + fp.seed) * 0.28 * k
+          fp.spr.position.set(FIRE.x + fp.ox * (1 - k) + sway, FIRE.y + 0.15 + k * 2.3, FIRE.z + Math.cos(T * 5 + fp.seed) * 0.18 * k)
+          fp.spr.scale.setScalar(Math.max(0.06, (1.5 - k * 1.05) * (0.85 + 0.2 * Math.sin(T * 20 + fp.seed))))
+          let cr, cg, cb
+          if (k < 0.5) { const t = k / 0.5; cr = 1; cg = 0.92 - t * 0.42; cb = 0.58 - t * 0.42 }   // yellow-white → orange
+          else { const t = (k - 0.5) / 0.5; cr = 1 - t * 0.32; cg = 0.5 - t * 0.4; cb = 0.16 - t * 0.11 }  // orange → red
+          fp.mat.color.setRGB(cr, cg, cb)
+          fp.mat.opacity = Math.sin(k * Math.PI) * (0.7 + 0.25 * Math.sin(T * 15 + fp.seed))
         }
-        for (const u of people) u.body.rotation.z = Math.sin(T * 1.2 + u.i) * 0.05
-        eyeMat.opacity = 0.55 + 0.45 * Math.sin(T * 6)
+        for (const sm of smokes) {
+          sm.life += dt / sm.dur
+          if (sm.life >= 1) { sm.life -= 1; sm.dur = 2.4 + Math.random() * 1.6; sm.seed = Math.random() * 6.283; sm.drift = (Math.random() - 0.5) * 0.7 }
+          const k = sm.life
+          sm.spr.position.set(FIRE.x + sm.drift * k * 4 + Math.sin(T * 1.1 + sm.seed) * 0.5 * k, FIRE.y + 1.9 + k * 6, FIRE.z + Math.cos(T * 0.9 + sm.seed) * 0.4 * k)
+          sm.spr.scale.setScalar(0.7 + k * 3.6)
+          sm.mat.opacity = Math.sin(Math.min(1, k * 1.3) * Math.PI) * 0.26
+          const v = 0.16 + k * 0.13; sm.mat.color.setRGB(v + (1 - k) * 0.07, v, v * 1.04)   // warm near the coals → grey
+        }
+        // living dressing: aurora breathes, mist drifts, fireflies blink, braziers gutter
+        for (const au of aurora) {
+          au.s.material.opacity = 0.07 + 0.06 * (0.5 + 0.5 * Math.sin(T * 0.5 + au.seed))
+          au.s.scale.y = 22 + 5 * Math.sin(T * 0.34 + au.seed * 1.3)
+          au.s.position.y = 26 + 2.2 * Math.sin(T * 0.22 + au.seed)
+        }
+        for (const ms of mists) {
+          ms.s.position.set(ms.cx + ms.bx + Math.sin(T * 0.07 + ms.seed) * 9, 1.3 + 0.3 * Math.sin(T * 0.15 + ms.seed), ms.z)
+          ms.mat.opacity = 0.07 + 0.05 * (0.5 + 0.5 * Math.sin(T * 0.11 + ms.seed * 2))
+        }
+        for (const ff of flies) {
+          ff.s.position.set(
+            TAB_A_X + Math.sin(T * 0.4 + ff.seed) * ff.r + Math.sin(T * 1.7 + ff.seed * 3) * 0.7,
+            0.9 + 0.55 * Math.sin(T * 0.9 + ff.seed * 2),
+            -6 + Math.cos(T * 0.33 + ff.seed) * ff.r * 0.8,
+          )
+          ff.mat.opacity = Math.max(0, Math.sin(T * 1.3 + ff.seed * 5)) * 0.8   // blink
+        }
+        for (const bz of braziers) {
+          const f2 = 0.7 + 0.3 * Math.sin(T * 13 + bz.seed) + 0.12 * Math.sin(T * 5.7 + bz.seed * 2)
+          bz.flameMat.opacity = 0.55 * f2
+          bz.flame.scale.set(0.95 + f2 * 0.25, 1.45 + f2 * 0.45, 1)
+          bz.light.intensity = 1.1 + f2 * 0.8
+        }
+        const cityUp = T >= PAN_BC
+        for (const tw of towers) tw.m.visible = cityUp   // fully erect, revealed whole at the city cut
+        heroWin.visible = cityUp
+        // white flashes punctuate the hard cuts between the ages
+        if (!flashAB && T >= PAN_AB) { flashAB = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4) }
+        if (!flashBC && T >= PAN_BC) { flashBC = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4) }
+        if (T < ZOOM_T) {
+          // hard cut between tableaus: snap the camera to each one's own fixed
+          // framing, no interpolation — the content change carries the cut. The
+          // city gets a raised, pulled-back frame so the skyline reads.
+          let camX = TAB_A_X, camY = 3.4, camZ = 13, lookY = 2.4, lookZ = -8
+          // cut → the city: raised, gazing down the lit avenue toward the core
+          if (T >= PAN_BC) { camX = TAB_C_X; camY = 9; camZ = 26; lookY = 14; lookZ = -80 }
+          else if (T >= PAN_AB) { camX = TAB_B_X }                                        // cut → the temple
+          camera.position.set(camX, camY, camZ)
+          camera.lookAt(camX, lookY, lookZ)
+        } else {
+          // dive down the avenue toward the lit window on the landmark tower —
+          // start exactly at the city framing so there's no snap into the move
+          const e = easeInOut(clamp01((T - ZOOM_T) / (WINDOW_CUT - ZOOM_T)))
+          camera.position.set(TAB_C_X, 9 + (38 - 9) * e, 26 + (WINDOW_POS.z + 8 - 26) * e)
+          _look.set(TAB_C_X, 14 + (WINDOW_POS.y - 14) * e, -80 + (WINDOW_POS.z + 80) * e)
+          camera.lookAt(_look)
+        }
+      } else if (cutA && !cutB && roomShown) {
+        // ── inside the room: push from the window in toward the box's glowing eye,
+        // whose cyan wash carries us on into the machine ──
+        for (const u of roomSwayers) u.body.rotation.z = Math.sin(T * 1.2 + u.i) * 0.05
+        // hold still on the room for a beat, then push in toward the eye
+        const ROOM_HOLD = 0.5
+        const q = easeInOut(clamp01((T - WINDOW_CUT - ROOM_HOLD) / (CUT_MACHINE - WINDOW_CUT - ROOM_HOLD)))
+        eyeMat.opacity = 0.55 + 0.12 * Math.sin(T * 6)   // a small physical LED — gentle pulse, no swell/flare
+        eye.scale.setScalar(0.05)                         // stays LED-sized as we approach
+        roomBoxLight.intensity = 2.6 + 0.3 * Math.sin(T * 5)
         seamMat.opacity = 0.6 + 0.3 * Math.sin(T * 3.2)
+        // drive the lens straight onto the eye — aligned with it and closing to
+        // arm's length so it fills the frame just as the wash carries us on
+        camera.position.set(ROOM.x + EYE_LOCAL.x, ROOM.y + 2.2 - 1.14 * q, ROOM.z + 8 - 7.8 * q)
+        _look.set(ROOM.x + EYE_LOCAL.x, ROOM.y + EYE_LOCAL.y, ROOM.z + EYE_LOCAL.z)
+        camera.lookAt(_look)
       }
 
       if (!cutB && T >= CUT_MACHINE) {
         cutB = true; fireFlash()
-        surfaceSet.visible = false; machineSet.visible = true
+        surfaceSet.visible = false; roomSet.visible = false; machineSet.visible = true
         scene.fog = null
         humAudio.volume = 0; humAudio.play().catch(() => {})
       }
@@ -757,7 +1300,7 @@ export default {
         // ── inside the machine: drift through the thinking lattice, then the
         // long breath out — pulling back before the reveal ──
         const q = clamp01((T - CUT_MACHINE) / 5.5)
-        const pb = easeInOut(clamp01((T - 29.5) / 2.3))
+        const pb = easeInOut(clamp01((T - (CUT_MACHINE + 5)) / 2.3))
         camera.position.set(Math.sin(T * 0.5) * 1.1 * (1 - pb), 1.6 - 1.1 * q + 3.5 * pb, 25 - 11 * easeOut3(q) + 17 * pb)
         camera.lookAt(0, 0, 0)
 
@@ -824,10 +1367,12 @@ export default {
 
       if (!c1 && T >= 2.6) { c1 = true; comms.show('Litania Magna', LINE1) }
       if (!c2 && T >= 13.2) { c2 = true; comms.show('Litania Magna', LINE2) }
-      if (!cS && T >= 20.6) { cS = true; comms.show('Litania Magna', LINE_S) }
-      if (!c3 && T >= 25.2) { c3 = true; comms.show('Litania Magna', LINE3, { persist: true }) }
-      if (!c4 && T >= 32.4) { c4 = true; comms.show('Litania Magna', LINE4, { persist: true }) }
-      if (!c5 && T >= 36.4) { c5 = true; comms.show('Litania Magna', LINE5, { persist: true }) }
+      // the surface montage plays wordless; the narration lands once we're inside
+      // the room with the computer
+      if (!cS && T >= WINDOW_CUT + 0.3) { cS = true; comms.show('Litania Magna', LINE_S) }
+      if (!c3 && T >= WINDOW_CUT + 3.4) { c3 = true; comms.show('Litania Magna', LINE3, { persist: true }) }
+      if (!c4 && T >= 41.5) { c4 = true; comms.show('Litania Magna', LINE4, { persist: true }) }
+      if (!c5 && T >= 45.5) { c5 = true; comms.show('Litania Magna', LINE5, { persist: true }) }
       if (!ended && T >= END_T) { ended = true; end({ holdMs: 900 }) }
     }
   },
