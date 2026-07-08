@@ -17,6 +17,7 @@ import PowerManagementScreen from './screens/legacy/PowerManagementScreen'
 import SpaceBattleScreen from './screens/SpaceBattleScreen'
 import VisualTestScreen from './screens/VisualTestScreen'
 import Cutscene from './screens/cutscene/Cutscene'
+import MontageScreen from './screens/MontageScreen'
 import { SCENES, STORY } from './screens/cutscene/scenes'
 import CampaignMap from './screens/CampaignMap'
 import CampaignStarMap from './screens/CampaignStarMap'
@@ -39,7 +40,7 @@ const countTrueFlags = () => Object.values(getFlags()).filter(Boolean).length
 // ── Deep links: a bare path (e.g. /battlesim) opens straight to that screen ───
 // On GitHub Pages the unknown path is served by 404.html, which bounces it back
 // to index.html where a snippet restores the real URL before React mounts.
-const DEEP_LINKS = { battlesim: 'home', fleetbuilder: 'fleetbuilder', cosmogony: 'cosmogony' }
+const DEEP_LINKS = { battlesim: 'home', fleetbuilder: 'fleetbuilder', cosmogony: 'cosmogony', cosmogony2: 'cosmogony2' }
 const pathScreen = () => {
   const slug = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase()
   return DEEP_LINKS[slug] || null
@@ -255,6 +256,7 @@ export default function App() {
         : <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />)}
       {screen === 'vistest'         && <VisualTestScreen onReturn={() => setScreen('debug')} />}
       {screen === 'cosmogony'       && <Cutscene key="cosmogony-standalone" scene={SCENES.cosmogony} standalone canSkip={false} onReturn={() => setScreen('home')} />}
+      {screen === 'cosmogony2'      && <MontageScreen onReturn={() => setScreen('home')} />}
       {screen === 'cutscene'        && (() => {
           // A campaign replay (re-watching a cleared node) may be skipped; a
           // first run of the current node must be watched. Debug always skippable.
