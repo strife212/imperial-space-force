@@ -115,6 +115,19 @@
   text-overflow: ellipsis;
 }
 .fr-upg-x { flex: 0 0 auto; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; color: var(--c-rose); }
+/* combined per-stat totals across every owned upgrade (bottom of the panel) */
+.fr-upg-stat {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #8fe8b0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+/* the legendary second admiral skill heads the list in its own gold */
+.fr-upg-stat--gold {
+  color: #ffb454;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7), 0 0 10px rgba(255, 180, 84, 0.35);
+}
 .fr-name {
   font-size: 20px;
   font-weight: 800;

@@ -5,7 +5,7 @@ import { createStage } from './cutscene/stage'
 import { buildReviewFleet } from './buildReviewFleet'
 import { buildBlueModel } from './battle/geometry'
 import { TEAMS } from './battle/constants'
-import { SHIP_COST, getFleet, setFleet as storeSetFleet, getCredits, spendCredits, addCredits, getFlagshipName, getUnsellableFighters, getUpgrades, hasMacroMissile, UPGRADE_INFO } from '../lib/campaign'
+import { SHIP_COST, getFleet, setFleet as storeSetFleet, getCredits, spendCredits, addCredits, getFlagshipName, getUnsellableFighters, getUpgrades, hasMacroMissile, getCombatMods, UPGRADE_INFO } from '../lib/campaign'
 import { getFlag } from '../lib/store'
 import { playLanceCharge, preloadLanceSfx, playExplosion } from '../lib/lanceSfx'
 import { UPGRADE_CARDS, RARITY_LABEL } from './UpgradeScreen'
@@ -86,6 +86,29 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
     return g
   })()
   const hasUpgrades = !testMode && (upgradeGroups.capital.length > 0 || upgradeGroups.fleet.length > 0)
+
+  // every owned upgrade's numbers, combined per stat (Reinforced Hull ×3 plus a
+  // Bastion Bulwark reads as one "+50 FLAGSHIP HULL" line, and so on) — the
+  // numbers come straight from getCombatMods(), the same aggregation the battle
+  // applies, so the list can never drift from what actually deploys
+  const statTotals = (() => {
+    if (!hasUpgrades) return []
+    const u = getUpgrades(), mods = getCombatMods()
+    const t = []
+    if (u.macroMissile) t.push({ text: 'MACRO MISSILE BARRAGE', gold: true })   // the legendary leads the list
+    const capHull = 5 * (u.capHp || 0) + mods.flagship.hp
+    if (capHull) t.push({ text: `+${capHull} FLAGSHIP HULL` })
+    if (mods.flagship.armor) t.push({ text: `+${mods.flagship.armor}% FLAGSHIP ARMOUR` })
+    if (mods.flagship.weapons) t.push({ text: `+${mods.flagship.weapons} BROADSIDE GUN${mods.flagship.weapons > 1 ? 'S' : ''}` })
+    if (mods.flagship.regen) t.push({ text: `+${mods.flagship.regen} HP/SEC REPAIR` })
+    if (mods.flagship.flares) t.push({ text: `+${mods.flagship.flares} FLARES` })
+    if (u.capMissile) t.push({ text: 'HOMING MISSILE BATTERY' })
+    if (mods.fighter.hp) t.push({ text: `+${mods.fighter.hp} HP PER FIGHTER` })
+    if (mods.fighter.armor) t.push({ text: `+${mods.fighter.armor}% FIGHTER ARMOUR` })
+    if (mods.fighter.fireMul < 1) t.push({ text: `+${Math.round((1 - mods.fighter.fireMul) * 100)}% FIGHTER FIRE RATE` })
+    if (u.unsellableFighter) t.push({ text: `+${u.unsellableFighter} PERMANENT FIGHTER${u.unsellableFighter > 1 ? 'S' : ''}` })
+    return t
+  })()
 
   const rebuildRef = useRef(null)   // set by the scene; call with a comp to rebuild
   const playSkillRef = useRef(null) // set by the scene; call with a skill key to preview it
@@ -530,6 +553,12 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
                     <span className="fr-upg-x">×{u.lvl}</span>
                   </div>
                 ))}
+              </div>
+            )}
+            {statTotals.length > 0 && (
+              <div className="fr-upg-group">
+                <div className="fr-upg-title">Combined Effect</div>
+                {statTotals.map(s => <div className={`fr-upg-stat${s.gold ? ' fr-upg-stat--gold' : ''}`} key={s.text}>{s.text}</div>)}
               </div>
             )}
           </div>
