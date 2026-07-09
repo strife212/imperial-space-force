@@ -7,12 +7,13 @@ import { playLanceCharge, preloadLanceSfx } from '../../../lib/lanceSfx'
 // The last resort of the Empire, never yet fired in anger: the Annunciator-class
 // battlestation spins up its mass driver and loads a black-hole package.
 const LINE1 = 'Annunciator armed. Black-hole package loaded. Driver spinning to ninety percent of light.'
-const LINE2 = 'Caelum canit, illa audit. Let it be cast.'
+const LINE2 = 'Caelum canit, illa audit.'   // the Admiralty's ritual response…
+const LINE3 = 'Let it be cast.'             // …and Her word alone releases it
 const MUZZLE = new THREE.Vector3(31, 0, 0)
 
 export default {
-  label: 'CUTSCENE / THE ANNUNCIATOR',
-  establishing: { name: 'HER ANNUNCIATOR', sub: 'The Last Resort of the Empire', stamp: 'HMSS FIRE-CONTROL BUS v6.2.41 · DEFCON-1' },
+  label: 'CUTSCENE / ULTIMA RATIO',
+  establishing: { name: 'ULTIMA RATIO', sub: 'Her Annunciator · The Last Resort of the Empire', stamp: 'HMSS FIRE-CONTROL BUS v6.2.41 · DEFCON-1' },
   feed: [
     { t: 1.0,  level: 'ok',   text: '[OK] HMSS fire-control bus online · v6.2.41' },
     { t: 3.0,  level: 'info', text: 'PHYSICS PACKAGE ARMED · Kerr–Newman warhead' },
@@ -102,7 +103,7 @@ export default {
 
     const _from = new THREE.Vector3(-58, 14, 40), _to = new THREE.Vector3(12, 7, 34), _p = new THREE.Vector3(), _d = new THREE.Vector3(), _l = new THREE.Vector3()
     const LOOK_FROM = new THREE.Vector3(-18, 2, 0), LOOK_TO = new THREE.Vector3(26, 0, 0)
-    let T = 0, c1 = false, c2 = false, ended = false, streamCd = 0, chargeStarted = false
+    let T = 0, c1 = false, c2 = false, c3 = false, ended = false, streamCd = 0, chargeStarted = false
     return (dt) => {
       T += dt
       const charged = Math.min(1, T / 9)
@@ -166,7 +167,8 @@ export default {
       _p.lerpVectors(_from, _to, ke); camera.position.copy(_p)
       _l.lerpVectors(LOOK_FROM, LOOK_TO, ke); camera.lookAt(_l)
       if (!c1 && T >= 1.6) { c1 = true; comms.show('Admiralty Command', LINE1) }
-      if (!c2 && T >= 8.0) { c2 = true; comms.show('The Empress', LINE2, { persist: true }) }
+      if (!c2 && T >= 8.0) { c2 = true; comms.show('Admiralty Command', LINE2) }
+      if (!c3 && T >= 11.5) { c3 = true; comms.show('Her Imperial Majesty Iliantha III', LINE3, { persist: true }) }
       if (!ended && T >= 15) { ended = true; end() }
     }
   },

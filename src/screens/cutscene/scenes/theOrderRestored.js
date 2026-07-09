@@ -9,8 +9,8 @@ const LINE1 = 'The stars… they are singing again.'
 const LINE2 = 'Long live the Throne, where she hears alone. Caelum canit.'
 
 export default {
-  label: 'CUTSCENE / THE ORDER RESTORED',
-  establishing: { name: 'ORDER RESTORED', sub: 'The Song Returns', stamp: 'AUDITIO FEED · ALL STATIONS · STRATCON 4' },
+  label: 'CUTSCENE / ANASTASIS',
+  establishing: { name: 'ANASTASIS', sub: 'Order Restored · The Song Returns', stamp: 'AUDITIO FEED · ALL STATIONS · STRATCON 4' },
   feed: [
     { t: 1.2,  level: 'ok',   text: '[OK] Stellar output recovering · all monitored classes' },
     { t: 4.0,  level: 'ok',   text: '[OK] Carrier re-acquired · 10.3 GHz · the chord holds' },
@@ -88,7 +88,7 @@ export default {
         if (o.x > 110) reseedFly(o)
       }
 
-      if (!c1 && T >= 2.2) { c1 = true; comms.show('The Empress', LINE1) }
+      if (!c1 && T >= 2.2) { c1 = true; comms.show('Her Imperial Majesty Iliantha III', LINE1) }
       if (!c2 && T >= 7.5) { c2 = true; comms.show('Princess Astraia', LINE2, { persist: true }) }
       if (!ended && T >= 16) { ended = true; end() }
     }

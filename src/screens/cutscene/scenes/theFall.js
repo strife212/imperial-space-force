@@ -11,8 +11,8 @@ const LINE2 = 'Fall back to the Throneworld. We make our stand where she hears.'
 const SHIELD_FAIL_T = 5.2   // the screen holds this long, then the hull pays
 
 export default {
-  label: 'CUTSCENE / THE FALL',
-  establishing: { name: 'THE FALL', sub: 'The Line Breaks', stamp: 'FLEET LOSS RECORD · STRATCON 2 IN EFFECT' },
+  label: 'CUTSCENE / CATABASIS',
+  establishing: { name: 'CATABASIS', sub: 'The Fall · The Line Breaks', stamp: 'FLEET LOSS RECORD · STRATCON 2 IN EFFECT' },
   feed: [
     { t: 1.0,  level: 'crit', text: 'Escort screen collapsing · half the line gone' },
     { t: 3.5,  level: 'warn', text: 'Flagship shields buckling · armour ablating' },

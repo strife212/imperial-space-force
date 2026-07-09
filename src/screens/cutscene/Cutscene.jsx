@@ -4,6 +4,7 @@ import { COMMS_PORTRAIT } from '../battle/constants'
 import { renderCommsBody } from '../battle/RosterUI'
 import UrgentMessageOverlay from '../battle/UrgentMessageOverlay'
 import { createStage } from './stage'
+import { playTitleBoom } from './sfx'
 import { getFlag } from '../../lib/store'
 import '../battle/battle.css'
 
@@ -23,7 +24,7 @@ const fmtT = (t) => `T+${Math.floor(t / 60)}:${String(Math.floor(Math.max(0, t) 
 // has the comms. (BASE_URL mirrors constants.js so it works under a sub-path.)
 const BASE_URL = import.meta.env?.BASE_URL ?? '/'
 const CHAR_PORTRAIT = {
-  'The Empress':   `${BASE_URL}empress_portrait.jpg`,
+  'Her Imperial Majesty Iliantha III': `${BASE_URL}empress_portrait.jpg`,
   'Litania Magna': `${BASE_URL}worldengine_portrait.jpg`,
   'Imperial Science Vessel Cassiopeia': `${BASE_URL}scienceofficer.jpg`,
 }
@@ -55,6 +56,22 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
   const [now, setNow] = useState(0)            // shell clock (≈ scene T) for telemetry
   // telemetry feed + PNL readout are opt-in (campaign debug: "advanced cutscenes")
   const advanced = !!getFlag('advancedCutscenes')
+  // Mission title card: any scene with an establishing name opens on a black
+  // smash card — the title slams in with an echoing boom, holds, then the card
+  // fades and the scene begins (the stage mounts at the reveal, so the scene's
+  // clock starts when the player can actually see it).
+  const hasCard = !!scene.establishing?.name
+  const [titlePhase, setTitlePhase] = useState('hold')   // 'hold' → 'reveal' → 'done'
+  const stageGate = !hasCard || titlePhase !== 'hold'    // boolean, so 'reveal'→'done' never remounts the stage
+  useEffect(() => {
+    if (!started || showReplay) return undefined
+    if (!hasCard) { setTitlePhase('done'); return undefined }
+    setTitlePhase('hold')
+    playTitleBoom()
+    const t1 = setTimeout(() => setTitlePhase('reveal'), 2400)
+    const t2 = setTimeout(() => setTitlePhase('done'), 3500)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [scene, replayNonce, started, showReplay])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // standalone (deep-linked) playback ends on a black replay card instead of
   // navigating anywhere; the campaign version advances as before
@@ -70,13 +87,14 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
   }
 
   // telemetry clock — drives scene.feed reveal and scene.readout live values
+  // (held with the stage until the title card reveals, so t ≈ scene T)
   useEffect(() => {
     setNow(0)
-    if (!started || !advanced || (!scene.feed && !scene.readout)) return
+    if (!started || !stageGate || !advanced || (!scene.feed && !scene.readout)) return
     const t0 = performance.now()
     const iv = setInterval(() => setNow((performance.now() - t0) / 1000), FEED_TICK_MS)
     return () => clearInterval(iv)
-  }, [scene, replayNonce, started])
+  }, [scene, replayNonce, started, stageGate])
 
   // typewriter: type the line out, let it sit, then (unless it persists) hide
   useEffect(() => {
@@ -108,7 +126,7 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
   // deep-linked run, and torn down once the replay card appears — tearing down
   // runs the scene's dispose, which cuts the looping audio dead on the end-card.
   useEffect(() => {
-    if (!started || showReplay) return
+    if (!started || showReplay || !stageGate) return
     const mount = mountRef.current
     if (!mount) return
     const commsApi = {
@@ -134,7 +152,7 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
     try { teardown = createStage(mount, scene, { comms: commsApi, end }) }
     catch (err) { console.error('Cutscene failed to initialise:', err) }
     return () => { try { teardown && teardown() } catch (_) { /* noop */ } }
-  }, [scene, replayNonce, started, showReplay])
+  }, [scene, replayNonce, started, showReplay, stageGate])
 
   return (
     <div id="cutscene-screen">
@@ -145,6 +163,12 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
         {standalone && !started && (
           <div className="cut-start">
             <button className="cut-start-btn" onClick={() => setStarted(true)}>▶ START</button>
+          </div>
+        )}
+
+        {started && hasCard && titlePhase !== 'done' && !showReplay && (
+          <div className={`cut-titlecard${titlePhase === 'reveal' ? ' cut-titlecard--out' : ''}`}>
+            <div className="cut-titlecard-name">{scene.establishing.name}</div>
           </div>
         )}
 

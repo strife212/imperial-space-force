@@ -10,8 +10,8 @@ const LINE1 = 'Contact. They came out of nowhere — just like the Cassiopeia re
 const LINE2 = 'All batteries, open fire. For the Universal Order!'
 
 export default {
-  label: 'CUTSCENE / THE WARFRONT',
-  establishing: { name: 'THE WARFRONT', sub: 'The First Fleet Engagement in a Generation', stamp: 'TAC-SIM LIVE · DEFCON-2 IN EFFECT' },
+  label: 'CUTSCENE / ANTITHESIS',
+  establishing: { name: 'ANTITHESIS', sub: 'The Warfront · The First Fleet Engagement in a Generation', stamp: 'TAC-SIM LIVE · DEFCON-2 IN EFFECT' },
   feed: [
     { t: 0.6,  level: 'crit', text: 'Contact · uncatalogued hulls · closing at combat velocity' },
     { t: 2.6,  level: 'warn', text: 'Firing solutions degraded · Schwarzschild correction unstable' },

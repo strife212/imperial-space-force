@@ -1797,6 +1797,36 @@
   box-shadow: 0 0 18px rgba(60, 140, 255, 0.5);
 }
 
+/* ── Mission title card: black smash card, the name slamming in huge ─────── */
+.cut-titlecard {
+  position: fixed;
+  inset: 0;
+  z-index: 8400;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.95s ease;
+}
+.cut-titlecard--out { opacity: 0; pointer-events: none; }
+.cut-titlecard-name {
+  font-family: var(--font-mono);
+  font-size: clamp(52px, 10.5vw, 148px);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-indent: 0.14em;   /* recentre: tracking trails the last glyph */
+  color: #edf1f8;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.05;
+  padding: 0 4vw;
+  animation: cut-title-slam 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes cut-title-slam {
+  from { transform: scale(1.16); opacity: 0; filter: blur(7px); }
+  to   { transform: scale(1);    opacity: 1; filter: blur(0); }
+}
+
 /* Standalone (deep-linked) replay end-card: a black screen over the fade layer */
 .cut-replay {
   position: fixed;

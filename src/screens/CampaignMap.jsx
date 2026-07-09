@@ -17,16 +17,16 @@ import './campaign-map.css'
 // Each campaign node: title + a 3D visual keyed to its cutscene's events.
 // (Exported for the stellar-chart map, which reuses the same node models.)
 export const NODES = [
-  { title: 'First Contact',   model: 'aleph' },
-  { title: 'The Muster',      model: 'station' },
-  { title: 'The Warfront',    model: 'battle' },
-  { title: 'The Hush',        model: 'hush' },
-  { title: 'The Great Litany', model: 'engine' },
-  { title: 'The Fall',        model: 'wreck' },
-  { title: 'The Final Hearing', model: 'cathedra' },
-  { title: 'The Annunciator', model: 'gun' },
-  { title: 'The Lance',       model: 'blackhole' },
-  { title: 'Order Restored',  model: 'world' },
+  { title: 'First Light',   model: 'aleph' },
+  { title: 'Critical Mass',      model: 'station' },
+  { title: 'Antithesis',    model: 'battle' },
+  { title: 'Decoherence',        model: 'hush' },
+  { title: 'Logos', model: 'engine' },
+  { title: 'Catabasis',        model: 'wreck' },
+  { title: 'Providence', model: 'cathedra' },
+  { title: 'Ultima Ratio', model: 'gun' },
+  { title: 'Singularity',       model: 'blackhole' },
+  { title: 'Anastasis',  model: 'world' },
 ]
 
 const ADD = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }

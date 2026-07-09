@@ -13,8 +13,8 @@ const FLIGHT = 1.1            // package flight time — long enough for the eye
 const GUN_SCALE = 0.55
 
 export default {
-  label: 'CUTSCENE / THE LANCE',
-  establishing: { name: 'THE DIVINE LANCE', sub: 'Auditio Ultima', stamp: 'PACKAGE TELEMETRY · STRATCON 1 IN EFFECT' },
+  label: 'CUTSCENE / SINGULARITY',
+  establishing: { name: 'SINGULARITY', sub: 'The Divine Lance · Auditio Ultima', stamp: 'PACKAGE TELEMETRY · STRATCON 1 IN EFFECT' },
   feed: [
     { t: 0.6, level: 'info', text: 'Final hold released · tube clear · range to seat 4.7 ls' },
     { t: 2.2, level: 'crit', text: 'T−0 · LET IT BE CAST' },
@@ -134,7 +134,7 @@ export default {
         sfx.bed('sfx/missiletrail.mp3', { volume: 0.5, loop: false }).play()   // the package tearing away
         recoil = 1
         shake = 1.0
-        if (!c1) { c1 = true; comms.show('The Empress', LINE1, { persist: true }) }
+        if (!c1) { c1 = true; comms.show('Her Imperial Majesty Iliantha III', LINE1, { persist: true }) }
       }
 
       // recoil: the whole platform kicked back along the geodesic, easing home

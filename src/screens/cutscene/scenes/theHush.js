@@ -11,8 +11,8 @@ const LINE3 = 'Throne preserve us. I can no longer hear the Song.'
 const COLLAPSE_T = 15.2         // the Aleph goes critical and becomes a horizon
 
 export default {
-  label: 'CUTSCENE / THE HUSH',
-  establishing: { name: 'THE HUSH', sub: 'The Song of the Stars Fails', stamp: 'AUDITIO FEED · PRIORITY OMEGA' },
+  label: 'CUTSCENE / DECOHERENCE',
+  establishing: { name: 'DECOHERENCE', sub: 'The Hush · The Song of the Stars Fails', stamp: 'AUDITIO FEED · PRIORITY OMEGA' },
   feed: [
     { t: 1.0,  level: 'warn',    text: 'Stellar output falling across all monitored classes' },
     { t: 3.2,  level: 'crit',    text: 'Carrier lost · 10.3 GHz · re-acquisition failed' },

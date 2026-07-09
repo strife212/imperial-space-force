@@ -89,9 +89,14 @@ const ARM_AHEAD = 4      // BEGIN unlocks once this many opening slides are deco
 const LOAD_WINDOW = 3    // ordered fetch, a few in flight — playhead order wins the bandwidth
 const BREATH_MS = 1400   // black beat after BEGIN — the drone breathes in before first light
 
-export default function MontageScreen({ onReturn }) {
+// `embedded` (cosmogony3): no start gate (the host supplied the gesture), the
+// silent XDF coda is dropped, and instead of credits the reel ends on its black
+// fade and calls `onComplete` once the finale chord has rung down.
+export default function MontageScreen({ onReturn, embedded = false, onComplete }) {
   const [ready, setReady] = useState(false)     // opening slides decoded → BEGIN unlocks
   const [started, setStarted] = useState(false) // user gesture — also unlocks the audio
+  const lastIdx = embedded ? REEL.length - 2 : REEL.length - 1   // embedded: stop before the coda
+  const onCompleteRef = useRef(onComplete); onCompleteRef.current = onComplete
   const [idx, setIdx] = useState(-1)
   const [done, setDone] = useState(false)
   const [showCredits, setShowCredits] = useState(false)
@@ -154,6 +159,9 @@ export default function MontageScreen({ onReturn }) {
   const begin = () => { setStarted(true); runOpen() }
   const replay = () => { setShowReplay(false); setShowCredits(false); setDone(false); setIdx(-1); runOpen() }
 
+  // embedded: begin on our own the moment the opening slides are armed
+  useEffect(() => { if (embedded && ready && !started) begin() }, [embedded, ready, started])  // eslint-disable-line react-hooks/exhaustive-deps
+
   // advance the reel; each slide tells the soundscape its era, weight and place.
   // Advancement is gated on the NEXT slide being decoded — if the network ever
   // falls behind the playhead, the current frame simply holds until it's ready
@@ -167,12 +175,20 @@ export default function MontageScreen({ onReturn }) {
     else if (prev && prev.era !== s.era && !s.dis && s.sfx !== 'silence') setFlash({ n: idx, p: 0.16 })
     let iv = null
     const t = setTimeout(() => {
-      if (idx >= REEL.length - 1) { setDone(true); audioRef.current?.finish(); setTimeout(() => { setShowCredits(true); setShowReplay(true) }, 1600); return }
+      if (idx >= lastIdx) {
+        setDone(true); audioRef.current?.finish()
+        // embedded: hand off once the finish fade has (nearly) rung down;
+        // standalone: roll the colophon. (Untracked on purpose — setting `done`
+        // re-runs this effect, and its cleanup must not kill these.)
+        if (embedded) setTimeout(() => onCompleteRef.current?.(), 2600)
+        else setTimeout(() => { setShowCredits(true); setShowReplay(true) }, 1600)
+        return
+      }
       const tryAdvance = () => { if (decodedRef.current[idx + 1]) { setIdx(idx + 1); return true } return false }
       if (!tryAdvance()) iv = setInterval(() => { if (tryAdvance()) clearInterval(iv) }, 100)
     }, s.dur * 1000)
     return () => { clearTimeout(t); if (iv) clearInterval(iv) }
-  }, [idx, done])
+  }, [idx, done])  // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div id="montage-screen">
@@ -230,7 +246,7 @@ export default function MontageScreen({ onReturn }) {
         </div>
       )}
 
-      {!started && (
+      {!started && !embedded && (
         <div className="mont-start">
           {/* frontispiece ornament: the Venus–Earth resonance rosette, turning
               like an orrery once per four minutes, faded into the dark */}

@@ -9,8 +9,8 @@ const LINE1 = 'I have heard it. The Discord, as it was foretold.'
 const LINE2 = 'From the Cathedra high, to the listening below — falls the Lance that the Discord besought.'
 
 export default {
-  label: 'CUTSCENE / THE FINAL HEARING',
-  establishing: { name: 'NOVARAYA', sub: 'Imperial Throneworld', stamp: 'THE FINAL HEARING · SYNOD WITNESS RECORD' },
+  label: 'CUTSCENE / PROVIDENCE',
+  establishing: { name: 'PROVIDENCE', sub: 'Novaraya · The Final Hearing', stamp: 'THE FINAL HEARING · SYNOD WITNESS RECORD' },
   feed: [
     { t: 1.2,  level: 'info', text: 'The Cathedra in session · honour guard on station' },
     { t: 4.0,  level: 'info', text: 'She has heard it · the Discord, as it was foretold' },
@@ -126,8 +126,8 @@ export default {
 
       _p.lerpVectors(camFrom, camTo, Math.min(1, T / 12)); camera.position.copy(_p)
       camera.lookAt(0, -2 + resolve * 9, 0)   // the eye follows the pillar up
-      if (!c1 && T >= 2.0) { c1 = true; comms.show('The Empress', LINE1) }
-      if (!c2 && T >= 7.5) { c2 = true; comms.show('The Empress', LINE2, { persist: true }) }
+      if (!c1 && T >= 2.0) { c1 = true; comms.show('Her Imperial Majesty Iliantha III', LINE1) }
+      if (!c2 && T >= 7.5) { c2 = true; comms.show('Her Imperial Majesty Iliantha III', LINE2, { persist: true }) }
       if (!ended && T >= 15) { ended = true; end() }
     }
   },

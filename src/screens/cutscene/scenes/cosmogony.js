@@ -75,7 +75,7 @@ function playTick() {
   src.start()
 }
 
-export default {
+const cosmogony = {
   label: 'CUTSCENE / COSMOGONY',
   hideChrome: true,   // full-bleed: no HUD header framing the cosmogony
   quietComms: true,   // scored scene — no radio chirp over its own soundtrack
@@ -105,7 +105,7 @@ export default {
     ],
   },
   bloom: 0.72,
-  create(ctx) {
+  create(ctx, range = {}) {
     const { scene, camera, fx, comms, end, orient, backdrop, track } = ctx
 
     // the void before: the stock starfield + nebula fade in as structure forms
@@ -961,6 +961,24 @@ export default {
     const tableCds = [0.02, 0.06, 0.1]   // staggered redraw phases
     const novas = []
 
+    // ── range mode (cosmogony3 slices) ─────────────────────────────────────────
+    // `to` caps the scene (the opening slice ends where the surface cut would
+    // fire and hands off to the montage); `from` fast-starts it (the finale
+    // slice pre-seeds every earlier phase's flags and visibilities so none of
+    // their side effects — audio, flashes, dialogue — fire on the way in).
+    const capped = range.to != null
+    if (range.from != null) {
+      T = range.from
+      banged = cutA = cutB = roomShown = true
+      c1 = c2 = cS = c3 = true
+      spaceSet.visible = false; surfaceSet.visible = false; roomSet.visible = false; machineSet.visible = false
+      scene.fog = null
+      // the sky's end-state, normally reached during the skipped space phase
+      voidDome.visible = false
+      starMat.opacity = 0.85
+      nebCols.forEach((c) => c.u.copy(c.base).multiplyScalar(0.4))
+    }
+
     return (dt) => {
       T += dt
       flashT += dt
@@ -1178,7 +1196,10 @@ export default {
         }
       }
 
-      if (!cutA && T >= CUT_SURFACE) {
+      // capped (opening slice): end into black where the surface cut would fire —
+      // the 19.2s wash has already darkened the frame, so the handoff is seamless
+      if (capped && !ended && T >= range.to) { ended = true; end({ holdMs: 0 }) }
+      if (!capped && !cutA && T >= CUT_SURFACE) {
         cutA = true; fireFlash()
         bangAudio.pause()
         spaceSet.visible = false; surfaceSet.visible = true
@@ -1386,4 +1407,20 @@ export default {
       if (!ended && T >= END_T) { ended = true; end({ holdMs: 900 }) }
     }
   },
+}
+
+export default cosmogony
+
+// ── Cosmogony III slices ─────────────────────────────────────────────────────
+// The hybrid reel (/cosmogony3) bookends the 2D montage with this scene's 3D
+// bookends: the opening runs seed → bang → the young universe and ends where
+// the surface cut would fire; the finale fast-starts at the orbit reveal —
+// the Litania Magna in its diadem and the fleet's long watch.
+export const cosmogonyOpening = { ...cosmogony, create: (ctx) => cosmogony.create(ctx, { to: CUT_SURFACE }) }
+export const cosmogonyFinale = {
+  ...cosmogony,
+  // the debug feed/readout rebased to the slice's own clock
+  feed: cosmogony.feed.filter((l) => l.t >= CUT_ORBIT + PREROLL).map((l) => ({ ...l, t: Math.max(0.6, l.t - CUT_ORBIT - PREROLL) })),
+  readout: { id: 'PNL-000 · Cosmogony', rows: [{ label: 'Age', value: '13.8 Gyr' }, { label: 'Temp', value: '2.7 K' }, { label: 'Mode', value: 'REMEMBERING' }] },
+  create: (ctx) => cosmogony.create(ctx, { from: CUT_ORBIT }),
 }

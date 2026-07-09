@@ -12,8 +12,8 @@ const LINE1 = 'Every ship the Throne could spare. The first true muster in a gen
 // LINE2 names the player's chosen fleet, e.g. "Fleet Concordia — advance. …"
 
 export default {
-  label: 'CUTSCENE / THE MUSTER',
-  establishing: { name: 'IMPERIAL FLEET DRYDOCK', sub: 'The First Muster in a Generation', stamp: 'FLEET COMMAND BUS · STRATCON 3 IN EFFECT' },
+  label: 'CUTSCENE / CRITICAL MASS',
+  establishing: { name: 'CRITICAL MASS', sub: 'Imperial Fleet Drydock · The First Muster in a Generation', stamp: 'FLEET COMMAND BUS · STRATCON 3 IN EFFECT' },
   feed: [
     { t: 0.8,  level: 'info', text: 'Muster roll: 3rd, 7th and 11th interceptor wings · present' },
     { t: 3.2,  level: 'ok',   text: '[OK] Drydock umbilicals retracted · reactors to cruise flux' },

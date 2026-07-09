@@ -22,8 +22,8 @@ const easeOut3 = (p) => 1 - Math.pow(1 - p, 3)
 const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
 
 export default {
-  label: 'CUTSCENE / FIRST CONTACT',
-  establishing: { name: 'UNCHARTED SPACE', sub: 'Source of the Unknown Signal', stamp: 'ISV CASSIOPEIA · SENSORIUM FEED · CLR-3' },
+  label: 'CUTSCENE / FIRST LIGHT',
+  establishing: { name: 'FIRST LIGHT', sub: 'Uncharted Space · Source of the Unknown Signal', stamp: 'ISV CASSIOPEIA · SENSORIUM FEED · CLR-3' },
   feed: [
     { t: 1.0,  level: 'ok',   text: '[OK] Relativistic translation complete · newtonian flight model' },
     { t: 3.6,  level: 'info', text: 'X-band acq · carrier 10.3 GHz · bearing locked' },

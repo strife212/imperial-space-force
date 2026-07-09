@@ -25,16 +25,16 @@ const NEW_SCREENS = [
 
 // The story cutscenes, in order (played individually)
 const CUTSCENES = [
-  { key: 'cut:firstContact',     label: '1 · First Contact'    },
-  { key: 'cut:muster',           label: '2 · The Muster'       },
-  { key: 'cut:warfront',         label: '3 · The Warfront'     },
-  { key: 'cut:theHush',          label: '4 · The Hush'         },
-  { key: 'cut:theLitany',        label: '5 · The Great Litany' },
-  { key: 'cut:theFall',          label: '6 · The Fall'         },
-  { key: 'cut:theResolve',       label: '7 · The Final Hearing' },
-  { key: 'cut:theAnnunciator',   label: '8 · The Annunciator'  },
-  { key: 'cut:theLance',         label: '9 · The Lance'        },
-  { key: 'cut:theOrderRestored', label: '10 · Order Restored'  },
+  { key: 'cut:firstContact',     label: '1 · First Light'    },
+  { key: 'cut:muster',           label: '2 · Critical Mass'       },
+  { key: 'cut:warfront',         label: '3 · Antithesis'     },
+  { key: 'cut:theHush',          label: '4 · Decoherence'         },
+  { key: 'cut:theLitany',        label: '5 · Logos' },
+  { key: 'cut:theFall',          label: '6 · Catabasis'         },
+  { key: 'cut:theResolve',       label: '7 · Providence' },
+  { key: 'cut:theAnnunciator',   label: '8 · Ultima Ratio'  },
+  { key: 'cut:theLance',         label: '9 · Singularity'        },
+  { key: 'cut:theOrderRestored', label: '10 · Anastasis'  },
   { key: 'cut:cosmogony',        label: 'Ω · Cosmogony'        },
 ]
 

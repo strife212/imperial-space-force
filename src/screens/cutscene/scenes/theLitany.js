@@ -10,8 +10,8 @@ const LINE2 = 'There is one instrument the Order has never used. The prophecy na
 const LINE3 = 'Then it is to be in my reign. I had hoped otherwise.'
 
 export default {
-  label: 'CUTSCENE / THE GREAT LITANY',
-  establishing: { name: 'LITANIA MAGNA', sub: 'The Great Litany · World Engine', stamp: 'ECUMENOLOGION UPLINK · HER PRIVATE CHANNEL · CLR-Ω' },
+  label: 'CUTSCENE / LOGOS',
+  establishing: { name: 'LOGOS', sub: 'Litania Magna · The Great Litany · World Engine', stamp: 'ECUMENOLOGION UPLINK · HER PRIVATE CHANNEL · CLR-Ω' },
   feed: [
     { t: 1.2,  level: 'ok',   text: '[OK] Handshake: Litania Magna · entangled uplink established' },
     { t: 3.6,  level: 'info', text: 'Thought-substrate load 96.2% · liturgical simulations deferred' },
@@ -150,7 +150,7 @@ export default {
 
       if (!c1 && T >= 2.0) { c1 = true; comms.show('Litania Magna', LINE1) }
       if (!c2 && T >= 8.0) { c2 = true; comms.show('Litania Magna', LINE2, { persist: true }) }
-      if (!c3 && T >= 14.5) { c3 = true; comms.show('The Empress', LINE3, { persist: true }) }
+      if (!c3 && T >= 14.5) { c3 = true; comms.show('Her Imperial Majesty Iliantha III', LINE3, { persist: true }) }
       if (!ended && T >= 20.5) { ended = true; end() }
     }
   },
