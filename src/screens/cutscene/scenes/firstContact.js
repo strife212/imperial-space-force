@@ -5,12 +5,14 @@ import { createFlagship, createBomberWing } from '../actors'
 import { asteroidField } from '../models'
 
 // The science vessel Cassiopeia warps in, pulls up alongside a mysterious gold
-// artifact (the Aleph) and scans it with a scout fighter — then is ambushed and
-// destroyed by red bombers → urgent transmission.
+// artifact (the Aleph) and scans it with a scout fighter. The survey compiles
+// into a full-screen object-file infocard (rotating model + hard numbers) —
+// then the ambush by red bombers → urgent transmission.
 const WARP_FROM_X = -210, WARP_TO_X = -95, WARP_DUR = 1.0, CRUISE_SPEED = 17
 const SHIP_LANE_Z = 22, STOP_X = 0, REVEAL_X = -78
 const ALEPH_SCALE = 2.0, ALEPH_HALF_H = 7
 const SCAN_POS = new THREE.Vector3(0, 4, 13), SCAN_DUR = 4.5, FLY_DUR = 2.2
+const CARD_IN = 1.1, AMBUSH_DELAY = 1.4   // infocard up after the scan; bombers only once it's closed
 const N_BOMBERS = 8
 
 const SHIP_NAME = 'Imperial Science Vessel Cassiopeia'
@@ -20,6 +22,208 @@ const DLG3 = 'Ambush by unknown attackers! Abandon ship! Call for reinforcements
 
 const easeOut3 = (p) => 1 - Math.pow(1 - p, 3)
 const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
+
+// ── The Aleph object-file infocard ───────────────────────────────────────────
+// A 2D survey card (canvas texture) with a live rotating Aleph beside hard
+// numbers: nucleocosmochronometric age, exotic-matter equation of state, the
+// carrier line. Designed at 1440×880, rendered at 1800×1100 for crispness.
+const MONO = '"Cascadia Mono", "Consolas", monospace'
+const INK = (a) => `rgba(148,214,255,${a})`
+
+function drawAlephCard(c, W, H) {
+  c.scale(W / 1440, H / 880)
+
+  // panel: near-solid black glass, hairline border, corner brackets, scanlines
+  c.fillStyle = 'rgba(5,12,20,0.97)'; c.fillRect(24, 24, 1392, 832)
+  c.strokeStyle = INK(0.5); c.lineWidth = 2; c.strokeRect(24, 24, 1392, 832)
+  c.strokeStyle = INK(0.14); c.lineWidth = 1; c.strokeRect(34, 34, 1372, 812)
+  c.fillStyle = INK(0.022)
+  for (let y = 28; y < 852; y += 4) c.fillRect(26, y, 1388, 1)
+  c.strokeStyle = INK(0.95); c.lineWidth = 3
+  for (const [bx, by, dx, dy] of [[24, 24, 1, 1], [1416, 24, -1, 1], [24, 856, 1, -1], [1416, 856, -1, -1]]) {
+    c.beginPath(); c.moveTo(bx + dx * 34, by); c.lineTo(bx, by); c.lineTo(bx, by + dy * 34); c.stroke()
+  }
+
+  // header
+  c.font = `500 20px ${MONO}`; c.fillStyle = INK(0.6)
+  c.fillText('XENOARCHAEOLOGICAL SURVEY // OBJECT FILE XAO-0001', 60, 76)
+  c.font = `700 84px ${MONO}`; c.fillStyle = '#ffcf5a'
+  c.shadowColor = 'rgba(255,190,80,0.55)'; c.shadowBlur = 26
+  c.fillText('ALEPH', 56, 152)
+  c.shadowBlur = 0
+  c.strokeStyle = 'rgba(255,138,90,0.9)'; c.lineWidth = 2; c.strokeRect(986, 58, 254, 50)
+  c.fillStyle = 'rgba(255,138,90,0.14)'; c.fillRect(986, 58, 254, 50)
+  c.font = `600 23px ${MONO}`; c.fillStyle = '#ffab8a'; c.fillText('PRIORITY · ULTRA', 1003, 91)
+  c.font = `500 16px ${MONO}`; c.fillStyle = INK(0.45); c.fillText('DIST: IMPERIAL EYES ONLY', 1162, 138)
+  c.strokeStyle = INK(0.4); c.lineWidth = 1
+  c.beginPath(); c.moveTo(48, 176); c.lineTo(1392, 176); c.stroke()
+
+  // left figure panel: reticle rings behind the live model, caption below
+  const rx = 304, ry = 468
+  c.strokeStyle = INK(0.4); c.lineWidth = 1.5
+  c.beginPath(); c.arc(rx, ry, 238, 0, Math.PI * 2); c.stroke()
+  c.setLineDash([5, 7]); c.strokeStyle = INK(0.26)
+  c.beginPath(); c.arc(rx, ry, 168, 0, Math.PI * 2); c.stroke()
+  c.setLineDash([])
+  c.strokeStyle = INK(0.16)
+  c.beginPath(); c.ellipse(rx, ry, 238, 62, -0.5, 0, Math.PI * 2); c.stroke()
+  c.strokeStyle = INK(0.7); c.lineWidth = 2
+  for (const [tx, ty, hx, hy] of [[rx, ry - 238, 0, 1], [rx, ry + 238, 0, -1], [rx - 238, ry, 1, 0], [rx + 238, ry, -1, 0]]) {
+    c.beginPath(); c.moveTo(tx, ty); c.lineTo(tx + hx * 16, ty + hy * 16); c.stroke()
+  }
+  c.font = `500 16px ${MONO}`; c.fillStyle = INK(0.55)
+  c.fillText('FIG. 1 · GROSS MORPHOLOGY', 80, 764)
+  c.fillStyle = INK(0.38)
+  c.fillText('H 14.2 m · TUMBLE P 22.4 s · SPECULAR Au-CLASS', 80, 788)
+  c.strokeStyle = INK(0.18)
+  c.beginPath(); c.moveTo(580, 196); c.lineTo(580, 800); c.stroke()
+
+  // stat block
+  const rows = [
+    ['OBJECT CLASS', 'NON-BARYONIC ARTEFACT', null, null],
+    ['EPOCH / AGE', '13.4 ± 0.6 Gyr', 'Th-232 / U-238 NUCLEOCOSMOCHRONOMETRY', null],
+    ['COMPOSITION', 'EXOTIC MATTER · w < −1', 'NULL ENERGY CONDITION: VIOLATED', null],
+    ['ORIGIN', 'UNKNOWN', null, '#ffcf5a'],
+    ['REST MASS', '3.1 × 10⁹ kg', 'EQUIVALENCE VIOLATION · η = 0.42 (NORDTVEDT)', null],
+    ['SURFACE TEMP', '2.7255 K', 'ISOTHERMAL WITH CMB · ZERO NET EMISSION', null],
+    ['CARRIER', '10.3 GHz · Δν < 1 Hz', 'FLUX 11.3σ ABOVE INSTRUMENT CEILING', null],
+  ]
+  let y = 232
+  for (const [label, value, sub, col] of rows) {
+    c.font = `500 19px ${MONO}`; c.fillStyle = INK(0.5); c.fillText(label, 604, y)
+    c.font = `600 25px ${MONO}`; c.fillStyle = col || 'rgba(214,240,255,0.95)'; c.fillText(value, 902, y)
+    if (sub) { c.font = `500 16px ${MONO}`; c.fillStyle = INK(0.36); c.fillText(sub, 902, y + 22) }
+    y += sub ? 56 : 44
+  }
+
+  // fig. A — age posterior from Th/U chronometry
+  const ax = 600, ay = 612, aw = 380, ah = 178
+  c.strokeStyle = INK(0.28); c.lineWidth = 1; c.strokeRect(ax, ay, aw, ah)
+  c.fillStyle = INK(0.05); c.fillRect(ax, ay, aw, ah)
+  c.font = `500 15px ${MONO}`; c.fillStyle = INK(0.6)
+  c.fillText('FIG. A · AGE POSTERIOR · Th/U', ax + 12, ay + 24)
+  const gx = (v) => ax + 18 + ((v - 11.6) / 3.6) * (aw - 36)
+  const gy0 = ay + ah - 26
+  c.fillStyle = INK(0.1); c.fillRect(gx(12.8), ay + 36, gx(14.0) - gx(12.8), gy0 - ay - 36)
+  c.strokeStyle = INK(0.85); c.lineWidth = 2; c.beginPath()
+  for (let i = 0; i <= 90; i++) {
+    const v = 11.6 + (i / 90) * 3.6
+    const g = Math.exp(-0.5 * Math.pow((v - 13.4) / 0.6, 2))
+    const px = gx(v), py = gy0 - g * (ah - 74)
+    i === 0 ? c.moveTo(px, py) : c.lineTo(px, py)
+  }
+  c.stroke()
+  c.strokeStyle = 'rgba(255,207,90,0.8)'; c.setLineDash([4, 4])
+  c.beginPath(); c.moveTo(gx(13.4), ay + 34); c.lineTo(gx(13.4), gy0); c.stroke()
+  c.setLineDash([])
+  c.strokeStyle = INK(0.4); c.beginPath(); c.moveTo(ax + 14, gy0); c.lineTo(ax + aw - 14, gy0); c.stroke()
+  c.font = `500 14px ${MONO}`; c.fillStyle = INK(0.42)
+  for (const v of [12, 13, 14, 15]) c.fillText(String(v), gx(v) - 8, gy0 + 20)
+  c.fillStyle = '#ffcf5a'; c.fillText('13.4', gx(13.4) + 8, ay + 48)
+  c.fillStyle = INK(0.42); c.fillText('Gyr', ax + aw - 44, gy0 + 20)
+
+  // fig. B — the carrier line, clipping the detector ceiling
+  const bx = 1012, bw = 380
+  c.strokeStyle = INK(0.28); c.strokeRect(bx, ay, bw, ah)
+  c.fillStyle = INK(0.05); c.fillRect(bx, ay, bw, ah)
+  c.font = `500 15px ${MONO}`; c.fillStyle = INK(0.6)
+  c.fillText('FIG. B · RF SPECTRUM · X-BAND', bx + 12, ay + 24)
+  const fx = (f) => bx + 18 + ((f - 8) / 4) * (bw - 36)
+  const fy0 = ay + ah - 26
+  c.strokeStyle = 'rgba(255,138,90,0.55)'; c.setLineDash([6, 5])
+  c.beginPath(); c.moveTo(bx + 14, ay + 52); c.lineTo(bx + bw - 14, ay + 52); c.stroke()
+  c.setLineDash([])
+  c.font = `500 13px ${MONO}`; c.fillStyle = 'rgba(255,138,90,0.6)'
+  c.fillText('INSTRUMENT CEILING', bx + 24, ay + 47)
+  c.strokeStyle = INK(0.8); c.lineWidth = 1.6; c.beginPath()
+  for (let i = 0; i <= 120; i++) {
+    const f = 8 + (i / 120) * 4
+    const n = Math.sin(i * 12.9898) * 43758.5453
+    const jitter = (n - Math.floor(n)) * 9
+    const px = fx(f), py = fy0 - 4 - jitter
+    i === 0 ? c.moveTo(px, py) : c.lineTo(px, py)
+  }
+  c.stroke()
+  c.strokeStyle = 'rgba(214,240,255,0.98)'; c.lineWidth = 3.5
+  c.beginPath(); c.moveTo(fx(10.3), fy0); c.lineTo(fx(10.3), ay + 34); c.stroke()
+  c.strokeStyle = INK(0.4); c.lineWidth = 1
+  c.beginPath(); c.moveTo(bx + 14, fy0); c.lineTo(bx + bw - 14, fy0); c.stroke()
+  c.font = `500 14px ${MONO}`; c.fillStyle = INK(0.42)
+  for (const f of [8, 9, 10, 11, 12]) c.fillText(String(f), fx(f) - 8, fy0 + 20)
+  c.fillText('GHz', bx + bw - 44, fy0 + 20)
+  c.fillStyle = 'rgba(214,240,255,0.9)'; c.fillText('10.300', fx(10.3) + 10, ay + 74)
+
+  // footer
+  c.strokeStyle = INK(0.4)
+  c.beginPath(); c.moveTo(48, 812); c.lineTo(1392, 812); c.stroke()
+  c.font = `500 16px ${MONO}`; c.fillStyle = INK(0.45)
+  c.fillText('ISV CASSIOPEIA · SENSORIUM CLR-3 · SURVEY PASS α', 60, 842)
+  c.fillStyle = 'rgba(255,207,90,0.5)'
+  c.fillText('ENC AEGIS-VII · RELAY → ADMIRALTY / THRONEWORLD', 918, 842)
+}
+
+// Build the card as a DOM overlay above the stage canvas — it never passes
+// through the bloom composer, sits over every scene element, and can hold a
+// real button. The rotating miniature gets its own tiny bloom-free renderer.
+function makeAlephInfocard({ track }) {
+  const wrap = document.createElement('div'); wrap.className = 'aleph-card-wrap'
+  const cardEl = document.createElement('div'); cardEl.className = 'aleph-card'
+  const bg = document.createElement('canvas'); bg.className = 'aleph-card-bg'
+  bg.width = 1800; bg.height = 1100
+  drawAlephCard(bg.getContext('2d'), 1800, 1100)
+  const c3 = document.createElement('canvas'); c3.className = 'aleph-card-3d'
+  const btn = document.createElement('button'); btn.className = 'aleph-card-close'; btn.textContent = 'CLOSE ✕'
+  cardEl.append(bg, c3, btn); wrap.appendChild(cardEl); document.body.appendChild(wrap)
+
+  const r3 = new THREE.WebGLRenderer({ canvas: c3, alpha: true, antialias: true })
+  r3.setSize(560, 560, false)
+  const s3 = new THREE.Scene()
+  const cam3 = new THREE.PerspectiveCamera(36, 1, 0.1, 60)
+  cam3.position.set(0, 0.9, 11.5); cam3.lookAt(0, 0, 0)
+  s3.add(new THREE.AmbientLight(0x8090b0, 1.1))
+  const key3 = new THREE.DirectionalLight(0xfff0d8, 1.7); key3.position.set(4, 6, 5); s3.add(key3)
+  const rim3 = new THREE.DirectionalLight(0x88aaff, 0.9); rim3.position.set(-5, -2, -6); s3.add(rim3)
+  const mini = buildAleph()
+  const bb = new THREE.Box3().setFromObject(mini)
+  mini.position.sub(bb.getCenter(new THREE.Vector3()))
+  const half = bb.getSize(new THREE.Vector3()).y / 2
+  const pivot = new THREE.Group(); pivot.add(mini)
+  pivot.scale.setScalar(3.1 / half)
+  pivot.rotation.x = 0.12
+  mini.rotation.y = -0.45
+  s3.add(pivot)
+
+  const state = { shown: false, closed: false }
+  btn.addEventListener('click', () => {
+    if (state.closed) return
+    state.closed = true
+    cardEl.classList.remove('is-on')
+    setTimeout(() => { wrap.style.display = 'none' }, 500)
+  })
+  track({
+    dispose: () => {
+      wrap.remove(); r3.dispose()
+      mini.traverse((o) => {
+        if (!o.isMesh) return
+        o.geometry.dispose()
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.dispose()
+      })
+    },
+  })
+  return {
+    state,
+    show() {
+      state.shown = true
+      void cardEl.offsetWidth   // commit initial styles so the transition runs
+      cardEl.classList.add('is-on')
+    },
+    tick(dt) {
+      if (!state.shown || state.closed) return
+      mini.rotation.y += dt * 0.6
+      r3.render(s3, cam3)
+    },
+  }
+}
 
 export default {
   label: 'CUTSCENE / FIRST LIGHT',
@@ -31,8 +235,10 @@ export default {
     { t: 9.2,  level: 'info', text: 'Spectrogram indeterminate · pattern non-repeating' },
     { t: 13.5, level: 'info', text: 'Scout away · geodetic survey pass α' },
     { t: 17.0, level: 'ok',   text: '[OK] Survey telemetry relayed to Admiralty' },
-    { t: 19.6, level: 'crit', text: 'PROXIMITY ALERT · multiple uncatalogued contacts' },
-    { t: 21.4, level: 'crit', text: 'DEFCON-2 · point defence unresponsive' },
+    { t: 20.2, level: 'info', text: 'Survey pass complete · compiling object file' },
+    { t: 21.3, level: 'ok',   text: '[OK] XAO-0001 "ALEPH" · object file committed' },
+    { t: 28.3, level: 'crit', text: 'PROXIMITY ALERT · multiple uncatalogued contacts' },
+    { t: 30.1, level: 'crit', text: 'DEFCON-2 · point defence unresponsive' },
   ],
   readout: {
     id: 'ISV Cassiopeia · PNL-012-EXT',
@@ -91,6 +297,7 @@ export default {
     flagship.damage = (n) => { damage0(n); shake = Math.min(1.3, shake + 0.3) }
 
     const wing = createBomberWing(ctx, { count: N_BOMBERS })
+    const card = makeAlephInfocard(ctx)
 
     // camera rides behind-and-above the vessel, biased toward the artifact
     const CAM_OFF = new THREE.Vector3(-34, 14, 30)
@@ -126,7 +333,7 @@ export default {
 
     let T = 0, firedDlg1 = false, firedDlg2 = false, revealing = false, revealT = 0
     let stationaryT = 0, scanStarted = false, scanT = 0, scanDone = false, postScanT = 0, bombersSpawned = false, fighterWarped = false
-    let shake = 0, warpDone = false, camAz = 0, camDist = 1, prevSweep = 0
+    let shake = 0, warpDone = false, camAz = 0, camDist = 1, prevSweep = 0, cardPinged = false, cardDismissed = false, closedAt = 0
 
     return (dt) => {
       T += dt
@@ -208,10 +415,14 @@ export default {
         if (scanT >= SCAN_DUR) { fighter.phase = 'idle'; scanDone = true; endScanFX() }
       }
 
-      // ambush: red bombers warp in once the scan is done
+      // post-scan: the object file comes up and holds until CLOSE is pressed —
+      // only after acknowledgement do the red bombers warp in
       if (scanDone && !bombersSpawned) {
         postScanT += dt
-        if (postScanT >= 1.4) { bombersSpawned = true; wing.spawn(ship.pos) }
+        if (!cardPinged && postScanT >= CARD_IN) { cardPinged = true; card.show(); sfx.blip(1400, 0.3, 0.4) }
+        card.tick(dt)
+        if (!cardDismissed && card.state.closed) { cardDismissed = true; closedAt = postScanT; sfx.blip(760, 0.22, 0.3) }
+        if (cardDismissed && postScanT >= closedAt + AMBUSH_DELAY) { bombersSpawned = true; wing.spawn(ship.pos) }
       }
       wing.tick(dt, flagship)
 

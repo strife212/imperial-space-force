@@ -1827,6 +1827,57 @@
   to   { transform: scale(1);    opacity: 1; filter: blur(0); }
 }
 
+/* ── First Light: the Aleph object-file infocard ────────────────────────────
+   A DOM overlay above the stage canvas — it never inherits the bloom pass.
+   Children are positioned in % of the card's 1440×880 design space. */
+.aleph-card-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 8200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.aleph-card {
+  position: relative;
+  width: min(78vw, 141vh);
+  aspect-ratio: 1440 / 880;
+  pointer-events: auto;
+  opacity: 0;
+  transform: scale(0.94);
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.aleph-card.is-on { opacity: 1; transform: scale(1); }
+.aleph-card canvas { position: absolute; display: block; }
+.aleph-card-bg { inset: 0; width: 100%; height: 100%; }
+.aleph-card-3d { left: 3.75%; top: 24.8%; width: 34.7%; height: 56.8%; }
+.aleph-card-close {
+  position: absolute;
+  left: 87.8%;
+  top: 6.6%;
+  width: 8.9%;
+  height: 5.7%;
+  background: rgba(94, 255, 160, 0.1);
+  border: 2px solid rgba(94, 255, 160, 0.85);
+  color: #8affb8;
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 1.05vw, 17px);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  animation: aleph-close-pulse 1.4s ease-in-out infinite;
+}
+.aleph-card-close:hover {
+  background: rgba(94, 255, 160, 0.28);
+  color: #c8ffdd;
+  animation-play-state: paused;
+}
+@keyframes aleph-close-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(94, 255, 160, 0); }
+  50% { box-shadow: 0 0 22px rgba(94, 255, 160, 0.5), inset 0 0 10px rgba(94, 255, 160, 0.22); }
+}
+
 /* Standalone (deep-linked) replay end-card: a black screen over the fade layer */
 .cut-replay {
   position: fixed;
