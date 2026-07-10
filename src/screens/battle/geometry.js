@@ -528,20 +528,65 @@ function buildRedCruiser() {
 // survey dish and outrigger instrument booms in place of guns.
 function buildScienceVessel() {
   const parts = []
-  let g = new THREE.CylinderGeometry(0.4, 0.46, 8.6, 10); g.rotateX(Math.PI / 2); parts.push(g)        // long slender spine
-  g = new THREE.SphereGeometry(0.72, 16, 12); g.translate(0, 0, 4.6); parts.push(g)                    // forward sensor globe
-  g = new THREE.ConeGeometry(0.28, 1.2, 8); g.rotateX(Math.PI / 2); g.translate(0, 0, 5.7); parts.push(g)  // fine probe spike
-  for (const z of [2.2, 3.0]) { g = new THREE.TorusGeometry(0.8, 0.1, 8, 24); g.translate(0, 0, z); parts.push(g) }  // sensor collar rings
-  g = new THREE.BoxGeometry(0.46, 0.4, 1.9); g.translate(0.74, 0, 0.1); parts.push(g)                  // laboratory pod R
-  g = new THREE.BoxGeometry(0.46, 0.4, 1.9); g.translate(-0.74, 0, 0.1); parts.push(g)                 // laboratory pod L
-  g = new THREE.BoxGeometry(3.4, 0.06, 0.16); g.translate(0, 0, 1.1); parts.push(g)                    // lateral sensor spar
-  g = new THREE.BoxGeometry(0.08, 1.2, 0.08); g.translate(0, 0.85, -0.4); parts.push(g)                // dorsal dish mast
-  g = new THREE.ConeGeometry(1.1, 0.42, 22); g.rotateX(-Math.PI / 2.3); g.translate(0, 1.48, 0.1); parts.push(g)  // parabolic survey dish
-  g = new THREE.BoxGeometry(0.07, 0.95, 0.07); g.translate(0, -0.85, 1.1); parts.push(g)               // ventral instrument boom
-  g = new THREE.BoxGeometry(0.6, 0.2, 0.6); g.translate(0, -1.3, 1.1); parts.push(g)                   // ventral sensor pod
-  g = new THREE.BoxGeometry(0.9, 0.74, 1.3); g.translate(0, 0, -4.0); parts.push(g)                    // aft reactor block
-  g = new THREE.CylinderGeometry(0.22, 0.3, 1.1, 8); g.rotateX(Math.PI / 2); g.translate(0.5, 0, -4.8); parts.push(g)   // nacelle R
-  g = new THREE.CylinderGeometry(0.22, 0.3, 1.1, 8); g.rotateX(Math.PI / 2); g.translate(-0.5, 0, -4.8); parts.push(g)  // nacelle L
+  const add = (g) => { parts.push(g); return g }
+  // a dish assembly built around the origin (bowl opening +y), tilted as one,
+  // then carried to its mount
+  const dish = (r, tilt, tx, ty, tz) => {
+    const ds = []
+    ds.push(new THREE.CylinderGeometry(r, r * 0.26, r * 0.34, 28, 1, true))                 // the bowl (open frustum)
+    let d = new THREE.TorusGeometry(r, r * 0.04, 10, 36); d.rotateX(Math.PI / 2); d.translate(0, r * 0.17, 0); ds.push(d)  // rim
+    d = new THREE.CylinderGeometry(r * 0.3, r * 0.3, r * 0.26, 14); d.translate(0, -r * 0.28, 0); ds.push(d)               // transceiver pack
+    d = new THREE.CylinderGeometry(r * 0.045, r * 0.075, r * 1.12, 8); d.translate(0, r * 0.26, 0); ds.push(d)             // central feed mast, rooted in the pack
+    d = new THREE.ConeGeometry(r * 0.1, r * 0.16, 10); d.rotateX(Math.PI); d.translate(0, r * 0.78, 0); ds.push(d)         // feed head
+    d = new THREE.SphereGeometry(r * 0.055, 8, 8); d.translate(0, r * 0.87, 0); ds.push(d)                                 // radiant tip
+    for (const dd of ds) { dd.rotateX(tilt); dd.translate(tx, ty, tz); parts.push(dd) }
+  }
+
+  // ── hull: one continuous spindle, lofted stern lip to nose tip ──
+  let g
+  {
+    const prof = [[0.30, 0], [0.44, 0.8], [0.56, 2.2], [0.64, 4.4], [0.64, 6.0], [0.56, 7.6], [0.42, 8.9], [0.26, 10.0], [0.12, 10.9], [0.03, 11.2]]
+      .map(([x, y]) => new THREE.Vector2(x, y))
+    g = add(new THREE.LatheGeometry(prof, 28)); g.rotateX(Math.PI / 2); g.translate(0, 0, -4.6)
+  }
+  g = add(new THREE.SphereGeometry(0.3, 16, 10)); g.translate(0, 0, -4.55)                                    // rounded stern boat-tail
+  for (const [r, z, h] of [[0.525, -3.0, 0.12], [0.655, -0.6, 0.14], [0.6, 2.6, 0.12]]) {                     // flush hull bands
+    g = add(new THREE.CylinderGeometry(r, r, h, 28)); g.rotateX(Math.PI / 2); g.translate(0, 0, z)
+  }
+  g = add(new THREE.SphereGeometry(0.22, 16, 12)); g.translate(0, 0.58, 2.4)                                  // observation dome
+  g = add(new THREE.BoxGeometry(0.05, 0.5, 0.9)); g.rotateX(-0.25); g.translate(0, 0.48, 4.2)                 // swept dorsal sensor blade
+  g = add(new THREE.SphereGeometry(0.15, 12, 10)); g.translate(0, -0.38, 4.4)                                 // chin sensor blister
+  for (const s of [1, -1]) {                                                                                  // conformal lab pods
+    g = add(new THREE.CapsuleGeometry(0.24, 2.2, 6, 16)); g.rotateX(Math.PI / 2); g.translate(s * 0.72, -0.08, 0.9)
+  }
+
+  // ── the main survey dish, yoked on a mast amidships ──
+  g = add(new THREE.BoxGeometry(0.13, 0.6, 0.13)); g.translate(0, 0.85, -0.45)
+  g = add(new THREE.BoxGeometry(0.5, 0.1, 0.4)); g.translate(0, 1.14, -0.3)         // yoke cradle, reaching into the pack
+  dish(1.25, -0.9, 0, 1.46, -0.4)                                                   // aimed up-forward, seated on the yoke
+
+  // ── antennas: a long forward whip boom off the nose, two raked dorsal whips ──
+  g = add(new THREE.CylinderGeometry(0.008, 0.024, 2.1, 6)); g.rotateX(Math.PI / 2); g.translate(0, 0, 7.1)   // forward whip boom
+  g = add(new THREE.SphereGeometry(0.035, 8, 8)); g.translate(0, 0, 8.15)                                     // its tip
+  g = add(new THREE.CylinderGeometry(0.016, 0.03, 1.5, 6)); g.rotateX(-0.3); g.translate(-0.5, 0.97, -1.6)
+  g = add(new THREE.SphereGeometry(0.045, 8, 8)); g.translate(-0.5, 1.69, -1.82)
+  g = add(new THREE.CylinderGeometry(0.014, 0.026, 1.1, 6)); g.rotateX(-0.3); g.translate(0.5, 0.73, -2.1)
+  g = add(new THREE.SphereGeometry(0.04, 8, 8)); g.translate(0.5, 1.26, -2.26)
+
+  // ── swept radiator wings, rooted deep in the hull ──
+  for (const s of [1, -1]) {
+    g = add(new THREE.BoxGeometry(2.0, 0.04, 0.75)); g.rotateY(s * 0.55); g.translate(s * 1.1, 0, -2.2)
+    g = add(new THREE.BoxGeometry(2.04, 0.07, 0.07)); g.translate(0, 0, 0.4); g.rotateY(s * 0.55); g.translate(s * 1.1, 0, -2.2)  // leading spar
+  }
+
+  // ── stern: raked fins, conformal nacelles half-buried in the boat-tail ──
+  g = add(new THREE.BoxGeometry(0.05, 0.8, 1.0)); g.rotateX(-0.4); g.translate(0, 0.6, -3.8)                  // dorsal fin
+  g = add(new THREE.BoxGeometry(0.05, 0.7, 0.9)); g.rotateX(-0.3); g.translate(0, -0.5, -3.8)                 // ventral fin
+  for (const s of [1, -1]) {
+    g = add(new THREE.CapsuleGeometry(0.22, 1.6, 6, 16)); g.rotateX(Math.PI / 2); g.translate(s * 0.42, 0, -4.1)  // nacelle body
+    g = add(new THREE.TorusGeometry(0.225, 0.035, 8, 20)); g.translate(s * 0.42, 0, -3.3)                     // intake ring
+    g = add(new THREE.CylinderGeometry(0.24, 0.17, 0.4, 14, 1, true)); g.rotateX(Math.PI / 2); g.translate(s * 0.42, 0, -5.15)  // nozzle bell
+  }
   return mergeGeometries(parts, false)
 }
 

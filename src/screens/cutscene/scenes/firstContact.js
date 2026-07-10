@@ -71,7 +71,7 @@ export default {
     const flagship = createFlagship(ctx, {
       deathDrift: 0,
       model: buildScienceVessel,                // the Cassiopeia-class hull — an instrument, not a warship
-      glowPos: [[0.5, -4.85], [-0.5, -4.85]],   // twin aft nacelles of the science spine
+      glowPos: [[0.42, -5.2], [-0.42, -5.2]],   // seated in the nacelles' nozzle bells
       onDestroyed: () => {
         shake = 1.6
         comms.show(SHIP_NAME, DLG3, { persist: true })

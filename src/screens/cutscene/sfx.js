@@ -13,12 +13,13 @@ import { getFlag } from '../../lib/store'
 const BASE = import.meta.env?.BASE_URL ?? '/'
 const FILES = { laser: 'sfx/laser.mp3', explosion: 'sfx/explosion.mp3' }
 
-// ── Mission title-card boom ──────────────────────────────────────────────────
-// A one-shot cinematic slam for the black title cards: a sub-bass drop under a
-// detuned low braam and a noise-slam transient, all fed through a damped
-// feedback delay so the hit ECHOES away into the dark. Module-level with its
-// own lazy context — the card plays before any stage audio engine exists.
-let boomCtx = null
+// ── Mission title-card boom · "Cathedral" ────────────────────────────────────
+// A one-shot cinematic slam for the black title cards: a deep sub drop and a
+// noise-slam attack that BLOOM into a vast 3.6s reverberant space, with a low
+// fifth swelling up out of the wash — the room answering. Module-level with
+// its own lazy context (and cached impulse) — the card plays before any stage
+// audio engine exists.
+let boomCtx = null, boomIR = null
 export function playTitleBoom() {
   if (getFlag('soundMuted')) return
   try { boomCtx = boomCtx || new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return }
@@ -27,47 +28,49 @@ export function playTitleBoom() {
   const t0 = ctx.currentTime + 0.03
 
   const comp = ctx.createDynamicsCompressor()
-  comp.threshold.value = -14; comp.knee.value = 18; comp.ratio.value = 4; comp.attack.value = 0.002; comp.release.value = 0.3
-  const master = ctx.createGain(); master.gain.value = 0.9
+  comp.threshold.value = -12; comp.knee.value = 16; comp.ratio.value = 4; comp.attack.value = 0.002; comp.release.value = 0.35
+  const master = ctx.createGain(); master.gain.value = 0.85
   comp.connect(master); master.connect(ctx.destination)
 
-  // the echo: a damped feedback delay — each repeat darker and quieter
-  const delay = ctx.createDelay(1.0); delay.delayTime.value = 0.34
-  const damp = ctx.createBiquadFilter(); damp.type = 'lowpass'; damp.frequency.value = 850
-  const fbk = ctx.createGain(); fbk.gain.value = 0.44
-  delay.connect(damp); damp.connect(fbk); fbk.connect(delay); damp.connect(comp)
-  const bus = ctx.createGain(); bus.connect(comp); bus.connect(delay)
+  // the cathedral: a long synthetic impulse, built once and cached
+  if (!boomIR) {
+    const irLen = Math.floor(ctx.sampleRate * 3.6)
+    boomIR = ctx.createBuffer(2, irLen, ctx.sampleRate)
+    for (let ch = 0; ch < 2; ch++) {
+      const d = boomIR.getChannelData(ch)
+      for (let i = 0; i < irLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 2.2)
+    }
+  }
+  const conv = ctx.createConvolver(); conv.buffer = boomIR
+  const wet = ctx.createGain(); wet.gain.value = 0.75; conv.connect(wet); wet.connect(comp)
+  const bus = ctx.createGain(); bus.connect(comp); bus.connect(conv)
 
   // 1 · sub-bass drop — the floor falls out
   const sub = ctx.createOscillator(); sub.type = 'sine'
-  sub.frequency.setValueAtTime(74, t0); sub.frequency.exponentialRampToValueAtTime(27, t0 + 1.0)
+  sub.frequency.setValueAtTime(65, t0); sub.frequency.exponentialRampToValueAtTime(22, t0 + 1.2)
   const subG = ctx.createGain()
-  subG.gain.setValueAtTime(0.0001, t0); subG.gain.exponentialRampToValueAtTime(0.9, t0 + 0.012)
-  subG.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5)
-  sub.connect(subG); subG.connect(bus); sub.start(t0); sub.stop(t0 + 1.6)
+  subG.gain.setValueAtTime(0.0001, t0); subG.gain.exponentialRampToValueAtTime(0.95, t0 + 0.012)
+  subG.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.2)
+  sub.connect(subG); subG.connect(bus); sub.start(t0); sub.stop(t0 + 2.3)
 
-  // 2 · low braam body — two barely-detuned saws through a dark lowpass
-  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(420, t0)
-  lp.frequency.exponentialRampToValueAtTime(140, t0 + 1.3)
-  const braamG = ctx.createGain()
-  braamG.gain.setValueAtTime(0.0001, t0); braamG.gain.linearRampToValueAtTime(0.34, t0 + 0.05)
-  braamG.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5)
-  lp.connect(braamG); braamG.connect(bus)
-  for (const f of [55, 55.55, 110.3]) {
-    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f
-    const g = ctx.createGain(); g.gain.value = f > 100 ? 0.35 : 1
-    o.connect(g); g.connect(lp); o.start(t0); o.stop(t0 + 1.6)
-  }
-
-  // 3 · the slam — a short band-passed noise impact for the attack
+  // 2 · the slam — a band-passed noise impact for the attack
   const nbuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate)
   const nd = nbuf.getChannelData(0)
   for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1
   const noise = ctx.createBufferSource(); noise.buffer = nbuf
-  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 230; bp.Q.value = 0.8
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 190; bp.Q.value = 0.8
   const nG = ctx.createGain()
-  nG.gain.setValueAtTime(0.55, t0); nG.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22)
-  noise.connect(bp); bp.connect(nG); nG.connect(bus); noise.start(t0); noise.stop(t0 + 0.3)
+  nG.gain.setValueAtTime(0.6, t0); nG.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26)
+  noise.connect(bp); bp.connect(nG); nG.connect(bus); noise.start(t0); noise.stop(t0 + 0.35)
+
+  // 3 · the space answers — a low fifth swelling out of the wash
+  for (const f of [55, 82.4]) {
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t0 + 0.3); g.gain.linearRampToValueAtTime(f > 60 ? 0.07 : 0.11, t0 + 1.3)
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.4)
+    o.connect(g); g.connect(bus); o.start(t0 + 0.3); o.stop(t0 + 3.5)
+  }
 }
 
 export function createCutsceneSfx() {
