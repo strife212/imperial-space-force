@@ -48,7 +48,7 @@ export default {
 
     const escort = buildFleet(ctx, { team: 'blue', fighters: 12, cruisers: 3, capital: false, ringR: 16 })   // the dwindling line
     const swarm = buildFleet(ctx, { team: 'red', fighters: 34, bombers: 12, cruisers: 5, capital: false, ringR: 36 })
-    makeRingedPlanet(scene, [], new THREE.Vector3(170, 40, -280), new THREE.Vector3(0.4, 0.5, 0.6).normalize())   // the Throneworld they flee toward — far off their jump line
+    makeRingedPlanet(scene, [], new THREE.Vector3(170, 40, -280), new THREE.Vector3(0.4, 0.5, 0.6).normalize())   // a nameless ringed world, far off their jump line
     const field = asteroidField(ctx, { count: 22, center: new THREE.Vector3(0, 0, 0), inner: 60, outer: 190, scaleMax: 4 })
 
     // the noose: every raider on its own inward spiral, nose held on the flag —
@@ -71,7 +71,8 @@ export default {
     const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _d = new THREE.Vector3()
     const livePick = (list) => { const live = list.filter(s => !s.userData.dead); return live.length ? live[Math.floor(Math.random() * live.length)] : null }
 
-    // the way out: toward the Throneworld, at the last second
+    // the way out: the withdrawal vector, taken at the last second (the
+    // Throneworld itself is nowhere in sight from here)
     const warpDir = new THREE.Vector3(60, -20, -150).normalize()
     const flagPos0 = new THREE.Vector3()
     let warpers = null   // built at WARP_T — the flag and every escort still alive
