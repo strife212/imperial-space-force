@@ -29,7 +29,7 @@ const DEFAULT_TIMES = {
   theFall:         [2, 6, 11, 16],
   theResolve:      [2, 6, 10, 14],
   theAnnunciator:  [2, 6, 10, 14],
-  theLance:        [1, 3.2, 4.5, 7],
+  theLance:        [1, 3.4, 6, 8.4, 10, 13.2],
   theOrderRestored:[2, 6, 10, 14],
 }
 

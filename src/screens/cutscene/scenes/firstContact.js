@@ -12,13 +12,15 @@ const WARP_FROM_X = -210, WARP_TO_X = -95, WARP_DUR = 1.0, CRUISE_SPEED = 17
 const SHIP_LANE_Z = 22, STOP_X = 0, REVEAL_X = -78
 const ALEPH_SCALE = 2.0, ALEPH_HALF_H = 7
 const SCAN_POS = new THREE.Vector3(0, 4, 13), SCAN_DUR = 4.5, FLY_DUR = 2.2
-const CARD_IN = 1.1, AMBUSH_DELAY = 1.4   // infocard up after the scan; bombers only once it's closed
+const CARD_IN = 1.1, AMBUSH_DELAY = 4.4   // infocard up after the scan; bombers only once it's closed —
+                                          // with a quiet beat for the crew's half-finished thought between
 const N_BOMBERS = 8
 
 const SHIP_NAME = 'Imperial Science Vessel Cassiopeia'
 const DLG1 = 'Leaving relativistic speed, entering newtonian flight model. Approaching source of unknown radio signal.'
 const DLG2 = 'Radiation levels are off the charts. Spectrogram readings are indeterminate. This is it, no doubt.'
 const DLG3 = 'Ambush by unknown attackers! Abandon ship! Call for reinforcements!'
+const DLG4 = '13.4 billion years... that would make this thing as old as...'   // cut short by the ambush
 
 const easeOut3 = (p) => 1 - Math.pow(1 - p, 3)
 const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2)
@@ -331,7 +333,7 @@ export default {
       if (scanBand) { scene.remove(scanBand.mesh); scanBand.mesh.geometry.dispose(); scanBand.mat.dispose(); scanBand = null }
     }
 
-    let T = 0, firedDlg1 = false, firedDlg2 = false, revealing = false, revealT = 0
+    let T = 0, firedDlg1 = false, firedDlg2 = false, firedDlg4 = false, revealing = false, revealT = 0
     let stationaryT = 0, scanStarted = false, scanT = 0, scanDone = false, postScanT = 0, bombersSpawned = false, fighterWarped = false
     let shake = 0, warpDone = false, camAz = 0, camDist = 1, prevSweep = 0, cardPinged = false, cardDismissed = false, closedAt = 0
 
@@ -422,6 +424,7 @@ export default {
         if (!cardPinged && postScanT >= CARD_IN) { cardPinged = true; card.show(); sfx.blip(1400, 0.3, 0.4) }
         card.tick(dt)
         if (!cardDismissed && card.state.closed) { cardDismissed = true; closedAt = postScanT; sfx.blip(760, 0.22, 0.3) }
+        if (cardDismissed && !firedDlg4 && postScanT >= closedAt + 0.6) { firedDlg4 = true; comms.show(SHIP_NAME, DLG4) }
         if (cardDismissed && postScanT >= closedAt + AMBUSH_DELAY) { bombersSpawned = true; wing.spawn(ship.pos) }
       }
       wing.tick(dt, flagship)

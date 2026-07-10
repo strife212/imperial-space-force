@@ -7,34 +7,39 @@ import { playLanceCharge, preloadLanceSfx } from '../../../lib/lanceSfx'
 // annihilates the Discord's veiled seat.
 const LINE1 = 'Against the Hush, the Empress’s Chord is brought.'
 const LAUNCH = new THREE.Vector3(-78, 2, 26)
-const TARGET = new THREE.Vector3(150, 0, -8)
+const TARGET = new THREE.Vector3(620, 0, -60)   // the veiled seat, far across the dark
 const FIRE_T = 3.0
-const FLIGHT = 1.1            // package flight time — long enough for the eye to ride it
+const FLIGHT = 5.5            // package flight time — the camera rides the round the whole way
+const IMPACT_T = FIRE_T + FLIGHT
 const GUN_SCALE = 0.55
 
 export default {
   label: 'CUTSCENE / SINGULARITY',
   establishing: { name: 'SINGULARITY', sub: 'The Divine Lance · Auditio Ultima', stamp: 'PACKAGE TELEMETRY · STRATCON 1 IN EFFECT' },
   feed: [
-    { t: 0.6, level: 'info', text: 'Final hold released · tube clear · range to seat 4.7 ls' },
-    { t: 2.2, level: 'crit', text: 'T−0 · LET IT BE CAST' },
-    { t: 3.2, level: 'ok',   text: '[OK] PACKAGE AWAY · geodesic true' },
-    { t: 4.4, level: 'info', text: 'Impact probability 1.000 · chronology protection holds' },
-    { t: 5.8, level: 'crit', text: 'Kerr–Newman collapse on the veiled seat' },
-    { t: 7.0, level: 'warn', text: 'Horizon decay · Hawking cascade runaway' },
-    { t: 8.6, level: 'crit', text: 'DETONATION · the seat is unmade' },
+    { t: 0.6,  level: 'info', text: 'Final hold released · tube clear · range to seat 4.7 ls' },
+    { t: 2.2,  level: 'crit', text: 'T−0 · LET IT BE CAST' },
+    { t: 3.2,  level: 'ok',   text: '[OK] PACKAGE AWAY · geodesic true' },
+    { t: 4.6,  level: 'info', text: 'Impact probability 1.000 · chronology protection holds' },
+    { t: 6.6,  level: 'info', text: 'Coast phase · 0.90 c · star field aberration nominal' },
+    { t: 10.9, level: 'crit', text: 'Kerr–Newman collapse on the veiled seat' },
+    { t: 12.0, level: 'warn', text: 'Horizon decay · Hawking cascade runaway' },
+    { t: 13.1, level: 'crit', text: 'DETONATION · the seat is unmade' },
   ],
   readout: {
     id: 'Package Track · HMSS',
     rows: [
       { label: 'Velocity', value: (t) => (t < 3 ? 'HOLD' : '0.90 c') },
-      { label: 'Range',    value: (t) => `${Math.max(0, 4.7 - Math.max(0, t - 3) * 4.3).toFixed(1)} ls` },
-      { label: 'Status',   value: (t) => (t < 3 ? 'IN TUBE' : t < 4.1 ? 'IN FLIGHT' : t < 6.3 ? 'DETONATION' : t < 8.3 ? 'COLLAPSE' : 'ANNIHILATED') },
+      { label: 'Range',    value: (t) => `${Math.max(0, 4.7 - Math.max(0, t - 3) * (4.7 / 5.5)).toFixed(1)} ls` },
+      { label: 'Status',   value: (t) => (t < 3 ? 'IN TUBE' : t < 8.6 ? 'IN FLIGHT' : t < 10.8 ? 'DETONATION' : t < 12.7 ? 'COLLAPSE' : 'ANNIHILATED') },
     ],
   },
   bloom: 0.85,
   create(ctx) {
-    const { scene, camera, fx, sfx, comms, end } = ctx
+    const { scene, camera, fx, sfx, comms, end, backdrop } = ctx
+    // the crossing runs far past the skydome's shell — carry the sky with the
+    // camera so the nebula and stars never fall away into raw black
+    const sky = scene.children.filter((o) => o.material && (o.material === backdrop.nebMat || o.material === backdrop.starMat))
     // the veiled seat — the lensed horizon, grouped on itself. Its image is
     // raymarched in world units, so the collapse drives the uRs / disk-radius
     // uniforms (and the shadow sphere) down to nothing, not the group scale.
@@ -102,11 +107,31 @@ export default {
       infall.push({ m, d0, r0: 26 + Math.random() * 30, s: 0.5 + Math.random() * 0.7 })
     }
 
-    // camera rigs: on the gun for the cast, wide and shuddering for the kill
+    // camera rigs: on the gun for the cast, chasing the round through the dark,
+    // then wide and shuddering for the kill
     const side = new THREE.Vector3().crossVectors(dir, yAxis).normalize()
+    const up = new THREE.Vector3().crossVectors(side, dir).normalize()
     const CAM_GUN = LAUNCH.clone().addScaledVector(side, -13).addScaledVector(dir, 6).add(new THREE.Vector3(0, 5.5, 0))
-    const CAM_WIDE = new THREE.Vector3(36, 44, 122)
-    const _p = new THREE.Vector3(), _l = new THREE.Vector3(), _look = new THREE.Vector3().copy(MUZZLE)
+    const CAM_WIDE = TARGET.clone().add(new THREE.Vector3(-114, 44, 130))
+    const _p = new THREE.Vector3(), _l = new THREE.Vector3(), _c = new THREE.Vector3(), _s = new THREE.Vector3()
+    const _look = new THREE.Vector3().copy(MUZZLE)
+    const camImpact = new THREE.Vector3().copy(CAM_GUN)   // where the chase ends, for the pull-out blend
+
+    // the crossing: a shell of elongated star-streaks around the geodesic —
+    // static in space, they whip past the chase camera and read as speed
+    const stMat = new THREE.MeshBasicMaterial({ color: 0xbfd8ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+    const stGeo = new THREE.CylinderGeometry(0.14, 0.14, 1, 5)
+    const starStreaks = []
+    for (let i = 0; i < 90; i++) {
+      const m = new THREE.Mesh(stGeo, stMat)
+      m.quaternion.setFromUnitVectors(yAxis, dir)
+      const a = Math.random() * Math.PI * 2, r = 9 + Math.random() * 34
+      const off = new THREE.Vector3().addScaledVector(side, Math.cos(a) * r).addScaledVector(up, Math.sin(a) * r)
+      m.position.copy(LAUNCH).addScaledVector(dir, 40 + Math.random() * (dist - 100)).add(off)
+      m.scale.set(1, 18 + Math.random() * 40, 1)
+      m.visible = false; scene.add(m)
+      starStreaks.push({ m, off })
+    }
 
     let T = 0, fired = false, c1 = false, beamLife = 0, slugT = 0, slugDone = false, impactCd = 0, impacts = 0, shake = 0, flashLife = -1, ended = false
     let chargeStarted = false, recoil = 0
@@ -132,6 +157,8 @@ export default {
         slug.visible = true; streak.visible = true; slug.position.copy(MUZZLE); slug.scale.setScalar(2)
         fx.blast(MUZZLE.clone(), true, { silent: true })  // the discharge boom already spoke
         sfx.bed('sfx/missiletrail.mp3', { volume: 0.5, loop: false }).play()   // the package tearing away
+        sfx.rumble(0.35, FLIGHT)                          // the long coast, felt in the hull
+        for (const st of starStreaks) st.m.visible = true
         recoil = 1
         shake = 1.0
         if (!c1) { c1 = true; comms.show('Her Imperial Majesty Iliantha III', LINE1, { persist: true }) }
@@ -147,10 +174,23 @@ export default {
       if (slug.visible) {
         slugT += dt; const p = Math.min(1, slugT / FLIGHT)
         slug.position.copy(LAUNCH).addScaledVector(dir, dist * p)
-        slug.scale.setScalar(1.5)
+        slug.scale.setScalar(1.0)                          // a comet at chase range, not a wall
         streak.position.copy(slug.position).addScaledVector(dir, -9)
-        streakMat.opacity = 0.8 * (1 - p * 0.4)
-        if (p >= 1 && !slugDone) { slugDone = true; slug.visible = false; streak.visible = false; flashLife = 0; shake = 1.8; sfx.rumble(0.95, 2.6); shock.visible = true }
+        streak.scale.set(0.45, 1, 0.45)
+        streakMat.opacity = 0.7 * (1 - p * 0.4)
+        // the crossing: streaks fade in with the coast, recycle ahead as they
+        // fall behind the round, and gutter out on final approach
+        stMat.opacity = 0.55 * Math.min(1, slugT / 0.7) * Math.min(1, ((1 - p) * FLIGHT) / 0.7)
+        for (const st of starStreaks) {
+          if (_s.subVectors(st.m.position, slug.position).dot(dir) < -50) {
+            st.m.position.copy(slug.position).addScaledVector(dir, 180 + Math.random() * 260).add(st.off)
+          }
+        }
+        if (p >= 1 && !slugDone) {
+          slugDone = true; slug.visible = false; streak.visible = false
+          for (const st of starStreaks) st.m.visible = false
+          flashLife = 0; shake = 1.8; sfx.rumble(0.95, 2.6); shock.visible = true
+        }
       }
 
       // annihilation: white flash, ring shockwave, infall, then the barrage
@@ -211,21 +251,42 @@ export default {
         }
       }
 
-      // camera: locked on the gun for the cast, then flung wide with the round,
-      // shuddering in on the kill
+      // camera: locked on the gun for the cast, then riding the round's flank
+      // through the streaking dark, then pulled wide and shuddering for the kill
       shake = Math.max(0, shake - dt * 1.4)
-      const k = Math.min(1, Math.max(0, (T - FIRE_T) / 1.3)), ke = k * k * (3 - 2 * k)
-      _p.lerpVectors(CAM_GUN, CAM_WIDE, ke)
-      const kk = Math.min(1, Math.max(0, (T - FIRE_T) / 4))
-      _p.x -= kk * 10; _p.y -= kk * 20; _p.z -= kk * 30
-      camera.position.copy(_p)
+      if (!fired) {
+        camera.position.copy(CAM_GUN)
+        _l.copy(MUZZLE)
+      } else if (!slugDone) {
+        // chase rig: swinging slowly across the round's wake — high-right to
+        // low-left, breathing in and out — while the seat grows dead ahead
+        const fp = Math.min(1, Math.max(0, (T - FIRE_T) / FLIGHT))
+        const sw = fp * fp * (3 - 2 * fp)
+        const lat = 9 - 16 * sw
+        const vert = 4.4 - 2.6 * sw + Math.sin(T * 0.6) * 0.9
+        const back = 17 + 4 * Math.sin(sw * Math.PI)
+        _c.copy(slug.position).addScaledVector(dir, -back).addScaledVector(side, lat).addScaledVector(up, vert)
+        const kIn = Math.min(1, (T - FIRE_T) / 0.9), kie = kIn * kIn * (3 - 2 * kIn)
+        _p.lerpVectors(CAM_GUN, _c, kie)
+        camera.position.copy(_p)
+        camImpact.copy(_p)
+        _l.copy(slug.position).addScaledVector(dir, 14)   // eyes forward, on the seat growing out of the dark
+      } else {
+        const k = Math.min(1, (T - IMPACT_T) / 1.6), ke = k * k * (3 - 2 * k)
+        _p.lerpVectors(camImpact, CAM_WIDE, ke)
+        const kk = Math.min(1, Math.max(0, (T - IMPACT_T) / 5))
+        _p.x -= kk * 10; _p.y -= kk * 20; _p.z -= kk * 30
+        camera.position.copy(_p)
+        _l.copy(TARGET)
+      }
       camera.position.x += (Math.random() - 0.5) * shake * 4
       camera.position.y += (Math.random() - 0.5) * shake * 3
-      _l.copy(slugDone || !fired ? (fired ? TARGET : MUZZLE) : slug.position)   // muzzle → the round → the kill
-      _look.lerp(_l, 1 - Math.exp(-4 * dt))
+      // the chase must hold the round dead in frame — everything else can drift
+      _look.lerp(_l, 1 - Math.exp(-(fired && !slugDone ? 14 : 4) * dt))
       camera.lookAt(_look)
+      for (const m of sky) m.position.copy(camera.position)   // infinite backdrop
 
-      if (!ended && T >= FIRE_T + 9.2) { ended = true; end() }
+      if (!ended && T >= IMPACT_T + 8.1) { ended = true; end() }
     }
   },
 }
