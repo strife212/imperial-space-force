@@ -175,7 +175,10 @@ function makeAlephInfocard({ track }) {
   drawAlephCard(bg.getContext('2d'), 1800, 1100)
   const c3 = document.createElement('canvas'); c3.className = 'aleph-card-3d'
   const btn = document.createElement('button'); btn.className = 'aleph-card-close'; btn.textContent = 'CLOSE ✕'
-  cardEl.append(bg, c3, btn); wrap.appendChild(cardEl); document.body.appendChild(wrap)
+  cardEl.append(bg, c3, btn); wrap.appendChild(cardEl)
+  // mount beside the comms box (same stacking world) so dialogue outranks it
+  const host = document.querySelector('#cutscene-screen .sb-stage') || document.body
+  host.appendChild(wrap)
 
   const r3 = new THREE.WebGLRenderer({ canvas: c3, alpha: true, antialias: true })
   r3.setSize(560, 560, false)

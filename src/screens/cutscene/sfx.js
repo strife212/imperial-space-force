@@ -19,8 +19,13 @@ const FILES = { laser: 'sfx/laser.mp3', explosion: 'sfx/explosion.mp3' }
 // fifth swelling up out of the wash — the room answering. Module-level with
 // its own lazy context (and cached impulse) — the card plays before any stage
 // audio engine exists.
+//
+// Mk II (the shipped version) layers on what small speakers can actually
+// reproduce — a bright crack, a 650Hz punch, a whisper of metallic afterring —
+// and runs a notch hotter. Mk I (the original, sub-heavy Cathedral) is kept
+// below as playTitleBoomMk1 for reference and A-B listening.
 let boomCtx = null, boomIR = null
-export function playTitleBoom() {
+function castCathedral(mk2) {
   if (getFlag('soundMuted')) return
   try { boomCtx = boomCtx || new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return }
   const ctx = boomCtx
@@ -29,7 +34,7 @@ export function playTitleBoom() {
 
   const comp = ctx.createDynamicsCompressor()
   comp.threshold.value = -12; comp.knee.value = 16; comp.ratio.value = 4; comp.attack.value = 0.002; comp.release.value = 0.35
-  const master = ctx.createGain(); master.gain.value = 0.85
+  const master = ctx.createGain(); master.gain.value = mk2 ? 1.0 : 0.85
   comp.connect(master); master.connect(ctx.destination)
 
   // the cathedral: a long synthetic impulse, built once and cached
@@ -60,7 +65,7 @@ export function playTitleBoom() {
   const noise = ctx.createBufferSource(); noise.buffer = nbuf
   const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 190; bp.Q.value = 0.8
   const nG = ctx.createGain()
-  nG.gain.setValueAtTime(0.6, t0); nG.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26)
+  nG.gain.setValueAtTime(mk2 ? 0.7 : 0.6, t0); nG.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.26)
   noise.connect(bp); bp.connect(nG); nG.connect(bus); noise.start(t0); noise.stop(t0 + 0.35)
 
   // 3 · the space answers — a low fifth swelling out of the wash
@@ -71,7 +76,32 @@ export function playTitleBoom() {
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.4)
     o.connect(g); g.connect(bus); o.start(t0 + 0.3); o.stop(t0 + 3.5)
   }
+
+  if (!mk2) return
+  // ── Mk II additions: energy where ears and small drivers live ──
+  // 4 · the crack — a short bright transient snap on the attack
+  const cr = ctx.createBufferSource(); cr.buffer = nbuf
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1400; hp.Q.value = 0.7
+  const cg = ctx.createGain()
+  cg.gain.setValueAtTime(0.38, t0); cg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.08)
+  cr.connect(hp); hp.connect(cg); cg.connect(bus); cr.start(t0, 0.13); cr.stop(t0 + 0.12)
+  // 5 · the mid punch — 650Hz body under the crack
+  const pu = ctx.createBufferSource(); pu.buffer = nbuf
+  const pb = ctx.createBiquadFilter(); pb.type = 'bandpass'; pb.frequency.value = 650; pb.Q.value = 0.9
+  const pg = ctx.createGain()
+  pg.gain.setValueAtTime(0.5, t0); pg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.2)
+  pu.connect(pb); pb.connect(pg); pg.connect(bus); pu.start(t0, 0.21); pu.stop(t0 + 0.28)
+  // 6 · a whisper of metallic afterring in the wash
+  for (const [f, g0] of [[178, 0.045], [241.3, 0.035]]) {
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(g0, t0 + 0.015)
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4)
+    o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + 1.5)
+  }
 }
+export function playTitleBoom() { castCathedral(true) }        // Mk II — shipped
+export function playTitleBoomMk1() { castCathedral(false) }    // the original, kept for A-B
 
 export function createCutsceneSfx() {
   let ctx = null

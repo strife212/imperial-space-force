@@ -1338,7 +1338,10 @@
    ship titles stay on one line) and reserved room for up to three lines so the
    box keeps a constant height — the name stays put instead of jumping as the
    line count varies or the text types itself in. */
-#cutscene-screen .sb-comms { width: min(580px, 92%); }
+/* cutscene comms ride above the holographic overlays (Aleph infocard, Logos
+   projection, both z 8200) so narration stays readable — still under the
+   title card (8400) and replay card (8500) */
+#cutscene-screen .sb-comms { width: min(580px, 92%); z-index: 8300; }
 #cutscene-screen .sb-comms-body { justify-content: flex-start; }
 #cutscene-screen .sb-comms-name { white-space: nowrap; }
 #cutscene-screen .sb-comms-text { min-height: 4.2em; }
@@ -1882,6 +1885,135 @@
 @keyframes aleph-close-pulse {
   0%, 100% { box-shadow: 0 0 0 rgba(94, 255, 160, 0); }
   50% { box-shadow: 0 0 22px rgba(94, 255, 160, 0.5), inset 0 0 10px rgba(94, 255, 160, 0.22); }
+}
+
+/* ── Logos: the Ecumenologion's simulated projection ────────────────────────
+   A DOM overlay above the stage canvas — never touched by the bloom pass. */
+.logos-proj-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 8200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.logos-proj {
+  position: relative;
+  width: min(88vw, 156vh);
+  aspect-ratio: 1500 / 880;
+  pointer-events: none;   /* invisible until shown — don't eat intro clicks */
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.logos-proj.is-on { opacity: 1; transform: scale(1); pointer-events: auto; }
+.logos-proj canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.logos-proj-btns {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 18px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.logos-proj-btns.is-ready { opacity: 1; pointer-events: auto; }
+.logos-proj-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55em 1.6em;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: clamp(10px, 1vw, 16px);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+.logos-proj-btn--replay {
+  background: rgba(143, 214, 255, 0.08);
+  border: 2px solid rgba(143, 214, 255, 0.7);
+  color: #8fd6ff;
+}
+.logos-proj-btn--replay:hover { background: rgba(143, 214, 255, 0.22); color: #d8f2ff; }
+.logos-proj-btn--go {
+  background: rgba(94, 255, 160, 0.1);
+  border: 2px solid rgba(94, 255, 160, 0.85);
+  color: #8affb8;
+  animation: aleph-close-pulse 1.4s ease-in-out infinite;
+}
+.logos-proj-btn--go:hover {
+  background: rgba(94, 255, 160, 0.3);
+  color: #c8ffdd;
+  animation-play-state: paused;
+}
+/* the centred START SIMULATION button — removed once pressed */
+.logos-proj-start {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  padding: 0.8em 2.2em;
+  font-size: clamp(13px, 1.35vw, 21px);
+}
+/* the simulation's own dialogue: the line reads first, NEXT plays what it
+   just explained */
+.logos-dlg {
+  position: absolute;
+  left: 50%;
+  bottom: 3.2%;
+  transform: translateX(-50%);
+  width: min(78%, 1060px);
+  display: none;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 22px;
+  background: rgba(4, 10, 18, 0.94);
+  border: 1px solid rgba(148, 214, 255, 0.4);
+}
+.logos-dlg.is-on { display: flex; }
+.logos-dlg-name {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 0.8vw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #8fd6ff;
+}
+.logos-dlg-text {
+  flex: 1 1 auto;
+  height: calc(1.45em * 3);   /* a fixed three-line well — the box never resizes */
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 1.05vw, 16px);
+  line-height: 1.45;
+  color: #d8e4f8;
+}
+.logos-dlg-text > span { white-space: pre-wrap; }
+.logos-dlg-cursor { color: #8fd6ff; animation: logos-cursor-blink 0.9s steps(1) infinite; }
+@keyframes logos-cursor-blink { 50% { opacity: 0; } }
+.logos-dlg-next {
+  flex: 0 0 auto;
+  visibility: hidden;
+  font-size: clamp(11px, 1vw, 16px);
+}
+.logos-dlg-next.is-ready {
+  visibility: visible;
+  animation: logos-next-pulse 1.15s ease-in-out infinite;
+}
+.logos-dlg-next.is-ready:hover { animation-play-state: paused; }
+@keyframes logos-next-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(94, 255, 160, 0);
+    background: rgba(94, 255, 160, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(94, 255, 160, 0.6), inset 0 0 10px rgba(94, 255, 160, 0.28);
+    background: rgba(94, 255, 160, 0.22);
+  }
 }
 
 /* Standalone (deep-linked) replay end-card: a black screen over the fade layer */

@@ -25,7 +25,7 @@ const DEFAULT_TIMES = {
   muster:          [3, 12, 15, 18.5, 25, 31, 36],
   warfront:        [2, 5, 9, 14],
   theHush:         [2, 6, 10, 14],
-  theLitany:       [2, 7, 12, 18],
+  theLitany:       [2, 9, 13, 17, 21, 25.5],
   theFall:         [2, 6, 11, 16],
   theResolve:      [2, 6, 10, 14],
   theAnnunciator:  [2, 6, 10, 14],
