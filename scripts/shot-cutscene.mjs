@@ -22,7 +22,7 @@ const W = 1280, H = 720
 
 const DEFAULT_TIMES = {
   firstContact:    [2, 8, 14, 20, 24],
-  muster:          [2, 6, 10, 14],
+  muster:          [3, 12, 15, 18.5, 25, 31, 36],
   warfront:        [2, 5, 9, 14],
   theHush:         [2, 6, 10, 14],
   theLitany:       [2, 7, 12, 18],

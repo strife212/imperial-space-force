@@ -28,11 +28,12 @@ const ADD = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: f
 
 // Holographic radar grid: distance rings every 20u, spokes every 30°, a slow
 // rotating sweep that brightens the rings as it passes, and a hot outer rim.
-const NAV_GRID_VERT = /* glsl */`
+// (Exported — the Critical Mass cutscene draws its chart with the same grid.)
+export const NAV_GRID_VERT = /* glsl */`
   varying vec2 vP;
   void main() { vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
 `
-const NAV_GRID_FRAG = /* glsl */`
+export const NAV_GRID_FRAG = /* glsl */`
   precision highp float;
   varying vec2 vP;
   uniform float uTime;
