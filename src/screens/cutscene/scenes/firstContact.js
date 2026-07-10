@@ -282,7 +282,7 @@ export default {
     const flagship = createFlagship(ctx, {
       deathDrift: 0,
       model: buildScienceVessel,                // the Cassiopeia-class hull — an instrument, not a warship
-      glowPos: [[0.42, -5.2], [-0.42, -5.2]],   // seated in the nacelles' nozzle bells
+      glowPos: [[0.38, -3.95], [-0.38, -3.95]], // seated in the twin stern nozzles
       onDestroyed: () => {
         shake = 1.6
         comms.show(SHIP_NAME, DLG3, { persist: true })
@@ -294,7 +294,7 @@ export default {
     flagship.group.position.copy(flagship.ship.pos)
 
     // an instrument hull reads by its shapes, not by glow — ease the emissive
-    // so the key light can model the dish, spars and collar rings
+    // so the key light can model the dish, masts and keel
     flagship.group.children[0].material.emissiveIntensity = 0.3
 
     // every bomb that lands rocks the camera

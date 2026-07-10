@@ -522,10 +522,12 @@ function buildRedCruiser() {
   return mergeGeometries(parts, false)
 }
 
-// The Cassiopeia-class science vessel — long and slender, about a capital's
-// length but unmistakably an instrument rather than a weapon: a probe spine
-// tipped with a sensor globe, encircled by collar rings, carrying a dorsal
-// survey dish and outrigger instrument booms in place of guns.
+// The Cassiopeia-class science vessel — the fleet's angular hull language
+// (see buildBlueCapital2: elevated main hull over a forward keel, tall stern,
+// forward bridge tower) re-tasked as an instrument. Where the warship carries
+// gun housings and MAC barrels, this hull carries a dorsal survey dish, an
+// observation dome, sensor bays and antennas — slimmer throughout, and with
+// nothing that reads as a weapon.
 function buildScienceVessel() {
   const parts = []
   const add = (g) => { parts.push(g); return g }
@@ -542,50 +544,58 @@ function buildScienceVessel() {
     for (const dd of ds) { dd.rotateX(tilt); dd.translate(tx, ty, tz); parts.push(dd) }
   }
 
-  // ── hull: one continuous spindle, lofted stern lip to nose tip ──
+  // ── upper main hull, a slimmer cut of the warship's slab ──
   let g
-  {
-    const prof = [[0.30, 0], [0.44, 0.8], [0.56, 2.2], [0.64, 4.4], [0.64, 6.0], [0.56, 7.6], [0.42, 8.9], [0.26, 10.0], [0.12, 10.9], [0.03, 11.2]]
-      .map(([x, y]) => new THREE.Vector2(x, y))
-    g = add(new THREE.LatheGeometry(prof, 28)); g.rotateX(Math.PI / 2); g.translate(0, 0, -4.6)
-  }
-  g = add(new THREE.SphereGeometry(0.3, 16, 10)); g.translate(0, 0, -4.55)                                    // rounded stern boat-tail
-  for (const [r, z, h] of [[0.525, -3.0, 0.12], [0.655, -0.6, 0.14], [0.6, 2.6, 0.12]]) {                     // flush hull bands
-    g = add(new THREE.CylinderGeometry(r, r, h, 28)); g.rotateX(Math.PI / 2); g.translate(0, 0, z)
-  }
-  g = add(new THREE.SphereGeometry(0.22, 16, 12)); g.translate(0, 0.58, 2.4)                                  // observation dome
-  g = add(new THREE.BoxGeometry(0.05, 0.5, 0.9)); g.rotateX(-0.25); g.translate(0, 0.48, 4.2)                 // swept dorsal sensor blade
-  g = add(new THREE.SphereGeometry(0.15, 12, 10)); g.translate(0, -0.38, 4.4)                                 // chin sensor blister
-  for (const s of [1, -1]) {                                                                                  // conformal lab pods
-    g = add(new THREE.CapsuleGeometry(0.24, 2.2, 6, 16)); g.rotateX(Math.PI / 2); g.translate(s * 0.72, -0.08, 0.9)
-  }
+  g = add(new THREE.BoxGeometry(1.1, 0.85, 5.0)); g.translate(0, 0.2, 0)                    // long main hull
+  g = add(new THREE.BoxGeometry(0.82, 0.62, 1.3)); g.translate(0, 0.12, 3.0)                // bow taper
+  g = add(new THREE.BoxGeometry(0.52, 0.42, 0.8)); g.translate(0, 0.06, 3.95)               // blunt bow tip
+  // stern — the same tall block, without the brute bulk
+  g = add(new THREE.BoxGeometry(1.25, 1.15, 1.35)); g.translate(0, 0.28, -2.85)             // stern block
+  g = add(new THREE.BoxGeometry(0.9, 0.32, 0.55)); g.translate(0, 0.98, -2.75)              // raised aft deck
+  // forward bridge tower, capped by an observation dome instead of a gun deck
+  g = add(new THREE.BoxGeometry(0.55, 0.48, 1.3)); g.translate(0, 0.85, 1.35)               // bridge block
+  g = add(new THREE.BoxGeometry(0.4, 0.3, 0.55)); g.translate(0, 1.12, 1.7)                 // bridge step
+  g = add(new THREE.BoxGeometry(0.07, 0.55, 0.07)); g.translate(0, 1.5, 1.9)                // sensor mast
+  g = add(new THREE.SphereGeometry(0.17, 16, 12)); g.translate(0, 1.15, 0.85)               // observation dome
 
-  // ── the main survey dish, yoked on a mast amidships ──
-  g = add(new THREE.BoxGeometry(0.13, 0.6, 0.13)); g.translate(0, 0.85, -0.45)
-  g = add(new THREE.BoxGeometry(0.5, 0.1, 0.4)); g.translate(0, 1.14, -0.3)         // yoke cradle, reaching into the pack
-  dish(1.25, -0.9, 0, 1.46, -0.4)                                                   // aimed up-forward, seated on the yoke
+  // ── lower keel, projecting forward under the bow — its bow is a sensor
+  //    suite where the warship mounts its forward guns ──
+  g = add(new THREE.BoxGeometry(0.6, 0.5, 2.6)); g.translate(0, -0.35, 0.5)                 // hull-to-keel connector
+  g = add(new THREE.BoxGeometry(0.82, 0.62, 3.9)); g.translate(0, -0.9, 0.7)                // ventral keel
+  g = add(new THREE.BoxGeometry(0.72, 0.52, 1.1)); g.translate(0, -0.92, 3.1)               // keel bow: sensor suite housing
+  g = add(new THREE.SphereGeometry(0.15, 12, 10)); g.translate(0, -1.22, 3.3)               // chin sensor blister
+  // the long forward whip boom, reaching from the sensor suite (not a barrel)
+  g = add(new THREE.CylinderGeometry(0.012, 0.028, 2.3, 6)); g.rotateX(Math.PI / 2); g.translate(0, -0.9, 4.75)
+  g = add(new THREE.SphereGeometry(0.038, 8, 8)); g.translate(0, -0.9, 5.95)                // its tip
 
-  // ── antennas: a long forward whip boom off the nose, two raked dorsal whips ──
-  g = add(new THREE.CylinderGeometry(0.008, 0.024, 2.1, 6)); g.rotateX(Math.PI / 2); g.translate(0, 0, 7.1)   // forward whip boom
-  g = add(new THREE.SphereGeometry(0.035, 8, 8)); g.translate(0, 0, 8.15)                                     // its tip
-  g = add(new THREE.CylinderGeometry(0.016, 0.03, 1.5, 6)); g.rotateX(-0.3); g.translate(-0.5, 0.97, -1.6)
-  g = add(new THREE.SphereGeometry(0.045, 8, 8)); g.translate(-0.5, 1.69, -1.82)
-  g = add(new THREE.CylinderGeometry(0.014, 0.026, 1.1, 6)); g.rotateX(-0.3); g.translate(0.5, 0.73, -2.1)
-  g = add(new THREE.SphereGeometry(0.04, 8, 8)); g.translate(0.5, 1.26, -2.26)
+  // ── the main survey dish, yoked on a mast on the spine behind the bridge ──
+  g = add(new THREE.BoxGeometry(0.13, 0.55, 0.13)); g.translate(0, 0.85, -0.9)
+  g = add(new THREE.BoxGeometry(0.5, 0.1, 0.42)); g.translate(0, 1.15, -0.8)                // yoke cradle, reaching into the pack
+  dish(1.2, -0.9, 0, 1.5, -0.85)                                                            // aimed up-forward, seated on the yoke
 
-  // ── swept radiator wings, rooted deep in the hull ──
+  // ── flank instrument bays where the warship wears sponson plating ──
   for (const s of [1, -1]) {
-    g = add(new THREE.BoxGeometry(2.0, 0.04, 0.75)); g.rotateY(s * 0.55); g.translate(s * 1.1, 0, -2.2)
-    g = add(new THREE.BoxGeometry(2.04, 0.07, 0.07)); g.translate(0, 0, 0.4); g.rotateY(s * 0.55); g.translate(s * 1.1, 0, -2.2)  // leading spar
+    g = add(new THREE.BoxGeometry(0.22, 0.45, 2.4)); g.translate(s * 0.72, 0.05, -0.1)      // instrument bay
+    g = add(new THREE.CylinderGeometry(0.13, 0.13, 0.55, 10)); g.rotateX(Math.PI / 2); g.translate(s * 0.72, 0.05, 1.0)  // sensor drum set into its bow
   }
 
-  // ── stern: raked fins, conformal nacelles half-buried in the boat-tail ──
-  g = add(new THREE.BoxGeometry(0.05, 0.8, 1.0)); g.rotateX(-0.4); g.translate(0, 0.6, -3.8)                  // dorsal fin
-  g = add(new THREE.BoxGeometry(0.05, 0.7, 0.9)); g.rotateX(-0.3); g.translate(0, -0.5, -3.8)                 // ventral fin
+  // ── raked dorsal whips off the aft deck ──
+  g = add(new THREE.CylinderGeometry(0.016, 0.03, 1.5, 6)); g.rotateX(-0.3); g.translate(-0.4, 1.75, -2.9)
+  g = add(new THREE.SphereGeometry(0.045, 8, 8)); g.translate(-0.4, 2.47, -3.12)
+  g = add(new THREE.CylinderGeometry(0.014, 0.026, 1.1, 6)); g.rotateX(-0.3); g.translate(0.4, 1.6, -2.7)
+  g = add(new THREE.SphereGeometry(0.04, 8, 8)); g.translate(0.4, 2.13, -2.86)
+
+  // ── aft vanes, raked gentler than the warship's — radiators, not armour ──
+  g = add(new THREE.BoxGeometry(0.08, 1.15, 1.25)); g.rotateZ(-0.3); g.translate(0.5, 0.5, -3.1)
+  g = add(new THREE.BoxGeometry(0.08, 1.15, 1.25)); g.rotateZ(0.3); g.translate(-0.5, 0.5, -3.1)
+  // thin swept radiator panels, rooted into the hull flanks
   for (const s of [1, -1]) {
-    g = add(new THREE.CapsuleGeometry(0.22, 1.6, 6, 16)); g.rotateX(Math.PI / 2); g.translate(s * 0.42, 0, -4.1)  // nacelle body
-    g = add(new THREE.TorusGeometry(0.225, 0.035, 8, 20)); g.translate(s * 0.42, 0, -3.3)                     // intake ring
-    g = add(new THREE.CylinderGeometry(0.24, 0.17, 0.4, 14, 1, true)); g.rotateX(Math.PI / 2); g.translate(s * 0.42, 0, -5.15)  // nozzle bell
+    g = add(new THREE.BoxGeometry(1.6, 0.05, 0.95)); g.rotateY(s * 0.3); g.translate(s * 1.15, -0.05, -1.7)
+  }
+
+  // twin engine nozzles, set into the stern face
+  for (const s of [1, -1]) {
+    g = add(new THREE.CylinderGeometry(0.17, 0.21, 0.5, 10)); g.rotateX(Math.PI / 2); g.translate(s * 0.38, 0, -3.72)
   }
   return mergeGeometries(parts, false)
 }
