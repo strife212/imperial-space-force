@@ -6,8 +6,9 @@ import { useFitScale } from '../hooks/useScreenScale'
 import { splitCapName } from './battle/constants'
 import {
   NODE_BATTLES, SHIP_COST, getFleet, setFleet, getCredits, spendCredits, addCredits,
-  fleetStrength, getFlagshipName, getUnsellableFighters,
+  fleetStrength, getFlagshipName, getUnsellableFighters, getUpgrades, upgradeStatLines,
 } from '../lib/campaign'
+import { getEnemyUpgrades } from '../lib/enemyCards'
 import './shipyard.css'
 
 const KINDS = [
@@ -15,6 +16,26 @@ const KINDS = [
   { key: 'bombers',  kind: 'bomber',  label: 'Heavy Bombers' },
   { key: 'cruisers', kind: 'cruiser', label: 'Missile Cruisers' },
 ]
+
+// A fleet's card-buff tally — "3 FLEET UPGRADES" — with the combined per-stat
+// effects (the Fleet Review's list) revealed on hover. Used on both panels:
+// the player's owned cards, and the enemy node's rolled buffs (battle 5+).
+function UpgradeTally({ upgrades, side, title }) {
+  const count = Object.values(upgrades).reduce((s, lvl) => s + lvl, 0)
+  if (!count) return null
+  const lines = upgradeStatLines(upgrades)
+  return (
+    <div className={`sy-upg sy-upg--${side}`}>
+      <span className="sy-upg-count">{count} FLEET UPGRADE{count > 1 ? 'S' : ''}</span>
+      <div className="sy-upg-tip">
+        <div className="sy-upg-tip-title">{title}</div>
+        {lines.map((l) => (
+          <div className={`sy-upg-line${l.gold ? ' sy-upg-line--gold' : ''}`} key={l.text}>{l.text}</div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 // A wrapped row of ship silhouettes, capped so a huge enemy fleet stays readable.
 function SpriteRow({ team, kind, count, locked = 0, max = 16 }) {
@@ -58,8 +79,14 @@ export default function ShipyardScreen({ nodeIndex, onDeploy, onExit, onPreview 
     setFleet(nf); setFleetState(nf); setCreditsState(getCredits())
   }
 
+  // enemy card buffs (battle 5+): rolled once per campaign for this node, then
+  // fixed — the intel here shows exactly what deploys, including any volunteer
+  // fighters the buffs add to the enemy comp
+  const enemyUpgrades  = getEnemyUpgrades(nodeIndex)
+  const playerUpgrades = getUpgrades()
+
   // strength readouts (flagship is always present on both sides → +1 capital each)
-  const enemyComp  = node.enemy
+  const enemyComp  = { ...node.enemy, fighters: node.enemy.fighters + (enemyUpgrades.unsellableFighter || 0) }
   const yourStr    = fleetStrength({ ...fleet, fighters: fleet.fighters + unsellable })
   const enemyStr   = fleetStrength(enemyComp)
   const ratio      = enemyStr > 0 ? yourStr / enemyStr : 2
@@ -102,6 +129,7 @@ export default function ShipyardScreen({ nodeIndex, onDeploy, onExit, onPreview 
                 <div className="sy-flagship-name">{flagship.name}</div>
                 <div className="sy-flagship-class">FLAGSHIP · ALWAYS DEPLOYED</div>
               </div>
+              <UpgradeTally upgrades={playerUpgrades} side="blue" title="FLEET AUGMENTS" />
             </div>
 
             {KINDS.map(({ key, kind, label }) => {
@@ -138,6 +166,7 @@ export default function ShipyardScreen({ nodeIndex, onDeploy, onExit, onPreview 
                 <div className="sy-flagship-name">{node.enemyName}</div>
                 <div className="sy-flagship-class">ENEMY FLAGSHIP</div>
               </div>
+              <UpgradeTally upgrades={enemyUpgrades} side="red" title="ENEMY AUGMENTS" />
             </div>
 
             {KINDS.map(({ key, kind, label }) => (

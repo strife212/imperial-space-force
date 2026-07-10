@@ -556,10 +556,12 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       // ── Spawn the two fleets (loose cloud on each flank, charging inward) ─────
       const reserveLeft = { blue: 0, red: 0 }   // fighters held off-field, fed in as reinforcements
       const ships = []
-      // roguelike combat modifiers (campaign only) — applied to the player's blue ships
+      // roguelike combat modifiers (campaign only) — the player's cards on blue,
+      // and from battle 5 the node's own rolled card buffs on red
       const blueMods = (isCampaign && campaign.mods) || null
+      const redMods  = (isCampaign && campaign.redMods) || null
       const spawnFleet = (team, sx, vdir) => {
-        const fm = team === 'blue' ? blueMods?.fighter : null
+        const fm = team === 'blue' ? blueMods?.fighter : redMods?.fighter
         for (let i = 0; i < compRef.current[team].fighters; i++) {
           const reserve = i >= FIELD_FIGHTER_CAP     // beyond the field cap: held back as reinforcements
           const row = i % 5, col = Math.floor(i / 5)
@@ -639,9 +641,12 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         y: (Math.random() - 0.5) * 6,
         omega: (CAP_SPEED / orbitR) * (Math.random() < 0.5 ? 1 : -1),
       }
-      // blue flagship upgrades (campaign roguelike): bumped hull + a missile launcher
+      // flagship upgrades (campaign roguelike): bumped hull + a missile launcher —
+      // the enemy flagship can field the same cards from its node's rolled buffs
       const blueCapHp = (isCampaign && campaign.capMaxHp) || CAP_HP
       const blueCapMissile = isCampaign && !!campaign.capMissile
+      const redCapHp = CAP_HP + ((isCampaign && campaign.redCapHpBonus) || 0)
+      const redCapMissile = isCampaign && !!campaign.redCapMissile
       const spawnCapital = (team, startAngle) => {
         const mat = new THREE.MeshStandardMaterial({
           color: TEAMS[team].color, emissive: TEAMS[team].color,
@@ -689,8 +694,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         mesh.position.copy(pos)
         orient(mesh, vel)
         scene.add(mesh)
-        const cm = team === 'blue' ? blueMods?.flagship : null
-        const capHp = (team === 'blue' ? blueCapHp : CAP_HP) + (cm ? cm.hp : 0)
+        const cm = team === 'blue' ? blueMods?.flagship : redMods?.flagship
+        const capHp = (team === 'blue' ? blueCapHp : redCapHp) + (cm ? cm.hp : 0)
         ships.push({
           mesh, mat, team, hp: capHp, maxHp: capHp, alive: true, pos, vel,
           name: team === 'blue' ? blueCapNameRef.current : redCapNameRef.current,
@@ -700,7 +705,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           fireCd: 0.5 + Math.random(), flash: 0,
           isCapital: true, kills: 0, weapons: CAP_WEAPONS + (cm ? cm.weapons : 0), armor: ARMOR_FLAGSHIP + (cm ? cm.armor : 0), radius: 16, route, glows, fires, emitCd: 0,
           shieldMesh: shield.mesh, shieldMat: shield.mat, shieldFlash: 0, flares: FLARES_FLAGSHIP + (cm ? cm.flares : 0),
-          capMissile: team === 'blue' && blueCapMissile, missileCd: 1.2 + Math.random() * 1.5,
+          capMissile: team === 'blue' ? blueCapMissile : redCapMissile, missileCd: 1.2 + Math.random() * 1.5,
           regen: cm ? cm.regen : 0,   // flagship auto-repair (HP/sec) from roguelike upgrades
         })
       }

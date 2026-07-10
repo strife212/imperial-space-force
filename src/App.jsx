@@ -31,6 +31,7 @@ import CardVaultScreen from './screens/CardVaultScreen'
 import DrawTestScreen from './screens/DrawTestScreen'
 import FleetBoot from './screens/FleetBoot'
 import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, hasMacroMissile, getCombatMods, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
+import { getEnemyBattleExtras } from './lib/enemyCards'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import UrgentMessageOverlay from './components/UrgentMessageOverlay'
@@ -163,17 +164,22 @@ export default function App() {
   // persistent roster, enemy fixed for the node), plus result/exit/retry callbacks.
   const exitCampaign = () => { setCampaignNode(null); setScreen('campaign-map') }
   const toggleMapStyle = () => setMapStyle(s => { const n = s === 'sector' ? 'stellar' : 'sector'; setFlag('campaignMapStyle', n); return n })
-  const campaignBattle = (i) => ({
+  const campaignBattle = (i) => {
+    const enemyX = getEnemyBattleExtras(i)        // the node's own card buffs (battle 5+)
+    return {
     nodeIndex:  i,
     nodeTitle:  NODE_BATTLES[i].title,
     enemyName:  NODE_BATTLES[i].enemyName,
-    enemyComp:  NODE_BATTLES[i].enemy,
+    enemyComp:  { ...NODE_BATTLES[i].enemy, fighters: NODE_BATTLES[i].enemy.fighters + enemyX.extraFighters },
     sky:        NODE_BATTLES[i].sky,              // nebula backdrop for this node (default first sky)
     playerComp: getDeployFleet(),                 // buyable fleet + permanent (unsellable) fighters
     capMaxHp:   getCapMaxHp(),                     // flagship hull upgrades
     capMissile: hasCapMissile(),                  // flagship missile-launcher upgrade
     macroMissile: hasMacroMissile(),              // 2nd admiral skill: macro-missile barrage
     mods:       getCombatMods(),                  // aggregated stat upgrades applied to blue ships
+    redMods:       enemyX.mods,                   // the enemy node's aggregated card buffs
+    redCapHpBonus: enemyX.capHpBonus,             // enemy Reinforced Hull levels
+    redCapMissile: enemyX.capMissile,             // enemy Spinal Missile Battery
     flagshipName: getFlagshipName(),
     reward:     NODE_BATTLES[i].reward,
     onResolve:  (won) => recordBattle(i, won),    // banks Requisition + unlocks next node (once)
@@ -181,7 +187,7 @@ export default function App() {
     onRetry:    () => setScreen('shipyard'),       // rebuild the fleet, then re-deploy
     // a first-clear win offers a roguelike upgrade; otherwise straight back to the map
     onContinue: (result) => { if (result && result.firstClear) setScreen('upgrade'); else exitCampaign() },
-  })
+  } }
   // Where a finished cutscene goes next: campaign → muster the fleet (shipyard);
   // a debug playthrough → the next story beat; a single scene → back to source.
   const afterCutscene = (id) => {

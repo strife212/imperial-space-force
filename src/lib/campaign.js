@@ -95,13 +95,13 @@ export function getCapMaxHp() { return CAP_HP + 5 * (getUpgrades().capHp || 0) }
 export function hasCapMissile() { return (getUpgrades().capMissile || 0) > 0 }               // flagship homing-missile launcher
 export function hasMacroMissile() { return (getUpgrades().macroMissile || 0) > 0 }           // 2nd admiral skill: macro-missile barrage
 
-// Flagship/fleet combat modifiers granted by the roguelike upgrades, aggregated
-// for the battle to apply to the player's blue ships at spawn. Every term is
+// Flagship/fleet combat modifiers granted by roguelike upgrades, aggregated for
+// the battle to apply to a team's ships at spawn. Takes any { id: level } map —
+// the player's owned upgrades or an enemy node's rolled buffs. Every term is
 // additive and scales with the upgrade's level; an unowned upgrade contributes 0,
 // so with no upgrades this returns an all-zero (no-op) modifier set. Designed so
 // higher-rarity cards simply contribute larger numbers to the same knobs.
-export function getCombatMods() {
-  const u = getUpgrades()
+export function aggregateCombatMods(u) {
   const L = (id) => u[id] || 0
   return {
     flagship: {
@@ -117,6 +117,29 @@ export function getCombatMods() {
       fireMul: Math.pow(0.75, L('fighterRof')),                                // each level fires 25% faster
     },
   }
+}
+export function getCombatMods() { return aggregateCombatMods(getUpgrades()) }
+
+// Human-readable per-stat totals for any { id: level } upgrade map — the same
+// list the Fleet Review shows, shared with the shipyard's hover intel for both
+// the player's fleet and a buffed enemy node. Numbers come from the same
+// aggregation the battle applies, so the readout can never drift from combat.
+export function upgradeStatLines(u) {
+  const mods = aggregateCombatMods(u)
+  const t = []
+  if (u.macroMissile) t.push({ text: 'MACRO MISSILE BARRAGE', gold: true })   // the legendary leads the list
+  const capHull = 5 * (u.capHp || 0) + mods.flagship.hp
+  if (capHull) t.push({ text: `+${capHull} FLAGSHIP HULL` })
+  if (mods.flagship.armor) t.push({ text: `+${mods.flagship.armor}% FLAGSHIP ARMOUR` })
+  if (mods.flagship.weapons) t.push({ text: `+${mods.flagship.weapons} BROADSIDE GUN${mods.flagship.weapons > 1 ? 'S' : ''}` })
+  if (mods.flagship.regen) t.push({ text: `+${mods.flagship.regen} HP/SEC REPAIR` })
+  if (mods.flagship.flares) t.push({ text: `+${mods.flagship.flares} FLARES` })
+  if (u.capMissile) t.push({ text: 'HOMING MISSILE BATTERY' })
+  if (mods.fighter.hp) t.push({ text: `+${mods.fighter.hp} HP PER FIGHTER` })
+  if (mods.fighter.armor) t.push({ text: `+${mods.fighter.armor}% FIGHTER ARMOUR` })
+  if (mods.fighter.fireMul < 1) t.push({ text: `+${Math.round((1 - mods.fighter.fireMul) * 100)}% FIGHTER FIRE RATE` })
+  if (u.unsellableFighter) t.push({ text: `+${u.unsellableFighter} PERMANENT FIGHTER${u.unsellableFighter > 1 ? 'S' : ''}` })
+  return t
 }
 
 // The fleet actually deployed to battle: the buyable fleet plus any permanent
@@ -170,6 +193,7 @@ export function resetCampaign() {
   setFlag('operatorPortrait', '')  // campaign-map portrait hides again
   setFlag('fleetName', '')
   setFlag('upgrades', {})           // wipe roguelike upgrades back to none
+  setFlag('enemyUpgrades', {})      // enemy nodes reroll their buffs next campaign
 }
 
 // Selectable operators, in carousel order. Mirrors the roster in CharacterSelect

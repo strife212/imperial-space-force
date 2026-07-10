@@ -109,6 +109,37 @@
 .sy-flagship-name { font-size: 14px; font-weight: 700; letter-spacing: 0.04em; color: var(--c-ash); }
 .sy-flagship-class { font-size: 9px; letter-spacing: 0.2em; color: var(--c-ash-dim); text-transform: uppercase; }
 
+/* fleet-upgrade tally — hover for the combined per-stat effects */
+.sy-upg { position: relative; margin-left: auto; align-self: center; }
+.sy-upg-count {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
+  cursor: help; white-space: nowrap;
+  border-bottom: 1px dotted currentColor;
+  padding-bottom: 2px;
+}
+.sy-upg--blue .sy-upg-count { color: #ffd24a; }
+.sy-upg--red .sy-upg-count { color: #ff5a4a; }
+.sy-upg-tip {
+  display: none;
+  position: absolute; right: 0; top: calc(100% + 8px);
+  z-index: 40;
+  min-width: 230px;
+  padding: 10px 14px 12px;
+  background: rgba(6, 10, 20, 0.97);
+  border: 1px solid var(--c-line-2);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+}
+.sy-upg--blue .sy-upg-tip { border-color: rgba(255, 210, 74, 0.45); }
+.sy-upg--red .sy-upg-tip { border-color: rgba(255, 90, 74, 0.45); }
+.sy-upg:hover .sy-upg-tip { display: block; }
+.sy-upg-tip-title {
+  font-size: 9px; letter-spacing: 0.28em; color: var(--c-ash-dim);
+  margin-bottom: 7px; padding-bottom: 5px;
+  border-bottom: 1px solid var(--c-line);
+}
+.sy-upg-line { font-size: 11px; letter-spacing: 0.1em; color: var(--c-ash); padding: 2.5px 0; white-space: nowrap; }
+.sy-upg-line--gold { color: #ffb454; font-weight: 700; }
+
 /* ship rows */
 .sy-row {
   display: flex; flex-direction: column; gap: 7px;
