@@ -191,8 +191,33 @@
 }
 .up-card:hover .up-card-cta { color: #fff; }
 
-/* debug draw-test controls (re-roll / back) beneath the card row */
-.up-debug-controls { display: flex; gap: 16px; justify-content: center; margin-top: 6px; }
+/* ── the taken card: dips down and stamps a plus beneath it, then the screen
+     moves on — no further clicks while the beat plays ── */
+.up-cards--locked { pointer-events: none; }
+.up-card.up-card--picked,
+.up-card.up-card--picked:hover {
+  transform: translateY(18px);
+  transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.up-card-pick {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--up-accent);
+  text-shadow: 0 0 14px rgba(var(--up-rgb), 0.85), 0 0 32px rgba(var(--up-rgb), 0.5);
+  animation: up-pick-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both;
+  pointer-events: none;
+}
+@keyframes up-pick-pop {
+  from { opacity: 0; transform: translate(-50%, -8px) scale(0.4); }
+  to   { opacity: 1; transform: translate(-50%, 0)    scale(1); }
+}
+
+/* debug draw-test controls (re-roll / back) beneath the card row — dropped
+   low enough that a picked card's dip + plus stamp never reaches them */
+.up-debug-controls { display: flex; gap: 16px; justify-content: center; margin-top: 44px; }
 .up-debug-btn {
   font-family: var(--font-mono);
   font-size: 12px;

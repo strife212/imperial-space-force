@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useScreenScale, SCREEN_DESIGN_HEIGHT } from '../hooks/useScreenScale'
 import { getUpgrades } from '../lib/campaign'
 import './upgrade.css'
@@ -235,11 +235,13 @@ export const pickUpgrades = (n = 3, { pin = null } = {}) => {
 
 // A single upgrade card. Reused by the post-battle pick and the debug card vault.
 // `card` is a UPGRADE_CARDS entry; `badge` is optional corner content (e.g. owned count).
-export function UpgradeCard({ card, onClick, cta = 'SELECT ▸', badge = null }) {
+// `picked` plays the taken animation: the card dips and stamps a plus beneath it.
+export function UpgradeCard({ card, onClick, cta = 'SELECT ▸', badge = null, picked = false }) {
   const { rarity, tag, title, desc, stats, Icon } = card
   return (
-    <button className={`up-card up-card--${rarity}`} onClick={onClick}>
+    <button className={`up-card up-card--${rarity}${picked ? ' up-card--picked' : ''}`} onClick={onClick}>
       {badge}
+      {picked && <span className="up-card-pick" aria-hidden="true">✚</span>}
       <span className="up-card-top">
         <span className="up-card-rarity">{RARITY_LABEL[rarity]}</span>
         <span className="up-card-tag">{tag}</span>
@@ -262,7 +264,19 @@ export function UpgradeCard({ card, onClick, cta = 'SELECT ▸', badge = null })
 // (optional card id) scripts the centre slot.
 export default function UpgradeScreen({ onChoose, pin = null }) {
   const [options] = useState(() => pickUpgrades(3, { pin }))
+  const [picked, setPicked] = useState(null)
   const innerRef = useScreenScale(SCREEN_DESIGN_HEIGHT)
+  const clickSfx = useRef(null)
+  useEffect(() => {
+    const a = new Audio(`${import.meta.env.BASE_URL}click.wav`); a.preload = 'auto'; clickSfx.current = a
+  }, [])
+  // the chosen card dips and stamps its plus before the screen moves on
+  const choose = (id) => {
+    if (picked) return
+    if (clickSfx.current) { clickSfx.current.currentTime = 0; clickSfx.current.play().catch(() => {}) }
+    setPicked(id)
+    setTimeout(() => onChoose(id), 1000)
+  }
   return (
     <div id="upgrade-screen">
       <div className="up-inner" ref={innerRef}>
@@ -271,9 +285,9 @@ export default function UpgradeScreen({ onChoose, pin = null }) {
           <div className="up-title">SELECT AN AUGMENT</div>
           <div className="up-sub">VICTORY SECURED // CHOOSE ONE UPGRADE FOR YOUR FLEET</div>
         </div>
-        <div className="up-cards">
+        <div className={`up-cards${picked ? ' up-cards--locked' : ''}`}>
           {options.map((card) => (
-            <UpgradeCard key={card.id} card={card} onClick={() => onChoose(card.id)} />
+            <UpgradeCard key={card.id} card={card} picked={picked === card.id} onClick={() => choose(card.id)} />
           ))}
         </div>
       </div>

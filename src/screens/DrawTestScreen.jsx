@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useScreenScale, SCREEN_DESIGN_HEIGHT } from '../hooks/useScreenScale'
 import { addUpgrade, getUpgrades } from '../lib/campaign'
 import { pickUpgrades, UpgradeCard, UPGRADE_CARDS } from './UpgradeScreen'
@@ -16,10 +16,26 @@ const RARITY_RANK = { legendary: 0, epic: 1, rare: 2, uncommon: 3, basic: 4 }
 export default function DrawTestScreen({ onBack }) {
   const [draw, setDraw] = useState(() => pickUpgrades(3))
   const [owned, setOwned] = useState(() => getUpgrades())
+  const [picked, setPicked] = useState(null)
   const innerRef = useScreenScale(SCREEN_DESIGN_HEIGHT)
+  const clickSfx = useRef(null)
+  useEffect(() => {
+    const a = new Audio(`${import.meta.env.BASE_URL}click.wav`); a.preload = 'auto'; clickSfx.current = a
+  }, [])
 
   const reroll = () => setDraw(pickUpgrades(3))
-  const collect = (id) => { addUpgrade(id); setOwned({ ...getUpgrades() }); reroll() }
+  // same taken animation as the post-battle pick: dip + plus, then collect
+  const collect = (id) => {
+    if (picked) return
+    if (clickSfx.current) { clickSfx.current.currentTime = 0; clickSfx.current.play().catch(() => {}) }
+    setPicked(id)
+    setTimeout(() => {
+      addUpgrade(id)
+      setOwned({ ...getUpgrades() })
+      setPicked(null)
+      reroll()
+    }, 1000)
+  }
 
   const entries = Object.entries(owned)
     .filter(([id, lvl]) => lvl > 0 && UPGRADE_CARDS[id])
@@ -36,9 +52,9 @@ export default function DrawTestScreen({ onBack }) {
             <div className="up-title">RANDOM CARD DRAW</div>
             <div className="up-sub">CLICK A CARD TO COLLECT IT — IT ADDS TO YOUR LIST AND RE-ROLLS</div>
           </div>
-          <div className="up-cards">
+          <div className={`up-cards${picked ? ' up-cards--locked' : ''}`}>
             {draw.map((card) => (
-              <UpgradeCard key={card.id} card={card} onClick={() => collect(card.id)} cta="✚ COLLECT" />
+              <UpgradeCard key={card.id} card={card} picked={picked === card.id} onClick={() => collect(card.id)} cta="✚ COLLECT" />
             ))}
           </div>
           <div className="up-debug-controls">
