@@ -1,33 +1,129 @@
 import * as THREE from 'three'
 import { TEAMS } from '../../battle/constants'
-import { makeRingedPlanet, buildBlueModel } from '../../battle/geometry'
+import { buildBlueModel } from '../../battle/geometry'
 import { buildAnnunciator } from '../models'
 import { playLanceCharge, preloadLanceSfx } from '../../../lib/lanceSfx'
+import { getFlag } from '../../../lib/store'
 
-// The last resort of the Empire, never yet fired in anger: the Annunciator-class
-// battlestation spins up its mass driver and loads a black-hole package.
+// The last resort of the Empire, never yet fired in anger. The Cathedra's
+// golden word arrives down the light, the launch codes verify box by box —
+// and only the player's LAUNCH wakes the great driver: coils, arcs, the round
+// forming at the muzzle, the whole spin-up, then Her word releases it.
 const LINE1 = 'Annunciator armed. Black-hole package loaded. Driver spinning to ninety percent of light.'
+const LINE_CODES = 'Launch codes received.'
 const LINE2 = 'Caelum canit, illa audit.'   // the Admiralty's ritual response…
 const LINE3 = 'Let it be cast.'             // …and Her word alone releases it
 const MUZZLE = new THREE.Vector3(31, 0, 0)
+const RAY_T = 2.2, CODES_T = 4.6, PANEL_T = 6.8   // the word arrives, is spoken, is verified
+
+// codetick.wav for each locking code character — decoded once into a lazy
+// WebAudio buffer so fifteen rapid plays cost one tiny source node each
+// (no HTMLAudio clones), sharing the title-boom pattern.
+const TICK_BASE = import.meta.env?.BASE_URL ?? '/'
+let tickCtx = null, tickBuf = null, tickLoading = null
+function initCodeTick() {
+  try { tickCtx = tickCtx || new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return }
+  tickLoading = tickLoading || fetch(`${TICK_BASE}codetick.wav`)
+    .then((r) => r.arrayBuffer())
+    .then((ab) => tickCtx.decodeAudioData(ab))
+    .then((b) => { tickBuf = b })
+    .catch(() => {})
+}
+function playCodeTick() {
+  if (getFlag('soundMuted') || !tickCtx || !tickBuf) return
+  if (tickCtx.state === 'suspended') tickCtx.resume().catch(() => {})
+  const src = tickCtx.createBufferSource(); src.buffer = tickBuf
+  const g = tickCtx.createGain(); g.gain.value = 0.5
+  src.connect(g); g.connect(tickCtx.destination)
+  src.start()
+}
+
+// ── The launch-code verifier ─────────────────────────────────────────────────
+// A diegetic reprise of the old fire-control terminal's sequence: fifteen code
+// boxes cycling A–Z0–9, locking true one by one, then LAUNCH enables — and
+// waits for the player's hand. Mounted beside the comms box (same stacking
+// world) like the other holographic overlays; the story clock holds until fired.
+const CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+const BOX_COUNT = 15
+const CYCLE_S = 0.075, LOCK_START_S = 0.7, LOCK_INTERVAL_S = 0.26
+const randChar = () => CODE_CHARS[(Math.random() * CODE_CHARS.length) | 0]
+
+function makeLaunchPanel({ track }, { onLock, onLaunch } = {}) {
+  const wrap = document.createElement('div'); wrap.className = 'ultima-wrap'
+  const panel = document.createElement('div'); panel.className = 'ultima-panel'
+  const eyebrow = document.createElement('div'); eyebrow.className = 'uc-eyebrow'; eyebrow.textContent = 'ANNUNCIATOR LAUNCH CONTROL'
+  const title = document.createElement('div'); title.className = 'uc-title'; title.textContent = 'VERIFYING LAUNCH CODES'
+  const boxRow = document.createElement('div'); boxRow.className = 'uc-boxes'
+  const boxes = [], finals = []
+  for (let i = 0; i < BOX_COUNT; i++) {
+    const b = document.createElement('div'); b.className = 'uc-box'; b.textContent = randChar()
+    boxRow.appendChild(b); boxes.push(b); finals.push(randChar())
+  }
+  const status = document.createElement('div'); status.className = 'uc-status'; status.textContent = 'AUTHENTICATING — 0 / 15'
+  const btn = document.createElement('button'); btn.className = 'uc-launch'; btn.textContent = 'LAUNCH'; btn.disabled = true
+  panel.append(eyebrow, title, boxRow, status, btn); wrap.appendChild(panel)
+  const host = document.querySelector('#cutscene-screen .sb-stage') || document.body
+  host.appendChild(wrap)
+
+  const state = { shown: false, fired: false, verified: false }
+  let lt = 0, cycleCd = 0, locked = 0
+  btn.addEventListener('click', () => {
+    if (state.fired || locked < BOX_COUNT) return
+    state.fired = true
+    panel.classList.remove('is-on')
+    setTimeout(() => { wrap.style.display = 'none' }, 500)
+    onLaunch?.()
+  })
+  track({ dispose: () => wrap.remove() })
+  return {
+    state,
+    show() {
+      state.shown = true
+      void panel.offsetWidth
+      panel.classList.add('is-on')
+    },
+    tick(dt) {
+      if (!state.shown || state.fired) return
+      lt += dt
+      const want = Math.max(0, Math.min(BOX_COUNT, Math.floor((lt - LOCK_START_S) / LOCK_INTERVAL_S) + 1))
+      while (locked < want) {
+        boxes[locked].textContent = finals[locked]
+        boxes[locked].classList.add('locked')
+        locked++
+        onLock?.(locked)
+        status.textContent = `AUTHENTICATING — ${locked} / ${BOX_COUNT}`
+        if (locked === BOX_COUNT) {
+          state.verified = true
+          status.textContent = 'CODES VERIFIED — LAUNCH ENABLED'
+          status.classList.add('verified')
+          btn.disabled = false
+          btn.classList.add('is-ready')
+        }
+      }
+      cycleCd -= dt
+      if (cycleCd <= 0 && locked < BOX_COUNT) {
+        for (let i = locked; i < BOX_COUNT; i++) boxes[i].textContent = randChar()
+        cycleCd = CYCLE_S
+      }
+    },
+  }
+}
 
 export default {
   label: 'CUTSCENE / ULTIMA RATIO',
   establishing: { name: 'ULTIMA RATIO', sub: 'Her Annunciator · The Last Resort of the Empire', stamp: 'HMSS FIRE-CONTROL BUS v6.2.41 · DEFCON-1' },
   feed: [
-    { t: 1.0,  level: 'ok',   text: '[OK] HMSS fire-control bus online · v6.2.41' },
-    { t: 3.0,  level: 'info', text: 'PHYSICS PACKAGE ARMED · Kerr–Newman warhead' },
-    { t: 5.2,  level: 'info', text: 'EM accelerator coils ×24 · capacitor bank 14.2 GJ · charging' },
-    { t: 7.5,  level: 'warn', text: 'Driver spin 0.90 c · rail thermal at ceiling' },
-    { t: 10.0, level: 'ok',   text: '[OK] GEODESIC INTERCEPT SOLUTION COMMITTED' },
-    { t: 12.5, level: 'crit', text: 'ARMED — LAUNCH ENABLED · awaiting Her word' },
+    { t: 1.0, level: 'ok',   text: '[OK] HMSS fire-control bus online · v6.2.41' },
+    { t: 2.9, level: 'ok',   text: '[OK] CATHEDRA CARRIER ACQUIRED · Her word rides the light' },
+    { t: 5.0, level: 'crit', text: 'LAUNCH CODES RECEIVED · verification pending' },
+    { t: 8.4, level: 'info', text: 'PHYSICS PACKAGE LOADED · Kerr–Newman warhead · awaiting authorisation' },
   ],
   readout: {
     id: 'PNL-007 · Driver',
     rows: [
-      { label: 'Rail V',   value: (t) => `${Math.min(0.90, t * 0.075).toFixed(2)} c` },
-      { label: 'Cap bank', value: (t) => `${Math.min(100, Math.floor(t * 11))}%` },
-      { label: 'Package',  value: 'TYPE-IV · K–N' },
+      { label: 'Carrier', value: (t) => (t < 2.9 ? 'SEARCHING' : 'CATHEDRA · LOCK') },
+      { label: 'Codes',   value: (t) => (t < 5.0 ? 'AWAITED' : 'RECEIVED') },
+      { label: 'Package', value: 'TYPE-IV · K–N' },
     ],
   },
   bloom: 0.75,
@@ -60,7 +156,7 @@ export default {
     const swirlMat = new THREE.MeshBasicMaterial({ color: 0xffe2b0, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false })
     const swirls = []
     for (let i = 0; i < 3; i++) {
-      const m = new THREE.Mesh(fx.blastGeo, swirlMat); m.scale.set(1.15, 0.16, 0.35); station.add(m)
+      const m = new THREE.Mesh(fx.blastGeo, swirlMat); m.scale.set(1.15, 0.16, 0.35); m.visible = false; station.add(m)
       swirls.push({ m, a: (i / 3) * Math.PI * 2 })
     }
 
@@ -69,8 +165,19 @@ export default {
     const sight = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 220, 6), sightMat)
     sight.rotation.z = Math.PI / 2; sight.position.set(31 + 110, 0, 0); sight.visible = false; station.add(sight)
 
-    // a quiet world behind the great gun
-    makeRingedPlanet(scene, [], new THREE.Vector3(40, -40, -170), new THREE.Vector3(0.4, 0.5, 0.6).normalize())
+    // the Cathedra's word, arriving down the light: the same golden pillar that
+    // rose from the crown in Providence, here received at the breech — the
+    // station's ear, not its throat
+    const RAY_FROM = new THREE.Vector3(-120, 130, -170), RAY_TO = new THREE.Vector3(-22, 3, 0)
+    const rayDir = new THREE.Vector3().subVectors(RAY_FROM, RAY_TO), rayLen = rayDir.length(); rayDir.normalize()
+    const rayMat = new THREE.MeshBasicMaterial({ color: 0xfff0c4, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+    const ray = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 0.7, rayLen, 12, 1, true), rayMat)
+    ray.position.copy(RAY_TO).addScaledVector(rayDir, rayLen / 2)
+    ray.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), rayDir)
+    ray.visible = false; scene.add(ray)
+    const rayGlowMat = new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+    const rayGlow = new THREE.Mesh(fx.blastGeo, rayGlowMat); rayGlow.position.copy(RAY_TO); rayGlow.scale.setScalar(1.6); scene.add(rayGlow)
+    const rayLight = new THREE.PointLight(0xffe9b0, 0, 130); rayLight.position.copy(RAY_TO); scene.add(rayLight)
 
     // the admiral-skill charge tone accompanies the round being fed; cut silently
     // on teardown so skipping mid-charge doesn't leave it playing
@@ -89,9 +196,9 @@ export default {
 
     // the round being charged, and energy streaming inward to feed it
     const chargeMat = new THREE.MeshBasicMaterial({ color: 0xfff0c4, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
-    const charge = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 20), chargeMat); charge.position.copy(MUZZLE); charge.scale.setScalar(0.3); station.add(charge)
+    const charge = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 20), chargeMat); charge.position.copy(MUZZLE); charge.scale.setScalar(0.3); charge.visible = false; station.add(charge)
     const haloMat = new THREE.MeshBasicMaterial({ color: 0xffc870, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false })
-    const halo = new THREE.Mesh(new THREE.SphereGeometry(1.8, 20, 20), haloMat); halo.position.copy(MUZZLE); station.add(halo)
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(1.8, 20, 20), haloMat); halo.position.copy(MUZZLE); halo.visible = false; station.add(halo)
     const streamMat = new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
     const streams = []
     const spawnStream = () => {
@@ -102,15 +209,26 @@ export default {
     }
 
     const _from = new THREE.Vector3(-58, 14, 40), _to = new THREE.Vector3(12, 7, 34), _p = new THREE.Vector3(), _d = new THREE.Vector3(), _l = new THREE.Vector3()
-    const LOOK_FROM = new THREE.Vector3(-18, 2, 0), LOOK_TO = new THREE.Vector3(26, 0, 0)
-    let T = 0, c1 = false, c2 = false, c3 = false, ended = false, streamCd = 0, chargeStarted = false
+    const LOOK_FROM = new THREE.Vector3(-18, 2, 0), LOOK_TO = new THREE.Vector3(14, 0, 0)   // settle a touch aft so the arriving ray stays in frame
+    const panel = makeLaunchPanel(ctx, {
+      onLock: () => playCodeTick(),
+      onLaunch: () => { sfx.rumble(0.6, 2.4); sfx.blip(520, 0.3, 0.5) },
+    })
+    initCodeTick()   // decode codetick.wav before the first lock needs it
+    let T = 0, launchT = 0, c1 = false, cCodes = false, c2 = false, c3 = false, ended = false, streamCd = 0, chargeStarted = false
+    let rayT = 0, rayStarted = false, panelShown = false, sightT = 0
     return (dt) => {
       T += dt
-      const charged = Math.min(1, T / 9)
+      // everything the driver does waits on the player's LAUNCH
+      if (panel.state.fired) launchT += dt
+      const charged = Math.min(1, launchT / 9)
       // charge.mp3 runs 9.55s; stretched to 0.6× it plays ~15.9s — the whole
-      // scene, its crescendo landing as the fade completes (~16.3s) — pitched
-      // down into a heavier spin-up for the great driver, and a touch quieter
-      if (!chargeStarted && T >= 0.4) { chargeStarted = true; discharge = playLanceCharge({ rate: 0.6, volume: 0.7 }) }
+      // spin-up, its crescendo landing as the scene fades — pitched down into
+      // a heavier voice for the great driver, and a touch quieter
+      if (!chargeStarted && panel.state.fired) { chargeStarted = true; discharge = playLanceCharge({ rate: 0.6, volume: 0.7 }) }
+      // the muzzle stays dark until the launch order — then the round forms
+      charge.visible = halo.visible = panel.state.fired
+      for (const sw of swirls) sw.m.visible = panel.state.fired
       charge.scale.setScalar(0.3 + charged * 2.8); halo.scale.setScalar(1 + charged * 2.4)
       chargeMat.opacity = 0.7 + 0.3 * Math.sin(T * 6) * charged
       for (const e of escorts) e.g.position.y = e.b + Math.sin(T * 1.1 + e.b) * 0.8
@@ -126,7 +244,7 @@ export default {
       }
 
       // capacitor arcs crawl faster as the bank fills
-      if (T > 3.5) {
+      if (launchT > 0.5) {
         for (const arc of arcs) {
           arc.cd -= dt
           if (arc.cd <= 0) {
@@ -150,11 +268,32 @@ export default {
         sw.m.rotation.y = sw.a
       }
 
-      // firing solution committed — the sight blinks out along the geodesic
-      if (T >= 10 && !sight.visible) { sight.visible = true; sfx.blip(1250, 0.2, 0.3) }
-      if (sight.visible) sightMat.opacity = (T < 12.4 ? 0.4 : Math.max(0, 0.4 - (T - 12.4) * 0.5)) * (0.6 + 0.4 * Math.sin(T * 9))
+      // the golden word arrives: the ray builds, the station answers in light —
+      // and once the codes verify, the word is delivered and the light withdraws
+      if (T >= RAY_T && !rayStarted) { rayStarted = true; ray.visible = true; sfx.rumble(0.4, 2.6); sfx.blip(660, 0.18, 0.9) }
+      if (rayStarted) {
+        rayT = panel.state.verified ? Math.max(0, rayT - dt / 1.1) : Math.min(1, rayT + dt / 1.4)
+        ray.visible = rayGlow.visible = rayT > 0.005
+        rayMat.opacity = rayT * (0.34 + 0.1 * Math.sin(T * 5.2))
+        ray.scale.set(1 + 0.15 * Math.sin(T * 3.1), 1, 1 + 0.15 * Math.cos(T * 2.7))
+        rayGlowMat.opacity = rayT * (0.5 + 0.2 * Math.sin(T * 6))
+        rayGlow.scale.setScalar(1.6 + rayT * 1.2 + 0.3 * Math.sin(T * 4.4))
+        rayLight.intensity = rayT * (2.2 + 0.5 * Math.sin(T * 4))
+      }
 
-      streamCd -= dt; if (streamCd <= 0) { spawnStream(); streamCd = 0.04 + (1 - charged) * 0.1 }
+      // the verifier: raised once the codes are spoken, held until LAUNCH
+      if (!panelShown && T >= PANEL_T) { panelShown = true; panel.show(); sfx.blip(1400, 0.3, 0.4) }
+      panel.tick(dt)
+
+      // firing solution committed — the sight blinks out along the geodesic
+      // once the driver has spun all the way up
+      if (!sight.visible && launchT >= 9.6) { sight.visible = true; sfx.blip(1250, 0.2, 0.3) }
+      if (sight.visible) {
+        sightT += dt
+        sightMat.opacity = (sightT < 2.4 ? 0.4 : Math.max(0, 0.4 - (sightT - 2.4) * 0.5)) * (0.6 + 0.4 * Math.sin(T * 9))
+      }
+
+      streamCd -= dt; if (panel.state.fired && streamCd <= 0) { spawnStream(); streamCd = 0.04 + (1 - charged) * 0.1 }
       for (let i = streams.length - 1; i >= 0; i--) {
         const s = streams[i]; _d.subVectors(MUZZLE, s.m.position); const d = _d.length(); _d.normalize()
         s.m.position.addScaledVector(_d, (28 + (16 - Math.min(16, d)) * 4) * dt); s.m.scale.multiplyScalar(0.97)
@@ -166,10 +305,11 @@ export default {
       const k = Math.min(1, T / 12), ke = k * k * (3 - 2 * k)
       _p.lerpVectors(_from, _to, ke); camera.position.copy(_p)
       _l.lerpVectors(LOOK_FROM, LOOK_TO, ke); camera.lookAt(_l)
-      if (!c1 && T >= 1.6) { c1 = true; comms.show('Admiralty Command', LINE1) }
-      if (!c2 && T >= 8.0) { c2 = true; comms.show('Admiralty Command', LINE2) }
-      if (!c3 && T >= 11.5) { c3 = true; comms.show('Her Imperial Majesty Iliantha III', LINE3, { persist: true }) }
-      if (!ended && T >= 15) { ended = true; end() }
+      if (!cCodes && T >= CODES_T) { cCodes = true; comms.show('Admiralty Command', LINE_CODES) }
+      if (!c1 && launchT >= 1.5) { c1 = true; comms.show('Admiralty Command', LINE1) }
+      if (!c2 && launchT >= 10.4) { c2 = true; comms.show('Admiralty Command', LINE2) }
+      if (!c3 && launchT >= 13.8) { c3 = true; comms.show('Her Imperial Majesty Iliantha III', LINE3, { persist: true }) }
+      if (!ended && launchT >= 17.5) { ended = true; end() }
     }
   },
 }

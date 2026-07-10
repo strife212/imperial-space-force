@@ -2000,6 +2000,102 @@
   visibility: hidden;
   font-size: clamp(11px, 1vw, 16px);
 }
+/* ── Ultima Ratio: the launch-code verifier ─────────────────────────────────
+   The old fire-control terminal's sequence, reprised as a cutscene overlay. */
+.ultima-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 8200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.ultima-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 38px 30px;
+  background: rgba(6, 10, 20, 0.96);
+  border: 1px solid rgba(255, 207, 90, 0.5);
+  box-shadow: 0 0 34px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.94);
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ultima-panel.is-on { opacity: 1; transform: scale(1); pointer-events: auto; }
+.uc-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.26em;
+  color: rgba(255, 207, 90, 0.55);
+}
+.uc-title {
+  font-family: var(--font-mono);
+  font-size: clamp(15px, 1.5vw, 22px);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #e8f0fc;
+}
+.uc-boxes { display: flex; gap: 7px; }
+.uc-box {
+  width: clamp(20px, 2.1vw, 32px);
+  height: clamp(26px, 2.7vw, 42px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 1.25vw, 19px);
+  font-weight: 700;
+  color: rgba(148, 214, 255, 0.75);
+  border: 1px solid rgba(148, 214, 255, 0.35);
+  background: rgba(10, 18, 34, 0.6);
+}
+.uc-box.locked {
+  color: #bfe6ff;
+  border-color: rgba(143, 214, 255, 0.95);
+  background: rgba(143, 214, 255, 0.16);
+}
+.uc-status {
+  font-family: var(--font-mono);
+  font-size: clamp(10px, 1vw, 14px);
+  letter-spacing: 0.18em;
+  color: rgba(148, 214, 255, 0.6);
+}
+.uc-status.verified { color: #ffcf5a; }
+.uc-launch {
+  margin-top: 4px;
+  padding: 0.7em 3.4em;
+  font-family: var(--font-mono);
+  font-size: clamp(13px, 1.35vw, 20px);
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-indent: 0.24em;
+  color: rgba(150, 160, 180, 0.5);
+  background: rgba(40, 48, 66, 0.3);
+  border: 2px solid rgba(120, 130, 150, 0.35);
+  cursor: not-allowed;
+}
+.uc-launch.is-ready {
+  color: #ffb0a0;
+  background: rgba(255, 90, 74, 0.14);
+  border-color: rgba(255, 90, 74, 0.9);
+  cursor: pointer;
+  animation: ultima-launch-pulse 1.05s ease-in-out infinite;
+}
+.uc-launch.is-ready:hover {
+  color: #ffd6cc;
+  background: rgba(255, 90, 74, 0.3);
+  animation-play-state: paused;
+}
+@keyframes ultima-launch-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 90, 74, 0); }
+  50% { box-shadow: 0 0 24px rgba(255, 90, 74, 0.6), inset 0 0 12px rgba(255, 90, 74, 0.3); }
+}
+
 .logos-dlg-next.is-ready {
   visibility: visible;
   animation: logos-next-pulse 1.15s ease-in-out infinite;

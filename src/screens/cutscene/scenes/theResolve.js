@@ -6,6 +6,7 @@ import { buildCathedra } from '../models'
 // At the Novarayan Throneworld: the Empress has heard the Discord, as the Final
 // Hearing foretold, and resolves to cast the Lance.
 const LINE1 = 'I have heard it. The Discord, as it was foretold.'
+const LINE_MID = 'It is decided. I shall break the wheel of eternity. The song will continue for the first time.'
 const LINE2 = 'From the Cathedra high, to the listening below — falls the Lance that the Discord besought.'
 
 export default {
@@ -15,14 +16,15 @@ export default {
     { t: 1.2,  level: 'info', text: 'The Cathedra in session · honour guard on station' },
     { t: 4.0,  level: 'info', text: 'She has heard it · the Discord, as it was foretold' },
     { t: 7.2,  level: 'warn', text: 'The Synod defers · prophecy invoked: AUDITIO ULTIMA' },
-    { t: 10.8, level: 'crit', text: 'Her word: the Lance is to be cast · STRATCON 1 in effect' },
+    { t: 9.4,  level: 'crit', text: 'She speaks: the wheel of eternity is to be broken' },
+    { t: 13.4, level: 'crit', text: 'Her word: the Lance is to be cast · STRATCON 1 in effect' },
   ],
   readout: {
     id: 'Synod Record · CLR-Ω',
     rows: [
       { label: 'Hearing',  value: 'FINAL' },
-      { label: 'Stratcon', value: (t) => (t < 10.8 ? '2' : '1') },
-      { label: 'Assent',   value: (t) => (t < 10.8 ? 'IN SESSION' : 'GIVEN') },
+      { label: 'Stratcon', value: (t) => (t < 13.2 ? '2' : '1') },
+      { label: 'Assent',   value: (t) => (t < 13.2 ? 'IN SESSION' : 'GIVEN') },
     ],
   },
   bloom: 0.7,
@@ -95,19 +97,20 @@ export default {
     let anthemStarted = false
 
     const camFrom = new THREE.Vector3(0, 26, 64), camTo = new THREE.Vector3(-15, 0, 34), _p = new THREE.Vector3()
-    let T = 0, c1 = false, c2 = false, ended = false, resolve = 0
+    let T = 0, c1 = false, cMid = false, c2 = false, ended = false, resolve = 0
     return (dt) => {
       T += dt
       planetTick(T)
       engineTick(T)
 
       if (!anthemStarted) { anthemStarted = true; anthem.play() }
-      anthem.setVolume(0.22 * Math.min(1, T / 2.5) * Math.min(1, Math.max(0, (16.5 - T) / 2.5)))
+      anthem.setVolume(0.22 * Math.min(1, T / 2.5) * Math.min(1, Math.max(0, (22 - T) / 2.5)))
 
       for (const c of clouds) { c.sp.position.x += c.v * dt; if (c.sp.position.x > 75) c.sp.position.x = -75 }
 
-      // the resolve: the crown ignites and the word ascends
-      if (T >= 7.5) {
+      // the resolve: the crown ignites and the word ascends — with Her order,
+      // after the decision is spoken
+      if (T >= 13.0) {
         if (resolve === 0) { pillar.visible = true; sfx.rumble(0.4, 2.6); sfx.blip(660, 0.18, 0.9) }
         resolve = Math.min(1, resolve + dt / 1.4)
         pillarMat.opacity = resolve * (0.34 + 0.1 * Math.sin(T * 5.2))
@@ -127,8 +130,9 @@ export default {
       _p.lerpVectors(camFrom, camTo, Math.min(1, T / 12)); camera.position.copy(_p)
       camera.lookAt(0, -2 + resolve * 9, 0)   // the eye follows the pillar up
       if (!c1 && T >= 2.0) { c1 = true; comms.show('Her Imperial Majesty Iliantha III', LINE1) }
-      if (!c2 && T >= 7.5) { c2 = true; comms.show('Her Imperial Majesty Iliantha III', LINE2, { persist: true }) }
-      if (!ended && T >= 15) { ended = true; end() }
+      if (!cMid && T >= 7.0) { cMid = true; comms.show('Her Imperial Majesty Iliantha III', LINE_MID, { persist: true }) }
+      if (!c2 && T >= 13.0) { c2 = true; comms.show('Her Imperial Majesty Iliantha III', LINE2, { persist: true }) }
+      if (!ended && T >= 20.5) { ended = true; end() }
     }
   },
 }
