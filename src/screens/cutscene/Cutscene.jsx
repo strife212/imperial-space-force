@@ -86,6 +86,15 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
     setReplayNonce((n) => n + 1)
   }
 
+  // Debug: Z force-advances any cutscene — even ones rendered unskippable
+  // (canSkip={false}), mid-title-card, or holding on an urgent overlay.
+  useEffect(() => {
+    const onKey = (e) => { if (!e.repeat && (e.key === 'z' || e.key === 'Z')) advance() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+
+
   // telemetry clock — drives scene.feed reveal and scene.readout live values
   // (held with the stage until the title card reveals, so t ≈ scene T)
   useEffect(() => {
