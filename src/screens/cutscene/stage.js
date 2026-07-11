@@ -65,7 +65,7 @@ export function createStage(mount, sceneDef, hooks) {
 
   const tracked = []
   const ctx = {
-    scene, camera, fx, sfx, orient, rimLight,
+    scene, camera, fx, sfx, orient, rimLight, mount,
     lights: { ambient, key: keyLight, rim: rimLight },
     backdrop: { starMat: backdrop.starMat, nebMat: backdrop.nebMat },
     // every comms box opens with the battle's radio chirp (scenes with their own

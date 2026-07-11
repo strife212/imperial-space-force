@@ -8,7 +8,7 @@ import theResolve from './theResolve'
 import theAnnunciator from './theAnnunciator'
 import theLance from './theLance'
 import theOrderRestored from './theOrderRestored'
-import cosmogony from './cosmogony'
+import cosmogony, { cosmogonyHybrid } from './cosmogony'
 
 // Registry of cutscene definitions. Each is a plain
 // `{ label, bloom?, create(ctx) -> update(dt) }` object; the <Cutscene> shell
@@ -17,7 +17,8 @@ import cosmogony from './cosmogony'
 export const SCENES = {
   firstContact, muster, warfront, theHush, theLitany,
   theFall, theResolve, theAnnunciator, theLance, theOrderRestored,
-  cosmogony,   // standalone (debug / extras) — not part of STORY
+  cosmogony,                     // standalone (debug / extras) — not part of STORY
+  cosmogony3: cosmogonyHybrid,   // the hybrid reel — the campaign's first-open intro
 }
 
 // The campaign, in order. Finishing one scene advances to the next; the last

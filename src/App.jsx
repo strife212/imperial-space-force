@@ -196,13 +196,14 @@ export default function App() {
     if (cutsceneChain && i >= 0 && i < STORY.length - 1) { setCutsceneId(STORY[i + 1]); setScreen('cutscene'); return }
     setScreen(cutsceneSource)
   }
-  // Open the campaign from the main menu. The very first time (per save), play the
-  // Cosmogony intro, which then routes on to the map; thereafter go straight there.
-  // Cleared by resetCampaign(), so wiping the save shows it again.
+  // Open the campaign from the main menu. The very first time (per save), play
+  // the Cosmogony III hybrid intro (3D + photographic memories), which then
+  // routes on to the map; thereafter go straight there. Cleared by
+  // resetCampaign(), so wiping the save shows it again.
   const openCampaign = () => {
     if (getFlag('cosmogonySeen')) { setScreen('campaign-map'); return }
     setFlag('cosmogonySeen', true)
-    setCutsceneSource('campaign-map'); setCutsceneId('cosmogony'); setCutsceneChain(false)
+    setCutsceneSource('campaign-map'); setCutsceneId('cosmogony3'); setCutsceneChain(false)
     setScreen('cutscene')
   }
 
@@ -274,9 +275,9 @@ export default function App() {
           // intro is always skippable — even after a campaign-progress reset.
           const isCampaignReplay = cutsceneSource === 'campaign' && campaignNode !== null && campaignNode < (getFlag('campaignProgress') || 0)
           const node1Veteran = cutsceneSource === 'campaign' && campaignNode === 0 && !!getFlag('everSelectedOperator')
-          // Cosmogony hides its skip when viewed on its own (debug); only the
-          // campaign intro (source 'campaign-map') keeps it.
-          const canSkip = cutsceneId === 'cosmogony'
+          // Cosmogony (either version) hides its skip when viewed on its own
+          // (debug); only the campaign intro (source 'campaign-map') keeps it.
+          const canSkip = (cutsceneId === 'cosmogony' || cutsceneId === 'cosmogony3')
             ? cutsceneSource === 'campaign-map'
             : cutsceneSource !== 'campaign' || isCampaignReplay || node1Veteran
           return <Cutscene key={cutsceneId} scene={SCENES[cutsceneId]} canSkip={canSkip} showOverlays={!cutsceneChain} onReturn={() => setScreen(cutsceneSource === 'campaign' ? 'campaign-map' : cutsceneSource)} onComplete={() => {

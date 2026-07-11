@@ -26,7 +26,7 @@ const FILES = { laser: 'sfx/laser.mp3', explosion: 'sfx/explosion.mp3' }
 // and runs a notch hotter. Mk I (the original, sub-heavy Cathedral) is kept
 // below as playTitleBoomMk1 for reference and A-B listening.
 let boomCtx = null, boomIR = null
-function castCathedral(mk2) {
+function castCathedral(mk2, vol = 1) {
   if (getFlag('soundMuted')) return
   try { boomCtx = boomCtx || registerAudioContext(new (window.AudioContext || window.webkitAudioContext)()) } catch (_) { return }
   const ctx = boomCtx
@@ -35,7 +35,7 @@ function castCathedral(mk2) {
 
   const comp = ctx.createDynamicsCompressor()
   comp.threshold.value = -12; comp.knee.value = 16; comp.ratio.value = 4; comp.attack.value = 0.002; comp.release.value = 0.35
-  const master = ctx.createGain(); master.gain.value = mk2 ? 1.0 : 0.85
+  const master = ctx.createGain(); master.gain.value = (mk2 ? 1.0 : 0.85) * vol
   comp.connect(master); master.connect(ctx.destination)
 
   // the cathedral: a long synthetic impulse, built once and cached
@@ -101,8 +101,8 @@ function castCathedral(mk2) {
     o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + 1.5)
   }
 }
-export function playTitleBoom() { castCathedral(true) }        // Mk II — shipped
-export function playTitleBoomMk1() { castCathedral(false) }    // the original, kept for A-B
+export function playTitleBoom(vol) { castCathedral(true, vol) }   // Mk II — shipped · vol scales the mix (post-compressor)
+export function playTitleBoomMk1() { castCathedral(false) }        // the original, kept for A-B
 
 export function createCutsceneSfx() {
   let ctx = null

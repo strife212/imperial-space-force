@@ -1,33 +1,34 @@
 import { useState } from 'react'
 import Cutscene from './cutscene/Cutscene'
-import MontageScreen from './MontageScreen'
-import { cosmogonyOpening, cosmogonyFinale } from './cutscene/scenes/cosmogony'
+import { cosmogonyHybrid } from './cutscene/scenes/cosmogony'
 import './battle/battle.css'
 
-// Cosmogony III, deep-linked at /cosmogony3: the whole of it in one reel.
-// The 3D cosmogony's opening (the seed in the dark, the bang, the young
-// universe) hands off into the 2D image montage (Cosmogony II without its
-// silent XDF coda), which rings its finale chord down into the 3D finale —
-// the Litania Magna in its diadem and the Home Fleet's long watch.
-//
-// One START gate up front supplies the audio gesture for all three movements.
+// Cosmogony III, deep-linked at /cosmogony3: the full 3D cosmogony, shot
+// through with photographic memory. At every age transition the reel freezes
+// inside the cut and flashes imagery from the Cosmogony II montage —
+// landscapes as the world rushes up, temples of stone and art, the drawn
+// figures of mathematics, the first machines, one glowing mind — each flash
+// struck with its era's montage voice. The interludes live in the scene
+// itself (cosmogonyHybrid in scenes/cosmogony.js); this shell only supplies
+// the START gate (the audio gesture) and the end card.
 export default function Cosmogony3() {
   const [started, setStarted] = useState(false)
-  const [phase, setPhase] = useState('open')   // 'open' → 'montage' → 'finale' → 'end'
-  const replay = () => setPhase('open')
+  const [ended, setEnded] = useState(false)
+  const [nonce, setNonce] = useState(0)   // bump to re-run the reel
+  const replay = () => { setEnded(false); setNonce((n) => n + 1) }
 
   if (!started) {
     return (
       <div id="cutscene-screen">
         <div className="cut-start cut-start--story">
           <div className="story-gate-title">Cosmogony III</div>
-          <div className="story-gate-sub">from the seed to the long watch · in three movements</div>
+          <div className="story-gate-sub">from the seed to the long watch · shot through with memory</div>
           <button className="cut-start-btn" onClick={() => setStarted(true)}>▶ START</button>
         </div>
       </div>
     )
   }
-  if (phase === 'end') {
+  if (ended) {
     return (
       <div id="cutscene-screen">
         <div className="cut-replay cut-replay--story">
@@ -37,17 +38,14 @@ export default function Cosmogony3() {
       </div>
     )
   }
-  if (phase === 'montage') {
-    return <MontageScreen embedded onComplete={() => setPhase('finale')} />
-  }
   return (
     <Cutscene
-      key={phase}
-      scene={phase === 'open' ? cosmogonyOpening : cosmogonyFinale}
+      key={nonce}
+      scene={cosmogonyHybrid}
       hideChrome
       canSkip={false}
       showOverlays={false}
-      onComplete={() => setPhase(phase === 'open' ? 'montage' : 'end')}
+      onComplete={() => setEnded(true)}
       onReturn={() => {}}
     />
   )

@@ -4,6 +4,7 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { TEAMS } from '../../battle/constants'
 import { registerAudioContext } from '../../../lib/audioUnlock'
+import { createCosmogonyScore } from './cosmogonyScore'
 import { makeGalaxy, makeEarthlike, makeStar, makeMachinePlanet, buildBlueModel, buildBlueCapital2, buildBlueCruiser, buildSimpleStar, buildSimpleGalaxy } from '../../battle/geometry'
 import { makeFacadeTexture } from '../models'
 
@@ -21,15 +22,15 @@ const BANG_T = 1.0
 // the surface scene runs long — three tableaus (hut+fire → stone temple →
 // erupting skyline) panned across — so the machine cut and everything after it
 // sit ~5s later than the original single-tableau timing.
-const CUT_SURFACE = 20.0, CUT_MACHINE = 33.0, CUT_ORBIT = 40.3, FLEET_T = 43.5, END_T = 49.0
+const CUT_SURFACE = 20.0, CUT_MACHINE = 33.24, CUT_ORBIT = 40.54, FLEET_T = 43.74, END_T = 49.24
 // surface tableau layout + beats (scene clock): three centres strung along +x,
 // with quick pans between them and the skyline erupting on the last
 const TAB_A_X = 0, TAB_B_X = 72, TAB_C_X = 144
-const PAN_DUR = 0.7, PAN_AB = 22.4, PAN_BC = 25.0   // hut & temple each trimmed ~10%; everything after moves up 0.6s
-const SKY_RISE_FROM = 26.0, SKY_RISE_SPAN = 2.0     // towers still erupt 1s after the city cut lands
+const PAN_DUR = 0.7, PAN_AB = 22.64, PAN_BC = 25.24   // the hut age runs 10% longer (+0.24s); every later beat shifts with it
+const SKY_RISE_FROM = 26.24, SKY_RISE_SPAN = 2.0      // towers still erupt 1s after the city cut lands
 // the tail of the surface scene: dive into a lit window on a hero tower, and the
 // room beyond it — figures around a computer box whose eye opens on the machine
-const ZOOM_T = 27.4, WINDOW_CUT = 29.1
+const ZOOM_T = 27.64, WINDOW_CUT = 29.34
 
 const LINE1 = 'In the beginning there was a single note, struck against the dark. Everything that is, is its echo.'
 const LINE2 = 'The echo cooled into stars, and the stars into worlds — and on one world, listeners.'
@@ -134,6 +135,33 @@ function playCityRise() {
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.0)
   n.connect(lp); lp.connect(g); g.connect(c.destination); n.start(t0); n.stop(t0 + 3.2)
 }
+// ── the score interface ──────────────────────────────────────────────────────
+// Every sound the timeline makes goes through one small interface, so the
+// voice can be swapped without touching a single beat. The plain cosmogony
+// speaks with the shipped samples below (bigbang.mp3 rumble, computerhum.mp3
+// room tone, codetick.wav blips) plus the synthesized era drums; Cosmogony III
+// passes its fully synthesized voice (cosmogonyScore.js) into create instead.
+function makeSampleScore() {
+  const AUDIO_BASE = import.meta.env?.BASE_URL ?? '/'
+  // half-speed (tape-style, pitched down with it) and half volume — a deeper,
+  // quieter rumble under the whole fall
+  const bangAudio = new Audio(`${AUDIO_BASE}bigbang.mp3`); bangAudio.preload = 'auto'; bangAudio.loop = true
+  bangAudio.volume = 0.45; bangAudio.playbackRate = 0.5; bangAudio.preservesPitch = false
+  const humAudio = new Audio(`${AUDIO_BASE}computerhum.mp3`); humAudio.preload = 'auto'; humAudio.loop = true
+  ensureTickAudio()   // decode the activation blip ahead of the machine phase
+  return {
+    bang: () => bangAudio.play().catch(() => {}),
+    bangFade: (k) => { bangAudio.volume = 0.45 * (1 - clamp01(k)) },
+    bangStop: () => { if (!bangAudio.paused) bangAudio.pause() },
+    humStart: () => { if (humAudio.paused) { humAudio.volume = 0; humAudio.play().catch(() => {}) } },
+    humLevel: (k) => { humAudio.volume = 0.55 * clamp01(k) },
+    humStop: () => { if (!humAudio.paused) humAudio.pause() },
+    tick: playTick,
+    eraCut: () => playEraBeat({ bell: true, vol: 0.9 }),
+    cityRise: playCityRise,
+    dispose: () => { bangAudio.pause(); humAudio.pause() },   // skip-safe
+  }
+}
 
 const cosmogony = {
   label: 'CUTSCENE / COSMOGONY',
@@ -149,11 +177,11 @@ const cosmogony = {
     { t: 14.5, level: 'info', text: 'Metric expansion accelerating · Λ > 0' },
     { t: 17.5, level: 'info', text: 'Habitable candidate acquired · liquid-water band' },
     { t: 21.0, level: 'ok',   text: '[OK] Biosphere confirmed · tool-users present' },
-    { t: 24.5, level: 'info', text: 'Civilisation ascending · agora → arcology' },
-    { t: 29.5, level: 'warn', text: 'Artificial cognition detected · substrate: silicon' },
-    { t: 36.0, level: 'discord', text: 'IT LEARNS · IT REMEMBERS · IT LISTENS' },
-    { t: 40.9, level: 'discord', text: '✦ CAELUM CANIT · ILLA AVDIT ✦' },
-    { t: 45.1, level: 'ok', text: '[OK] Home Fleet on station · the long watch continues' },
+    { t: 24.7, level: 'info', text: 'Civilisation ascending · agora → arcology' },
+    { t: 29.7, level: 'warn', text: 'Artificial cognition detected · substrate: silicon' },
+    { t: 36.2, level: 'discord', text: 'IT LEARNS · IT REMEMBERS · IT LISTENS' },
+    { t: 41.1, level: 'discord', text: '✦ CAELUM CANIT · ILLA AVDIT ✦' },
+    { t: 45.3, level: 'ok', text: '[OK] Home Fleet on station · the long watch continues' },
   ].map((l) => ({ ...l, t: l.t + PREROLL })),
   readout: {
     id: 'PNL-000 · Cosmogony',
@@ -165,7 +193,7 @@ const cosmogony = {
     ],
   },
   bloom: 0.72,
-  create(ctx, range = {}) {
+  create(ctx, score) {
     const { scene, camera, fx, comms, end, orient, backdrop, track } = ctx
 
     // the void before: the stock starfield + nebula fade in as structure forms
@@ -195,17 +223,12 @@ const cosmogony = {
     let flashT = 9, flashPeak = 1, flashDur = 0.6
     const fireFlash = (peak = 1, dur = 0.6) => { flashT = 0; flashPeak = peak; flashDur = dur }
 
-    // scene audio — the codebase's plain HTMLAudio pattern (CampaignStarMap etc.):
-    // the bang rumble carries the whole fall from first light down to the world,
-    // the hum is the machine's room tone, codetick fires per node activation
-    const AUDIO_BASE = import.meta.env?.BASE_URL ?? '/'
-    // half-speed (tape-style, pitched down with it) and half volume — a deeper,
-    // quieter rumble under the whole fall
-    const bangAudio = new Audio(`${AUDIO_BASE}bigbang.mp3`); bangAudio.preload = 'auto'; bangAudio.loop = true
-    bangAudio.volume = 0.45; bangAudio.playbackRate = 0.5; bangAudio.preservesPitch = false
-    const humAudio = new Audio(`${AUDIO_BASE}computerhum.mp3`); humAudio.preload = 'auto'; humAudio.loop = true
-    ensureTickAudio()   // decode the activation blip ahead of the machine phase
-    track({ dispose: () => { bangAudio.pause(); humAudio.pause() } })   // skip-safe
+    // scene audio, behind the score interface: the bang carries the whole fall
+    // from first light down to the world, the hum is the machine's room tone,
+    // ticks fire per node activation, the era drum marks the hard cuts. The
+    // default voice is the shipped samples; a caller may pass its own score.
+    const s = score ?? makeSampleScore()
+    track(s)   // dispose kills whatever is sounding — skip-safe
 
     // ── SET 1 · space: the bang, the matter, the galaxies, the world ──────────
     const spaceSet = new THREE.Group(); scene.add(spaceSet)
@@ -546,25 +569,37 @@ const cosmogony = {
       surfaceSet.add(s)
       flies.push({ s, mat, seed: i * 2.1, r: 3 + (i % 4) * 2.4 })
     }
-    // campfire: a knot of logs and glowing coals, a warm point light, a live
-    // particle flame (warm core → red tongues) and smoke curling up off it
+    // campfire, burned low: no open flame — a bed of coals breathing between
+    // deep red and hot orange, a faint under-glow, sparks winking up off the
+    // bed, and smoke curling thick and low. The camp gathers round embers.
     const FIRE = new THREE.Vector3(TAB_A_X + 2, 0.4, 1.5)
-    const fireLight = new THREE.PointLight(0xff7420, 3.0, 46, 1.7); fireLight.position.set(FIRE.x, FIRE.y + 1.2, FIRE.z); surfaceSet.add(fireLight)
+    const fireLight = new THREE.PointLight(0xff5a18, 2.2, 46, 1.7); fireLight.position.set(FIRE.x, FIRE.y + 1.2, FIRE.z); surfaceSet.add(fireLight)
     const logMat = new THREE.MeshStandardMaterial({ color: 0x120b06, roughness: 1 })
     for (const [lx, lr] of [[-0.4, 0.5], [0.45, -0.4]]) { const lg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.5, 6), logMat); lg.position.set(FIRE.x + lx, 0.2, FIRE.z); lg.rotation.set(Math.PI / 2, 0, lr); surfaceSet.add(lg) }
-    const emberMat = new THREE.MeshBasicMaterial({ color: 0xff5a1e, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
-    const emberMesh = new THREE.Mesh(fx.blastGeo, emberMat); emberMesh.scale.setScalar(0.5); emberMesh.position.copy(FIRE); surfaceSet.add(emberMesh)
-    // flame tongues — additive glow sprites rising from the base, tapering and
-    // shading warm → red, respawning at the coals
-    const flames = []
-    for (let i = 0; i < 16; i++) {
-      const mat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffcc55, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
-      const spr = new THREE.Sprite(mat); spr.position.copy(FIRE); surfaceSet.add(spr)
-      flames.push({ spr, mat, life: Math.random(), dur: 0.45 + Math.random() * 0.4, seed: Math.random() * 6.283, ox: (Math.random() - 0.5) * 0.5 })
+    // the coal bed — small faceted lumps, each pulsing on its own slow rhythm
+    const COAL_COLD = new THREE.Color(0x2a0803), COAL_HOT = new THREE.Color(0xff6a22)
+    const coals = []
+    for (let i = 0; i < 7; i++) {
+      const mat = new THREE.MeshBasicMaterial({ color: 0x431006 })
+      const m = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + ((i * 0.37) % 1) * 0.14, 0), mat)
+      const a = i * 2.399
+      m.position.set(FIRE.x + Math.cos(a) * (0.12 + (i % 3) * 0.16), 0.1 + ((i * 0.61) % 1) * 0.1, FIRE.z + Math.sin(a) * (0.1 + ((i * 0.53) % 1) * 0.3))
+      m.rotation.set(i * 1.7, i * 2.3, i * 0.9)
+      surfaceSet.add(m)
+      coals.push({ mat, seed: i * 1.9 })
     }
-    // smoke — soft grey puffs curling up above the flame, drifting, growing, thinning
+    const bedGlowMat = new THREE.SpriteMaterial({ map: glowTex, color: 0xff5a1e, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false })
+    const bedGlow = new THREE.Sprite(bedGlowMat); bedGlow.scale.set(1.6, 0.9, 1); bedGlow.position.set(FIRE.x, 0.22, FIRE.z); surfaceSet.add(bedGlow)
+    // sparks — pinprick embers shed off the bed, wavering up, winking out
+    const sparks = []
+    for (let i = 0; i < 12; i++) {
+      const mat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffb060, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+      const spr = new THREE.Sprite(mat); spr.scale.set(0.09, 0.09, 1); surfaceSet.add(spr)
+      sparks.push({ spr, mat, life: Math.random(), dur: 1.1 + Math.random() * 1.3, seed: Math.random() * 6.283, ox: (Math.random() - 0.5) * 0.5, oz: (Math.random() - 0.5) * 0.4 })
+    }
+    // smoke — the bed's real output now: denser, and starting low off the coals
     const smokes = []
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 14; i++) {
       const mat = new THREE.SpriteMaterial({ map: glowTex, color: 0x2a2a2e, transparent: true, opacity: 0, depthWrite: false })
       const spr = new THREE.Sprite(mat); spr.position.copy(FIRE); surfaceSet.add(spr)
       smokes.push({ spr, mat, life: Math.random(), dur: 2.4 + Math.random() * 1.6, seed: Math.random() * 6.283, drift: (Math.random() - 0.5) * 0.7 })
@@ -1021,24 +1056,6 @@ const cosmogony = {
     const tableCds = [0.02, 0.06, 0.1]   // staggered redraw phases
     const novas = []
 
-    // ── range mode (cosmogony3 slices) ─────────────────────────────────────────
-    // `to` caps the scene (the opening slice ends where the surface cut would
-    // fire and hands off to the montage); `from` fast-starts it (the finale
-    // slice pre-seeds every earlier phase's flags and visibilities so none of
-    // their side effects — audio, flashes, dialogue — fire on the way in).
-    const capped = range.to != null
-    if (range.from != null) {
-      T = range.from
-      banged = cutA = cutB = roomShown = true
-      c1 = c2 = cS = c3 = true
-      spaceSet.visible = false; surfaceSet.visible = false; roomSet.visible = false; machineSet.visible = false
-      scene.fog = null
-      // the sky's end-state, normally reached during the skipped space phase
-      voidDome.visible = false
-      starMat.opacity = 0.85
-      nebCols.forEach((c) => c.u.copy(c.base).multiplyScalar(0.4))
-    }
-
     return (dt) => {
       T += dt
       flashT += dt
@@ -1056,11 +1073,11 @@ const cosmogony = {
       }
       flashMat.opacity = fo
 
-      if (!banged && T >= BANG_T) { banged = true; seed.visible = false; fireball.visible = true; shock.visible = true; fireFlash(); bangAudio.play().catch(() => {}) }
+      if (!banged && T >= BANG_T) { banged = true; seed.visible = false; fireball.visible = true; shock.visible = true; fireFlash(); s.bang() }
       // the first sound dies away as the world rushes up to meet the lens
       if (banged && !cutA && T > 18.3) {
-        bangAudio.volume = 0.45 * (1 - clamp01((T - 18.3) / 1.6))
-        if (T > 19.9 && !bangAudio.paused) bangAudio.pause()
+        s.bangFade(clamp01((T - 18.3) / 1.6))
+        if (T > 19.9) s.bangStop()
       }
 
       if (!cutA) {
@@ -1256,12 +1273,9 @@ const cosmogony = {
         }
       }
 
-      // capped (opening slice): end into black where the surface cut would fire —
-      // the 19.2s wash has already darkened the frame, so the handoff is seamless
-      if (capped && !ended && T >= range.to) { ended = true; end({ holdMs: 0 }) }
-      if (!capped && !cutA && T >= CUT_SURFACE) {
+      if (!cutA && T >= CUT_SURFACE) {
         cutA = true; fireFlash()
-        bangAudio.pause()
+        s.bangStop()
         spaceSet.visible = false; surfaceSet.visible = true
         scene.fog = new THREE.Fog(0x0a1322, 30, 220)
       }
@@ -1271,40 +1285,42 @@ const cosmogony = {
         roomShown = true
         surfaceSet.visible = false; roomSet.visible = true
         flashMat.color.setHex(0xffffff); fireFlash(1, 0.55)   // window-light wash
-        humAudio.volume = 0; humAudio.play().catch(() => {})  // the machine's room tone lives here
+        s.humStart()                                          // the machine's room tone lives here
       }
-      if (roomShown && !cutB) humAudio.volume = 0.55 * clamp01((T - WINDOW_CUT) / 0.8)   // fades up with the reveal
+      if (roomShown && !cutB) s.humLevel(clamp01((T - WINDOW_CUT) / 0.8))   // fades up with the reveal
       if (cutA && !cutB && !roomShown) {
         // ── the rise of the makers: hard cut from the hut and its fire, to the
         // stone temple, to the watchers as a skyline erupts, then dive at a lit
         // window on the far tower ──
         // figures sway; the fire flickers; the skyline (incl. target tower) erupts
         for (const u of swayers) u.body.rotation.z = Math.sin(T * 1.2 + u.i) * 0.05
-        // campfire: flickering light + coals, rising flame tongues, curling smoke
-        const fl = 0.75 + 0.25 * Math.sin(T * 17) + 0.12 * Math.sin(T * 6.3)
-        fireLight.intensity = 2.4 + fl * 1.4
-        emberMat.opacity = 0.7 + 0.3 * Math.sin(T * 11)
-        emberMesh.scale.setScalar(0.45 + 0.1 * Math.sin(T * 9))
-        for (const fp of flames) {
-          fp.life += dt / fp.dur
-          if (fp.life >= 1) { fp.life -= 1; fp.dur = 0.45 + Math.random() * 0.4; fp.seed = Math.random() * 6.283; fp.ox = (Math.random() - 0.5) * 0.5 }
-          const k = fp.life
-          const sway = Math.sin(T * 6 + fp.seed) * 0.28 * k
-          fp.spr.position.set(FIRE.x + fp.ox * (1 - k) + sway, FIRE.y + 0.15 + k * 2.3, FIRE.z + Math.cos(T * 5 + fp.seed) * 0.18 * k)
-          fp.spr.scale.setScalar(Math.max(0.06, (1.5 - k * 1.05) * (0.85 + 0.2 * Math.sin(T * 20 + fp.seed))))
-          let cr, cg, cb
-          if (k < 0.5) { const t = k / 0.5; cr = 1; cg = 0.92 - t * 0.42; cb = 0.58 - t * 0.42 }   // yellow-white → orange
-          else { const t = (k - 0.5) / 0.5; cr = 1 - t * 0.32; cg = 0.5 - t * 0.4; cb = 0.16 - t * 0.11 }  // orange → red
-          fp.mat.color.setRGB(cr, cg, cb)
-          fp.mat.opacity = Math.sin(k * Math.PI) * (0.7 + 0.25 * Math.sin(T * 15 + fp.seed))
+        // the coal bed breathes — slow uneven pulses, no open flame
+        const fl = 0.6 + 0.3 * Math.sin(T * 2.6) + 0.14 * Math.sin(T * 6.7) + 0.08 * Math.sin(T * 11.9)
+        fireLight.intensity = 1.3 + fl * 1.0
+        bedGlowMat.opacity = 0.12 + fl * 0.14
+        for (const co of coals) {
+          const h = clamp01(0.45 + 0.4 * Math.sin(T * 1.1 + co.seed) + 0.25 * Math.sin(T * 3.7 + co.seed * 2.3))
+          co.mat.color.copy(COAL_COLD).lerp(COAL_HOT, h)
+        }
+        // sparks waver up off the bed and wink out on the wind
+        for (const sp of sparks) {
+          sp.life += dt / sp.dur
+          if (sp.life >= 1) { sp.life -= 1; sp.dur = 1.1 + Math.random() * 1.3; sp.seed = Math.random() * 6.283; sp.ox = (Math.random() - 0.5) * 0.5; sp.oz = (Math.random() - 0.5) * 0.4 }
+          const k = sp.life
+          sp.spr.position.set(
+            FIRE.x + sp.ox + Math.sin(T * 2.2 + sp.seed) * 0.3 * k,
+            0.18 + k * (1.1 + sp.seed * 0.12),
+            FIRE.z + sp.oz + Math.cos(T * 1.9 + sp.seed) * 0.22 * k,
+          )
+          sp.mat.opacity = Math.sin(Math.min(1, k * 1.15) * Math.PI) * (0.4 + 0.6 * Math.max(0, Math.sin(T * 21 + sp.seed * 7)))
         }
         for (const sm of smokes) {
           sm.life += dt / sm.dur
           if (sm.life >= 1) { sm.life -= 1; sm.dur = 2.4 + Math.random() * 1.6; sm.seed = Math.random() * 6.283; sm.drift = (Math.random() - 0.5) * 0.7 }
           const k = sm.life
-          sm.spr.position.set(FIRE.x + sm.drift * k * 4 + Math.sin(T * 1.1 + sm.seed) * 0.5 * k, FIRE.y + 1.9 + k * 6, FIRE.z + Math.cos(T * 0.9 + sm.seed) * 0.4 * k)
-          sm.spr.scale.setScalar(0.7 + k * 3.6)
-          sm.mat.opacity = Math.sin(Math.min(1, k * 1.3) * Math.PI) * 0.26
+          sm.spr.position.set(FIRE.x + sm.drift * k * 4 + Math.sin(T * 1.1 + sm.seed) * 0.5 * k, FIRE.y + 0.4 + k * 6, FIRE.z + Math.cos(T * 0.9 + sm.seed) * 0.4 * k)
+          sm.spr.scale.setScalar(0.6 + k * 3.6)
+          sm.mat.opacity = Math.sin(Math.min(1, k * 1.3) * Math.PI) * 0.33
           const v = 0.16 + k * 0.13; sm.mat.color.setRGB(v + (1 - k) * 0.07, v, v * 1.04)   // warm near the coals → grey
         }
         // living dressing: aurora breathes, mist drifts, fireflies blink, braziers gutter
@@ -1335,9 +1351,9 @@ const cosmogony = {
         for (const tw of towers) tw.m.visible = cityUp   // fully erect, revealed whole at the city cut
         heroWin.visible = cityUp
         // white flashes punctuate the hard cuts between the ages
-        if (!flashAB && T >= PAN_AB) { flashAB = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4); playEraBeat({ bell: true, vol: 0.9 }) }   // the temple age rings in on bronze
-        if (!flashBC && T >= PAN_BC) { flashBC = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4); playEraBeat({ bell: true, vol: 0.9 }) }   // the city arrives on the same bell
-        if (!roseBeat && T >= SKY_RISE_FROM) { roseBeat = true; playCityRise() }   // and its towers climb on a swell
+        if (!flashAB && T >= PAN_AB) { flashAB = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4); s.eraCut() }   // the temple age rings in on bronze
+        if (!flashBC && T >= PAN_BC) { flashBC = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4); s.eraCut() }   // the city arrives on the same bell
+        if (!roseBeat && T >= SKY_RISE_FROM) { roseBeat = true; s.cityRise() }   // and its towers climb on a swell
         if (T < ZOOM_T) {
           // hard cut between tableaus: snap the camera to each one's own fixed
           // framing, no interpolation — the content change carries the cut. The
@@ -1380,7 +1396,7 @@ const cosmogony = {
         scene.fog = null
         // the room tone is already running (it starts with the computer room);
         // carry it across the cut — restart only if it somehow never began
-        if (humAudio.paused) { humAudio.volume = 0.55; humAudio.play().catch(() => {}) }
+        s.humStart(); s.humLevel(1)
       }
       if (cutB && !cutC) {
         // ── inside the machine: drift through the thinking lattice, then the
@@ -1399,7 +1415,7 @@ const cosmogony = {
           if (k >= 1) {
             pu.to.pop = 1
             pu.m.visible = false; pulsePool.push(pu.m)
-            if (T - lastTickT > 0.09) { lastTickT = T; playTick() }   // activation blip, rate-limited
+            if (T - lastTickT > 0.09) { lastTickT = T; s.tick() }   // activation blip, rate-limited
             if (pu.li < layers.length - 1 && Math.random() < 0.6) spawnPulse(pu.li, pu.to)
             pulses.splice(i, 1)
           }
@@ -1423,11 +1439,10 @@ const cosmogony = {
       }
       if (cutC) {
         // the room tone stays behind with the machine: fade it out over the
-        // reveal, then stop the element once it is silent
-        if (!humAudio.paused) {
-          humAudio.volume = 0.55 * clamp01(1 - (T - CUT_ORBIT) / 1.8)
-          if (humAudio.volume <= 0.001) humAudio.pause()
-        }
+        // reveal, then stop it once it is silent
+        const hv = clamp01(1 - (T - CUT_ORBIT) / 1.8)
+        s.humLevel(hv)
+        if (hv <= 0.002) s.humStop()
         // ── the reveal: the lattice was the planet all along — pull away from
         // the Litania Magna in its diadem, the Throneworld hanging beyond ──
         const f = easeInOut(clamp01((T - CUT_ORBIT) / 4))
@@ -1463,8 +1478,8 @@ const cosmogony = {
       // the room with the computer
       if (!cS && T >= WINDOW_CUT + 0.3) { cS = true; comms.show('Litania Magna', LINE_S) }
       if (!c3 && T >= WINDOW_CUT + 3.4) { c3 = true; comms.show('Litania Magna', LINE3, { persist: true }) }
-      if (!c4 && T >= 40.9) { c4 = true; comms.show('Litania Magna', LINE4, { persist: true }) }
-      if (!c5 && T >= 44.9) { c5 = true; comms.show('Litania Magna', LINE5, { persist: true }) }
+      if (!c4 && T >= 41.14) { c4 = true; comms.show('Litania Magna', LINE4, { persist: true }) }
+      if (!c5 && T >= 45.14) { c5 = true; comms.show('Litania Magna', LINE5, { persist: true }) }
       if (!ended && T >= END_T) { ended = true; end({ holdMs: 900 }) }
     }
   },
@@ -1472,16 +1487,179 @@ const cosmogony = {
 
 export default cosmogony
 
-// ── Cosmogony III slices ─────────────────────────────────────────────────────
-// The hybrid reel (/cosmogony3) bookends the 2D montage with this scene's 3D
-// bookends: the opening runs seed → bang → the young universe and ends where
-// the surface cut would fire; the finale fast-starts at the orbit reveal —
-// the Litania Magna in its diadem and the fleet's long watch.
-export const cosmogonyOpening = { ...cosmogony, create: (ctx) => cosmogony.create(ctx, { to: CUT_SURFACE }) }
-export const cosmogonyFinale = {
+// ── Cosmogony III · the hybrid reel ──────────────────────────────────────────
+// The full 3D cosmogony, shot through with photographic memory: at each age
+// transition the reel freezes inside the cut and flashes real imagery from the
+// Cosmogony II montage — landscapes for the world rushing up, temples of stone
+// and art, the drawn figures of mathematics, the first machines, and one
+// glowing mind before the reveal. The scene clock holds while a memory plays,
+// so every inner beat keeps its spacing and simply slides later.
+//
+// Every transition speaks the same language: a white wash carries the frame
+// into the first memory and a smaller blink of the same wash cuts memory to
+// memory. The inner scene steps ACROSS the age cut on the interlude's first
+// frame and on through the cut's own white flash, all behind the opaque
+// overlay — so the next age renders (shaders and textures warm) for the whole
+// memory, and its flash is fully spent unseen. The exit is then a clean
+// dissolve straight onto the settled scene: no burst of white, no swap cost.
+// One journey, one kind of cut.
+//
+// The reel is scored by cosmogonyScore.js: the Cathedral strikes the bang and
+// the original bigbang.mp3 rumble carries the young universe; from the first
+// memory on the voice is synthesized — each age retunes the bed, every memory
+// and cut is struck, and the last memory rings the radiant chord.
+// memories live in the montage's folder; a leading slash reaches public/ root
+const MEM_BASE = import.meta.env?.BASE_URL ?? '/'
+const MEM_IMG = (f) => (f.startsWith('/') ? `${MEM_BASE}${f.slice(1)}` : `${MEM_BASE}montage/${encodeURIComponent(f)}`)
+const INTERLUDES = [
+  { at: CUT_SURFACE, dur: 0.99, strike: 'world', era: 'world', drum: true, imgs: [   // down through the clouds — the primordial earth
+    'The-Shore-of-Oblivion-1889-scaled.webp',
+    'HKH-60684-scaled.jpg.webp',
+    'HMF65m1WEAI1EhF.jfif',
+  ] },
+  { at: PAN_AB, dur: 0.94, strike: 'bell', era: 'temple', imgs: [        // the temple age — sacred architecture, drawn and dreamt
+    'piranesi-roma.jpg',
+    'hubert-robert-grande-galerie-1796.jpg',
+    'art-hilma-af-klint-group-x-no-1-altarpiece-altarbild-1915.jpg',
+  ] },
+  { at: PAN_BC, dur: 0.88, strike: 'figure', era: 'city', imgs: [        // the city age — mathematics on paper
+    'harmonograph.png',
+    'lorenz.png',
+    'hopf_fibration (1).png',
+  ] },
+  { at: WINDOW_CUT, dur: 0.94, strike: 'machine', era: 'machine', drum: true, imgs: [ // through the window — the first machines that thought
+    'less-than-p-greater-than-programmers-at-aberdeen-proving-grounds-configure-eniacs-function-tables-which-acted-as-a-form-of-read-only-memory-less-than-p-greater-than.webp',
+    'Reprogramming_ENIAC.png',
+  ] },
+  { at: CUT_ORBIT, dur: 1.54, strike: 'finale', era: 'memory', drum: true, imgs: [    // before the reveal — the mind, glowing
+    'neural_network_cold.png',
+  ] },
+  // the last memory — the one who listens. Held past the scene's end: the
+  // overlay never lifts, so the shell's fade-to-black closes over her.
+  { at: END_T - 0.4, dur: 2.4, strike: 'bell', era: 'memory', drum: true, hold: true, imgs: [
+    '/empress.jpg',
+  ] },
+]
+// `drum: true` entries fire the era drum from out here — the PAN cuts ring
+// their own bell inside the scene (it lands at the same moment, since the cut
+// is crossed on the interlude's first frame), so only the cuts the plain
+// cosmogony leaves silent get one. `hold: true` marks a memory with no exit.
+
+export const cosmogonyHybrid = {
   ...cosmogony,
-  // the debug feed/readout rebased to the slice's own clock
-  feed: cosmogony.feed.filter((l) => l.t >= CUT_ORBIT + PREROLL).map((l) => ({ ...l, t: Math.max(0.6, l.t - CUT_ORBIT - PREROLL) })),
-  readout: { id: 'PNL-000 · Cosmogony', rows: [{ label: 'Age', value: '13.8 Gyr' }, { label: 'Temp', value: '2.7 K' }, { label: 'Mode', value: 'REMEMBERING' }] },
-  create: (ctx) => cosmogony.create(ctx, { from: CUT_ORBIT }),
+  label: 'CUTSCENE / COSMOGONY III',
+  create(ctx) {
+    // the synthesized voice replaces every sample; the inner scene tracks its
+    // dispose. (No WebAudio → null → the scene falls back to its samples.)
+    const score = createCosmogonyScore()
+    const inner = cosmogony.create(ctx, score ?? undefined)
+    score?.start()
+
+    // the memory layer: a plain DOM overlay above the canvas — photographs are
+    // the montage's medium, and belong to the page, not the bloomed 3D frame.
+    // Every image gets its own PRE-MOUNTED, PRE-DECODED layer (the montage's
+    // anti-hitch pattern): decoding a 4K frame at swap time is what causes
+    // visible stutter, so all decode work happens at create, ~22s early, and a
+    // swap is nothing but two opacity flips.
+    const overlay = document.createElement('div')
+    overlay.style.cssText = 'position:absolute;inset:0;z-index:4;display:none;overflow:hidden;background:#000'
+    const layers = []   // one <img> per memory, reel order
+    const decoded = []  // advancement never outruns the decoder — a late image holds, never blanks
+    for (const it of INTERLUDES) for (const f of it.imgs) {
+      const im = document.createElement('img')
+      im.alt = ''
+      im.src = MEM_IMG(f)
+      im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0'
+      overlay.appendChild(im)
+      const j = layers.length
+      decoded.push(false)
+      const settle = () => { decoded[j] = true }
+      // decode() warms the decoder ahead of the flash, but its promise can
+      // stall in a throttled tab — the load event is the readiness floor
+      if (im.decode) im.decode().then(settle, settle)
+      im.addEventListener('load', settle)
+      im.addEventListener('error', settle)
+      if (im.complete) settle()
+      layers.push(im)
+    }
+    const base = []   // layer index of each interlude's first image
+    { let acc = 0; for (const it of INTERLUDES) { base.push(acc); acc += it.imgs.length } }
+    const vig = document.createElement('div')   // the montage's vignette, so the flashes share its grade
+    vig.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.5) 100%)'
+    overlay.appendChild(vig)
+    // the overlay's own white wash — the same cut language the 3D scene speaks
+    const wash = document.createElement('div')
+    wash.style.cssText = 'position:absolute;inset:0;pointer-events:none;background:#fff;opacity:0'
+    overlay.appendChild(wash)
+    ctx.mount.appendChild(overlay)
+    ctx.track({ dispose: () => overlay.remove() })
+
+    let washT = 9, washPeak = 1, washDur = 0.5
+    const fireWash = (peak, dur) => { washT = 0; washPeak = peak; washDur = dur }
+    let cur = -1
+    const show = (j) => { if (cur >= 0) layers[cur].style.opacity = '0'; layers[j].style.opacity = '1'; cur = j }
+
+    let T = -PREROLL          // shadow of the inner clock — fed the same dt stream, it tracks exactly
+    let qi = 0, mem = null    // next interlude · the one playing
+    let machineBeat = false   // the eye-dive cut has no interlude — drum it from here
+    let commsCut = false      // the last line lifts as the black closes over the empress
+    const FADE_OUT = 0.4      // exit dissolve: the last image melts onto the settled next age
+    let fadeT = 0
+    return (dt) => {
+      if (!mem && qi < INTERLUDES.length && T + dt >= INTERLUDES[qi].at) {
+        mem = { it: INTERLUDES[qi], base: base[qi], t: 0, shown: -1, crossed: false }
+        qi++
+        fadeT = 0
+        overlay.style.display = 'block'; overlay.style.opacity = '1'
+        score?.setEra(mem.it.era)             // the bed starts its climb under the memory
+        if (mem.it.drum) score?.eraCut()      // the age announces itself as its memories flash
+        fireWash(1, 0.5)                      // enter the memory on the same white wash the cuts use
+      }
+      if (mem) {
+        mem.t += dt
+        // step the inner scene ACROSS the age cut and on through the cut's
+        // white flash (~0.45s), hidden behind the opaque overlay: the next
+        // age's sets render and warm, and the flash spends itself unseen, so
+        // the exit dissolve lands on a settled frame instead of a white burst.
+        // The scene clock then holds. (A held memory only crosses — the
+        // empress must not step the scene into its own ending.)
+        if (!mem.crossed) { mem.crossed = true; T += dt; inner(dt) }
+        else if (!mem.it.hold && mem.t <= 0.45) { T += dt; inner(dt) }
+        // hold the current frame rather than outrun the decoder
+        let k = Math.min(mem.it.imgs.length - 1, Math.floor(mem.t / mem.it.dur))
+        while (k > 0 && !decoded[mem.base + k]) k--
+        if (k !== mem.shown && decoded[mem.base + k]) {
+          const first = mem.shown < 0
+          mem.shown = k
+          show(mem.base + k)
+          score?.strike(mem.it.strike)
+          if (!first) fireWash(0.55, 0.3)   // memory-to-memory: a smaller blink of the same wash
+        }
+        washT += dt
+        wash.style.opacity = String(Math.max(0, washPeak * (1 - washT / washDur)))
+        if (mem.t < mem.it.dur * mem.it.imgs.length) return
+        // the memory ends. A held memory (the empress) never lifts — the inner
+        // scene resumes beneath it and the shell's fade-to-black closes over
+        // her. Every other memory DISSOLVES out onto the settled scene.
+        if (!mem.it.hold) fadeT = FADE_OUT
+        mem = null
+      }
+      if (fadeT > 0) {
+        fadeT -= dt
+        if (fadeT <= 0) {
+          overlay.style.display = 'none'; overlay.style.opacity = '1'
+          if (cur >= 0) { layers[cur].style.opacity = '0'; cur = -1 }
+        } else {
+          overlay.style.opacity = String(fadeT / FADE_OUT)
+        }
+      }
+      T += dt
+      if (score && !machineBeat && T >= CUT_MACHINE) { machineBeat = true; score.eraCut() }
+      // the comms box rides above the shell's fade layer, so the persistent
+      // last line would linger over black — clear it the moment the fade
+      // starts (END_T + the scene's 0.9s end-hold) and the empress goes alone
+      if (!commsCut && T >= END_T + 0.9) { commsCut = true; ctx.comms.hide() }
+      inner(dt)
+    }
+  },
 }
