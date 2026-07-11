@@ -13,9 +13,9 @@ const LINE_STRAYED = "It is you and Her Majesty who have strayed from the path. 
 const LINE_FUTURE  = 'We only fight to keep our future our own!'
 const LINE1 = 'We cannot hold them. Half the line is gone already.'
 const LINE2 = 'Fall back to the Throneworld. We make our stand where she hears.'
-const FIGHT_T = 13.8        // the parley fails — the noose opens fire
-const SHIELD_FAIL_T = 19.2  // the screen holds this long, then the hull pays
-const WARP_T = 26.2         // the last second — the survivors translate out
+const FIGHT_T = 16.6        // the parley fails — the noose opens fire (held later so the Discord's answer can finish)
+const SHIELD_FAIL_T = 22.0  // the screen holds this long, then the hull pays
+const WARP_T = 29.0         // the last second — the survivors translate out
 
 export default {
   label: 'CUTSCENE / CATABASIS',
@@ -201,9 +201,9 @@ export default {
       // the answer comes as fire
       if (!cp1 && T >= 1.2)  { cp1 = true; comms.show('Princess Astraia', LINE_WHY) }
       if (!cp2 && T >= 4.8)  { cp2 = true; comms.show('The Discord', LINE_STRAYED, { team: 'red' }) }
-      if (!cp3 && T >= 11.6) { cp3 = true; comms.show('Princess Astraia', LINE_FUTURE) }
-      if (!c1 && T >= 18.6)  { c1 = true; comms.show('Princess Astraia', LINE1) }
-      if (!c2 && T >= 24.4)  { c2 = true; comms.show('Admiralty Command', LINE2, { persist: true }) }
+      if (!cp3 && T >= 14.4) { cp3 = true; comms.show('Princess Astraia', LINE_FUTURE) }
+      if (!c1 && T >= 21.4)  { c1 = true; comms.show('Princess Astraia', LINE1) }
+      if (!c2 && T >= 27.2)  { c2 = true; comms.show('Admiralty Command', LINE2, { persist: true }) }
       if (!ended && T >= WARP_T + 3.4) { ended = true; end({ holdMs: 3000 }) }
     }
   },

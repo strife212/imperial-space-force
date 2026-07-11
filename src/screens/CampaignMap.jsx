@@ -26,7 +26,7 @@ export const NODES = [
   { title: 'Providence', model: 'cathedra' },
   { title: 'Ultima Ratio', model: 'gun' },
   { title: 'Singularity',       model: 'blackhole' },
-  { title: 'Anastasis',  model: 'world' },
+  { title: 'Eschaton',  model: 'world' },
 ]
 
 const ADD = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }

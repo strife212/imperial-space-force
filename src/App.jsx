@@ -30,6 +30,7 @@ import UpgradeScreen from './screens/UpgradeScreen'
 import CardVaultScreen from './screens/CardVaultScreen'
 import DrawTestScreen from './screens/DrawTestScreen'
 import FleetBoot from './screens/FleetBoot'
+import CreditsScreen from './screens/CreditsScreen'
 import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, hasMacroMissile, getCombatMods, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
 import { getEnemyBattleExtras } from './lib/enemyCards'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
@@ -185,12 +186,26 @@ export default function App() {
     onResolve:  (won) => recordBattle(i, won),    // banks Requisition + unlocks next node (once)
     onExit:     exitCampaign,
     onRetry:    () => setScreen('shipyard'),       // rebuild the fleet, then re-deploy
-    // a first-clear win offers a roguelike upgrade; otherwise straight back to the map
-    onContinue: (result) => { if (result && result.firstClear) setScreen('upgrade'); else exitCampaign() },
+    // a first-clear win offers a roguelike upgrade; otherwise straight back to
+    // the map — except the FINAL battle, whose win plays the Anastasis victory
+    // scene (the Song returns) and then the end credits, with no upgrade step:
+    // it is the last fight, so there is nothing left to spend an upgrade on.
+    onContinue: (result) => {
+      if (i === NODE_BATTLES.length - 1) {
+        setCutsceneSource('victory'); setCutsceneId('theOrderRestored'); setCutsceneChain(false)
+        setScreen('cutscene')
+        return
+      }
+      if (result && result.firstClear) setScreen('upgrade'); else exitCampaign()
+    },
   } }
   // Where a finished cutscene goes next: campaign → muster the fleet (shipyard);
-  // a debug playthrough → the next story beat; a single scene → back to source.
+  // the victory scene → its banked continue path; a debug playthrough → the
+  // next story beat; a single scene → back to source.
   const afterCutscene = (id) => {
+    // the Anastasis victory scene rolls into the end credits, which hold for a
+    // beat and then hand back to the map — the campaign's terminal screen
+    if (cutsceneSource === 'victory') { setScreen('credits'); return }
     if (cutsceneSource === 'campaign') { setScreen('shipyard'); return }
     const i = STORY.indexOf(id)
     if (cutsceneChain && i >= 0 && i < STORY.length - 1) { setCutsceneId(STORY[i + 1]); setScreen('cutscene'); return }
@@ -267,6 +282,7 @@ export default function App() {
       {screen === 'cosmogony'       && <Cutscene key="cosmogony-standalone" scene={SCENES.cosmogony} standalone canSkip={false} onReturn={() => setScreen('home')} />}
       {screen === 'cosmogony2'      && <MontageScreen onReturn={() => setScreen('home')} />}
       {screen === 'cosmogony3'      && <Cosmogony3 />}
+      {screen === 'credits'         && <CreditsScreen onComplete={() => setScreen('campaign-map')} />}
       {screen === 'story'           && <StoryReel />}
       {screen === 'cutscene'        && (() => {
           // A campaign replay (re-watching a cleared node) may be skipped; a
@@ -280,7 +296,7 @@ export default function App() {
           const canSkip = (cutsceneId === 'cosmogony' || cutsceneId === 'cosmogony3')
             ? cutsceneSource === 'campaign-map'
             : cutsceneSource !== 'campaign' || isCampaignReplay || node1Veteran
-          return <Cutscene key={cutsceneId} scene={SCENES[cutsceneId]} canSkip={canSkip} showOverlays={!cutsceneChain} onReturn={() => setScreen(cutsceneSource === 'campaign' ? 'campaign-map' : cutsceneSource)} onComplete={() => {
+          return <Cutscene key={cutsceneId} scene={SCENES[cutsceneId]} canSkip={canSkip} showOverlays={!cutsceneChain} onReturn={() => setScreen(cutsceneSource === 'campaign' || cutsceneSource === 'victory' ? 'campaign-map' : cutsceneSource)} onComplete={() => {
             // First Contact picks the operator — but only if one hasn't been
             // chosen yet; once selected, go straight from the cutscene to the shipyard
             if (cutsceneId === 'firstContact' && !getFlag('operator')) { setScreen('character-select'); return }

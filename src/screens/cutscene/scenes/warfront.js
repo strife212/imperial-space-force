@@ -18,8 +18,8 @@ const LINE_FIRE    = 'All batteries, open fire. For the Universal Order!'
 
 // timeline (scene seconds)
 const RADAR_ON = 5.0, CONTACT_T = 7.5, RADAR_OFF = 11.8   // the sweep paints the wall on its 2nd east pass, ≈7.6, and re-pings it every pass after
-const REVEAL_T = 11.9, OPEN_FIRE = 14.4
-const END_T = 27.2
+const REVEAL_T = 11.9, OPEN_FIRE = 17.2   // the wall holds fully lit a beat longer, so "they came out of nowhere" can land before the order
+const END_T = 30.0
 const MONO = '"Cascadia Mono", "Consolas", ui-monospace, "Menlo", "Monaco", monospace'
 const TAU = Math.PI * 2
 
@@ -437,7 +437,7 @@ export default {
       if (!c0 && T >= 1.8)  { c0 = true; comms.show('Fleet Tactical', LINE_SCAN, { persist: true }) }
       if (!c1 && T >= 8.1)  { c1 = true; comms.show('Fleet Tactical', LINE_CONTACT) }
       if (!c2 && T >= 12.2) { c2 = true; comms.show(ASTRAIA, LINE_NOWHERE) }
-      if (!c3 && T >= 14.0) { c3 = true; comms.show(ASTRAIA, LINE_FIRE, { persist: true }) }
+      if (!c3 && T >= 16.8) { c3 = true; comms.show(ASTRAIA, LINE_FIRE, { persist: true }) }
       if (!ended && T >= END_T) { ended = true; end() }
     }
   },

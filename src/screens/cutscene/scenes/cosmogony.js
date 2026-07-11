@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { TEAMS } from '../../battle/constants'
 import { registerAudioContext } from '../../../lib/audioUnlock'
 import { createCosmogonyScore } from './cosmogonyScore'
@@ -48,6 +49,32 @@ const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) 
 const easeOut3 = (p) => 1 - Math.pow(1 - p, 3)
 const clamp01 = (v) => Math.min(1, Math.max(0, v))
 const ORIGIN = new THREE.Vector3()
+
+// Bake every mesh under a group into one merged mesh per material, transforms
+// applied. For static scenery only — the temple, the city and the camps are
+// hundreds of small meshes on a handful of shared materials, and none of them
+// move after create: identical pixels, a fraction of the draw calls. Sprites,
+// lights and instanced meshes pass through untouched.
+const _mm = new THREE.Matrix4()
+function mergeStatic(group) {
+  group.updateMatrixWorld(true)
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert()
+  const byMat = new Map(), doomed = []
+  group.traverse((n) => {
+    if (!n.isMesh || n.isInstancedMesh) return
+    let g = n.geometry.clone()
+    if (g.index) g = g.toNonIndexed()   // mixed indexed/non-indexed geometries can't merge
+    g.applyMatrix4(_mm.multiplyMatrices(inv, n.matrixWorld))
+    if (!byMat.has(n.material)) byMat.set(n.material, [])
+    byMat.get(n.material).push(g)
+    doomed.push(n)
+  })
+  for (const n of doomed) n.parent.remove(n)
+  for (const [mat, geos] of byMat) {
+    group.add(new THREE.Mesh(mergeGeometries(geos, false), mat))
+    for (const g of geos) g.dispose()
+  }
+}
 
 // The activation blip fires up to ~10×/s in the machine phase — far too hot for
 // per-play HTMLAudio clones (each spins up a whole media element). Decode the
@@ -366,11 +393,13 @@ const cosmogony = {
     const fsMat = new THREE.PointsMaterial({ color: 0xdfeaff, size: 1.1, map: glowTex, sizeAttenuation: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
     const firstStars = new THREE.Points(fsGeo, fsMat); firstStars.frustumCulled = false; spaceSet.add(firstStars)
 
-    // three hero stars igniting up close — granulated surface, corona, flares
+    // two hero stars igniting up close — granulated surface, corona, flares.
+    // Each is a full shader sphere + corona quad + point light, so the crowd
+    // stays small: a third, most distant one was cut for weight, and these two
+    // sit a touch nearer the lens to carry the same presence.
     const STAR_SPECS = [
-      { pos: [18, 7, -16],  radius: 4.5, color: 0xffa347, ignite: 6.2 },
-      { pos: [-26, -6, 6],  radius: 3.2, color: 0x9fc4ff, hot: 0xf2f6ff, ignite: 7.6 },
-      { pos: [8, -18, -28], radius: 2.6, color: 0xff7a3a, ignite: 9.0 },
+      { pos: [17, 6, -7],   radius: 4.5, color: 0xffa347, ignite: 6.2 },
+      { pos: [-24, -5, 14], radius: 3.2, color: 0x9fc4ff, hot: 0xf2f6ff, ignite: 7.6 },
     ]
     const streakMat = new THREE.MeshBasicMaterial({ color: 0x9fc8ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })
     const streaks = []
@@ -455,57 +484,87 @@ const cosmogony = {
     // across, each a knot of small figures before what their age has raised: a hut
     // and its fire, a stone temple, then a skyline erupting up behind them ────────
     const surfaceSet = new THREE.Group(); surfaceSet.visible = false; scene.add(surfaceSet)
+    // everything that never moves — ground, huts, totem, logs, boulders, hills —
+    // collects here and is baked into one mesh per material at the end of create
+    const terrain = new THREE.Group(); surfaceSet.add(terrain)
     // one long ground strip spanning all three tableaus, and a dim moon for even fill
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(360, 300), new THREE.MeshStandardMaterial({ color: 0x0d1626, roughness: 1, metalness: 0 }))
-    ground.rotation.x = -Math.PI / 2; ground.position.set(TAB_B_X, 0, -40); surfaceSet.add(ground)
+    ground.rotation.x = -Math.PI / 2; ground.position.set(TAB_B_X, 0, -40); terrain.add(ground)
     const moonLight = new THREE.DirectionalLight(0x9fb4e0, 0.8); moonLight.position.set(40, 60, 40); surfaceSet.add(moonLight)
 
     // little blocky figures in the fleet's blue — a cubic head on a squared
     // torso, box arms hanging from the shoulders, box legs planted apart: solid
     // and toy-like, faintly self-lit so they read charmingly against the dark.
-    // The upper body pivots at the hips (the update sways it); arms pivot at
-    // their shoulders.
+    // A whole crowd renders as FOUR instanced draws (legs, torsos, heads,
+    // arms): the lower body never moves, so leg matrices are written once at
+    // add; the upper body pivots at the hips, so tick() recomposes only the
+    // torso/head/arm instance matrices. Pixel-identical to grouped meshes.
     const figMat = new THREE.MeshStandardMaterial({ color: TEAMS.blue.color, emissive: TEAMS.blue.color, emissiveIntensity: 0.28, roughness: 0.55, metalness: 0.1 })
     const headGeo = new THREE.BoxGeometry(0.17, 0.16, 0.16)
     const torsoGeo = new THREE.BoxGeometry(0.2, 0.34, 0.12)
     const limbGeo = new THREE.BoxGeometry(0.07, 0.3, 0.09)
-    const makeFigure = () => {
-      const g = new THREE.Group()
-      for (const s of [-1, 1]) { const leg = new THREE.Mesh(limbGeo, figMat); leg.position.set(s * 0.055, 0.15, 0); g.add(leg) }
-      const upper = new THREE.Group(); upper.position.y = 0.30; g.add(upper)
-      const torso = new THREE.Mesh(torsoGeo, figMat); torso.position.y = 0.17; upper.add(torso)
-      const head = new THREE.Mesh(headGeo, figMat); head.position.y = 0.44; upper.add(head)
-      const arms = []
-      for (const s of [-1, 1]) {
-        const shoulder = new THREE.Group(); shoulder.position.set(s * 0.135, 0.32, 0); upper.add(shoulder)
-        const arm = new THREE.Mesh(limbGeo, figMat); arm.scale.set(0.8, 0.93, 0.8); arm.position.y = -0.125; shoulder.add(arm)
-        shoulder.rotation.z = s * 0.12   // arms hang just off the torso sides
-        arms.push(shoulder)
+    const T_TORSO = new THREE.Matrix4().makeTranslation(0, 0.17, 0)
+    const T_HEAD = new THREE.Matrix4().makeTranslation(0, 0.44, 0)
+    const ARM_POST = new THREE.Matrix4().makeTranslation(0, -0.125, 0).multiply(new THREE.Matrix4().makeScale(0.8, 0.93, 0.8))
+    const _proxy = new THREE.Object3D(), _fm1 = new THREE.Matrix4(), _fm2 = new THREE.Matrix4(), _fv = new THREE.Vector3()
+    const makeCrowd = (parent, capacity) => {
+      const legs = new THREE.InstancedMesh(limbGeo, figMat, capacity * 2)
+      const torsos = new THREE.InstancedMesh(torsoGeo, figMat, capacity)
+      const heads = new THREE.InstancedMesh(headGeo, figMat, capacity)
+      const arms = new THREE.InstancedMesh(limbGeo, figMat, capacity * 2)
+      // a crowd spans its whole tableau — cull by the parent set, not per draw
+      for (const im of [legs, torsos, heads, arms]) { im.frustumCulled = false; parent.add(im) }
+      const figs = []
+      // armPose overrides a shoulder's hang ({ L?, R?: Euler }) — the astronomer
+      const add = (x, z, scale, faceDir, seed, armPose = null) => {
+        orient(_proxy, faceDir)
+        const root = new THREE.Matrix4().compose(_fv.set(x, 0, z), _proxy.quaternion, new THREE.Vector3(scale, scale, scale))
+        const armPre = [-1, 1].map((s, k) => {
+          const rot = (armPose && armPose[k === 0 ? 'L' : 'R']) || new THREE.Euler(0, 0, s * 0.12)   // arms hang just off the torso sides
+          return new THREE.Matrix4().makeRotationFromEuler(rot).setPosition(s * 0.135, 0.32, 0)
+        })
+        const i = figs.length
+        for (const [k, s] of [[0, -1], [1, 1]]) {
+          _fm1.makeTranslation(s * 0.055, 0.15, 0).premultiply(root)
+          legs.setMatrixAt(i * 2 + k, _fm1)
+        }
+        legs.instanceMatrix.needsUpdate = true
+        figs.push({ root, armPre, seed })
+        torsos.count = heads.count = figs.length
+        legs.count = arms.count = figs.length * 2
+        return i
       }
-      return { g, upper, armL: arms[0], armR: arms[1] }
+      // sway the upper bodies at the hips, exactly as the grouped figures did
+      const tick = (T) => {
+        for (let i = 0; i < figs.length; i++) {
+          const f = figs[i]
+          _fm1.makeRotationZ(Math.sin(T * 1.2 + f.seed) * 0.05).setPosition(0, 0.30, 0).premultiply(f.root)   // the hip pivot
+          torsos.setMatrixAt(i, _fm2.multiplyMatrices(_fm1, T_TORSO))
+          heads.setMatrixAt(i, _fm2.multiplyMatrices(_fm1, T_HEAD))
+          for (const k of [0, 1]) arms.setMatrixAt(i * 2 + k, _fm2.multiplyMatrices(_fm1, f.armPre[k]).multiply(ARM_POST))
+        }
+        torsos.instanceMatrix.needsUpdate = true
+        heads.instanceMatrix.needsUpdate = true
+        arms.instanceMatrix.needsUpdate = true
+      }
+      return { add, tick }
     }
     const HSCALE = 2.6
-    const swayers = []
+    const crowd = makeCrowd(surfaceSet, 69)   // 3 + 8 + 9 clustered, 48 watching, 1 pointing
     const cluster = (cx, n) => {
       for (let i = 0; i < n; i++) {
         const a = i * 2.399 + cx * 0.11 + 0.7
-        const fig = makeFigure()
         const rx = Math.sin(a * 1.7) * 4.6, rz = 1.6 + ((i * 0.618) % 1) * 4.4
-        fig.g.position.set(cx + rx, 0, rz); fig.g.scale.setScalar(HSCALE)
-        orient(fig.g, new THREE.Vector3(rx * 0.15, 0, -1))   // face back toward the structure
-        surfaceSet.add(fig.g); swayers.push({ body: fig.upper, i })
+        crowd.add(cx + rx, rz, HSCALE, new THREE.Vector3(rx * 0.15, 0, -1), i)   // face back toward the structure
       }
     }
     cluster(TAB_A_X, 3); cluster(TAB_B_X, 8); cluster(TAB_C_X, 9)
     // a crowd lining the base of the skyline — spread the full width of the frame,
     // so the bottom of the tableau-C shot is a wall of watchers as the towers rise
     for (let i = 0; i < 48; i++) {
-      const fig = makeFigure()
       const x = TAB_C_X - 46 + (i / 47) * 92 + Math.sin(i * 12.9) * 2.2
       const z = 0.5 + ((i * 0.618) % 1) * 8.5
-      fig.g.position.set(x, 0, z); fig.g.scale.setScalar(HSCALE * (0.9 + ((i * 0.37) % 1) * 0.25))
-      orient(fig.g, new THREE.Vector3(Math.sin(i * 3.1) * 0.2, 0, -1))   // face the rising city
-      surfaceSet.add(fig.g); swayers.push({ body: fig.upper, i: i + 100 })
+      crowd.add(x, z, HSCALE * (0.9 + ((i * 0.37) % 1) * 0.25), new THREE.Vector3(Math.sin(i * 3.1) * 0.2, 0, -1), i + 100)   // face the rising city
     }
 
     // Tableau A · a night camp: a hut and its fire, a small village receding into
@@ -520,10 +579,10 @@ const cosmogony = {
       const d = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.7), hutDoorMat); d.position.set(0, 0.85, 2.92); h.add(d)
       return h
     }
-    const hut = makeHut(); hut.position.set(TAB_A_X - 5, 0, -10); surfaceSet.add(hut)
+    const hut = makeHut(); hut.position.set(TAB_A_X - 5, 0, -10); terrain.add(hut)
     // the rest of the village — smaller, turned, receding into the fog behind the camp
     for (const [vx, vz, vs, vr] of [[TAB_A_X - 15, -21, 0.85, 0.6], [TAB_A_X - 24, -31, 0.7, 1.8], [TAB_A_X + 17, -30, 0.66, 0.3]]) {
-      const v = makeHut(); v.position.set(vx, 0, vz); v.scale.setScalar(vs); v.rotation.y = vr; surfaceSet.add(v)
+      const v = makeHut(); v.position.set(vx, 0, vz); v.scale.setScalar(vs); v.rotation.y = vr; terrain.add(v)
     }
     // a carved totem standing near the fire — a first altar, catching the firelight
     const totemMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9, metalness: 0 })
@@ -534,7 +593,7 @@ const cosmogony = {
     }
     const wings = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.42, 0.34), totemMat); wings.position.y = ty - 1.0; totem.add(wings)   // carved outstretched 'wings'
     const cap = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.6, 6), totemMat); cap.position.y = ty + 0.3; totem.add(cap)
-    surfaceSet.add(totem)
+    terrain.add(totem)
     // a large low moon behind the camp — soft pale disc with faint maria and a halo
     const moonCv = document.createElement('canvas'); moonCv.width = 128; moonCv.height = 128
     const mg2 = moonCv.getContext('2d')
@@ -554,13 +613,8 @@ const cosmogony = {
     moonHalo.scale.set(52, 52, 1); moonHalo.position.copy(moon.position); surfaceSet.add(moonHalo)
     // one watcher stands apart from the fire, arm flung up at the sky — the
     // first astronomer, pointing back at everything the opening act just showed
-    {
-      const pointer = makeFigure()
-      pointer.armL.rotation.set(-0.3, 0, -2.5)   // left arm flung up toward the moon
-      pointer.g.position.set(TAB_A_X + 5.2, 0, -1.2); pointer.g.scale.setScalar(HSCALE)
-      orient(pointer.g, new THREE.Vector3(-0.5, 0, -1))   // faced out toward the moonlit sky
-      surfaceSet.add(pointer.g); swayers.push({ body: pointer.upper, i: 55 })
-    }
+    crowd.add(TAB_A_X + 5.2, -1.2, HSCALE, new THREE.Vector3(-0.5, 0, -1), 55,
+      { L: new THREE.Euler(-0.3, 0, -2.5) })   // left arm flung up toward the moon
     // fireflies wandering the camp's dark
     const flies = []
     for (let i = 0; i < 8; i++) {
@@ -575,7 +629,7 @@ const cosmogony = {
     const FIRE = new THREE.Vector3(TAB_A_X + 2, 0.4, 1.5)
     const fireLight = new THREE.PointLight(0xff5a18, 2.2, 46, 1.7); fireLight.position.set(FIRE.x, FIRE.y + 1.2, FIRE.z); surfaceSet.add(fireLight)
     const logMat = new THREE.MeshStandardMaterial({ color: 0x120b06, roughness: 1 })
-    for (const [lx, lr] of [[-0.4, 0.5], [0.45, -0.4]]) { const lg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.5, 6), logMat); lg.position.set(FIRE.x + lx, 0.2, FIRE.z); lg.rotation.set(Math.PI / 2, 0, lr); surfaceSet.add(lg) }
+    for (const [lx, lr] of [[-0.4, 0.5], [0.45, -0.4]]) { const lg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.5, 6), logMat); lg.position.set(FIRE.x + lx, 0.2, FIRE.z); lg.rotation.set(Math.PI / 2, 0, lr); terrain.add(lg) }
     // the coal bed — small faceted lumps, each pulsing on its own slow rhythm
     const COAL_COLD = new THREE.Color(0x2a0803), COAL_HOT = new THREE.Color(0xff6a22)
     const coals = []
@@ -716,7 +770,8 @@ const cosmogony = {
     // beacons on the tall ones. Heights follow the districts: low-rise at the
     // front edges, rising toward the tall core at the back near the avenue.
     // All deterministic from block indices, so footprints never collide.
-    const towers = []   // every composition group — toggled visible at the city cut
+    // the whole skyline lives in one group, toggled visible at the city cut
+    const citySky = new THREE.Group(); citySky.visible = false; surfaceSet.add(citySky)
     const hash01 = (a, b) => Math.abs(Math.sin(a * 12.9898 + b * 78.233) * 43758.5453) % 1
     const roofMat = new THREE.MeshStandardMaterial({ color: 0x1b222e, roughness: 0.8, metalness: 0.4 })
     const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff5548 })
@@ -773,9 +828,9 @@ const cosmogony = {
           const r2 = hash01(row * 11 + col + (sx > 0 ? 17 : 0), col * 5 + row)
           const v = (col * 7 + row * 5 + (sx > 0 ? 3 : 0)) % 5
           const h = 8 + depth * 26 + core * 15 + r1 * 10         // downtown: back rows by the avenue
-          const g = new THREE.Group(); g.position.set(bx, 0, bz); g.visible = false
+          const g = new THREE.Group(); g.position.set(bx, 0, bz)
           mkBuilding(g, v, h, (col * 3 + row * 2 + (sx > 0 ? 1 : 0)), r1, r2)
-          surfaceSet.add(g); towers.push({ m: g })
+          citySky.add(g)
         }
       }
     }
@@ -783,29 +838,29 @@ const cosmogony = {
     // roadbed and twin rows of warm streetlamp glows running to the core
     const roadMat = new THREE.MeshBasicMaterial({ color: 0x131923 })
     const avenue = new THREE.Mesh(new THREE.PlaneGeometry(17, 128), roadMat)
-    avenue.rotation.x = -Math.PI / 2; avenue.position.set(TAB_C_X, 0.03, -82); avenue.visible = false
-    surfaceSet.add(avenue); towers.push({ m: avenue })
+    avenue.rotation.x = -Math.PI / 2; avenue.position.set(TAB_C_X, 0.03, -82)
+    citySky.add(avenue)
     const lampMat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffc36b, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })
     for (let li = 0; li < 8; li++) for (const lsx of [-1, 1]) {
       const lamp = new THREE.Sprite(lampMat)
-      lamp.scale.set(1.3, 1.3, 1); lamp.position.set(TAB_C_X + lsx * 9.6, 2.2, -30 - li * 14); lamp.visible = false
-      surfaceSet.add(lamp); towers.push({ m: lamp })
+      lamp.scale.set(1.3, 1.3, 1); lamp.position.set(TAB_C_X + lsx * 9.6, 2.2, -30 - li * 14)
+      citySky.add(lamp)
     }
     // the dive target: the city's landmark tower, dead-centre at the head of the
     // avenue — a stepped crown silhouette with a spire, tallest thing in the core
     const TGT_Z = -136
-    const targetTower = new THREE.Group(); targetTower.position.set(TAB_C_X, 0, TGT_Z); targetTower.visible = false
+    const targetTower = new THREE.Group(); targetTower.position.set(TAB_C_X, 0, TGT_Z)
     targetTower.add(mkBox(14, 46, 12, 2))
     const tt2 = mkBox(10.5, 18, 9, 3); tt2.position.y = 46; targetTower.add(tt2)
     const tt3 = mkBox(7, 12, 6.5, 2); tt3.position.y = 64; targetTower.add(tt3)
     const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.3, 7, 6), roofMat); spire.position.y = 79.5; targetTower.add(spire)
     const tbcn = new THREE.Mesh(fx.blastGeo, beaconMat); tbcn.scale.setScalar(0.2); tbcn.position.y = 83; targetTower.add(tbcn)
-    surfaceSet.add(targetTower); towers.push({ m: targetTower })
+    citySky.add(targetTower)
     const WINDOW_POS = new THREE.Vector3(TAB_C_X, 38, TGT_Z + 6.1)   // a pane on the base tier's near face (z = TGT_Z + 6)
     // a cold blue pane (the computer's glow spilling out) — fog-immune so it reads
     // as a beacon deep in the hazed city; the dive de-fogs the tower around it
     const heroWin = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 3.2), new THREE.MeshBasicMaterial({ color: 0x7fd4ff, fog: false }))
-    heroWin.position.copy(WINDOW_POS); heroWin.visible = false; surfaceSet.add(heroWin)
+    heroWin.position.copy(WINDOW_POS); citySky.add(heroWin)
 
     // ── surface dressing · living skies, terrain and mist ────────────────────
     // each age owns its own sky mood (the tableaus are far enough apart that the
@@ -851,15 +906,21 @@ const cosmogony = {
     ]) {
       const hill = new THREE.Mesh(fx.blastGeo, hillMat)
       hill.position.set(cx + hx, 0, hz); hill.scale.set(hw, hh, 14)
-      surfaceSet.add(hill)
+      terrain.add(hill)
     }
     // boulders around the camps
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x1a2334, roughness: 1 })
     for (const [cx, rx, rz, rs] of [[TAB_A_X, -9, -4, 1.0], [TAB_A_X, 7.5, -7, 0.7], [TAB_A_X, 12, -14, 1.5], [TAB_B_X, -13, -2, 0.9], [TAB_B_X, 14, -8, 1.2]]) {
       const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rs, 0), rockMat)
       rock.position.set(cx + rx, rs * 0.55, rz); rock.rotation.set(rx, rz, rx * 0.7)
-      surfaceSet.add(rock)
+      terrain.add(rock)
     }
+    // …and bake the static scenery down: the camps, the temple and the whole
+    // skyline collapse to one mesh per material — same pixels, a fraction of
+    // the draw calls at the surface phase's heaviest framings
+    mergeStatic(terrain)
+    mergeStatic(temple)
+    mergeStatic(citySky)
     // ground mist — soft banks drifting through the pre-city ages
     const mists = []
     for (let i = 0; i < 10; i++) {
@@ -915,16 +976,13 @@ const cosmogony = {
     // figures gathered around the box, all eyes on it — but only on a rear/side
     // arc (50°..310° off the +z axis), leaving the camera-facing front open so
     // none of them block the lens's view of the computer
-    const roomSwayers = []
     const RN = 8
+    const roomCrowd = makeCrowd(roomSet, RN)
     for (let i = 0; i < RN; i++) {
       const phi = (50 + (i / (RN - 1)) * 260) * Math.PI / 180
       const r = 1.9 + (i % 3) * 0.4
       const x = Math.sin(phi) * r, z = -1 + Math.cos(phi) * r
-      const fig = makeFigure()
-      fig.g.position.set(x, 0, z); fig.g.scale.setScalar(1.9)
-      orient(fig.g, new THREE.Vector3(-x, 0, -1 - z))   // face the box centre (0, -1)
-      roomSet.add(fig.g); roomSwayers.push({ body: fig.upper, i })
+      roomCrowd.add(x, z, 1.9, new THREE.Vector3(-x, 0, -1 - z), i)   // face the box centre (0, -1)
     }
 
     // ── SET 3 · the machine: a lattice of thought, tables of live numbers ─────
@@ -1293,7 +1351,7 @@ const cosmogony = {
         // stone temple, to the watchers as a skyline erupts, then dive at a lit
         // window on the far tower ──
         // figures sway; the fire flickers; the skyline (incl. target tower) erupts
-        for (const u of swayers) u.body.rotation.z = Math.sin(T * 1.2 + u.i) * 0.05
+        crowd.tick(T)
         // the coal bed breathes — slow uneven pulses, no open flame
         const fl = 0.6 + 0.3 * Math.sin(T * 2.6) + 0.14 * Math.sin(T * 6.7) + 0.08 * Math.sin(T * 11.9)
         fireLight.intensity = 1.3 + fl * 1.0
@@ -1348,8 +1406,7 @@ const cosmogony = {
           bz.light.intensity = 1.1 + f2 * 0.8
         }
         const cityUp = T >= PAN_BC
-        for (const tw of towers) tw.m.visible = cityUp   // fully erect, revealed whole at the city cut
-        heroWin.visible = cityUp
+        citySky.visible = cityUp   // fully erect, revealed whole at the city cut
         // white flashes punctuate the hard cuts between the ages
         if (!flashAB && T >= PAN_AB) { flashAB = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4); s.eraCut() }   // the temple age rings in on bronze
         if (!flashBC && T >= PAN_BC) { flashBC = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4); s.eraCut() }   // the city arrives on the same bell
@@ -1375,7 +1432,7 @@ const cosmogony = {
       } else if (cutA && !cutB && roomShown) {
         // ── inside the room: push from the window in toward the box's glowing eye,
         // whose cyan wash carries us on into the machine ──
-        for (const u of roomSwayers) u.body.rotation.z = Math.sin(T * 1.2 + u.i) * 0.05
+        roomCrowd.tick(T)
         // hold still on the room for a beat, then push in toward the eye
         const ROOM_HOLD = 0.5
         const q = easeInOut(clamp01((T - WINDOW_CUT - ROOM_HOLD) / (CUT_MACHINE - WINDOW_CUT - ROOM_HOLD)))
@@ -1508,36 +1565,38 @@ export default cosmogony
 // the original bigbang.mp3 rumble carries the young universe; from the first
 // memory on the voice is synthesized — each age retunes the bed, every memory
 // and cut is struck, and the last memory rings the radiant chord.
-// memories live in the montage's folder; a leading slash reaches public/ root
-const MEM_BASE = import.meta.env?.BASE_URL ?? '/'
-const MEM_IMG = (f) => (f.startsWith('/') ? `${MEM_BASE}${f.slice(1)}` : `${MEM_BASE}montage/${encodeURIComponent(f)}`)
+// the reel serves its own right-sized copies (public/montage/reel/, ≤1600px):
+// the montage's originals run up to 3758px and all of these decode upfront —
+// the smaller variants roughly halve the resident bitmap memory while staying
+// sharp at any realistic viewport. Cosmogony II keeps the originals.
+const MEM_IMG = (f) => `${import.meta.env?.BASE_URL ?? '/'}montage/reel/${f}`
 const INTERLUDES = [
   { at: CUT_SURFACE, dur: 0.99, strike: 'world', era: 'world', drum: true, imgs: [   // down through the clouds — the primordial earth
-    'The-Shore-of-Oblivion-1889-scaled.webp',
-    'HKH-60684-scaled.jpg.webp',
-    'HMF65m1WEAI1EhF.jfif',
+    'shore-of-oblivion.jpg',
+    'sea-of-ice.jpg',
+    'storm-in-the-mountains.jpg',
   ] },
   { at: PAN_AB, dur: 0.94, strike: 'bell', era: 'temple', imgs: [        // the temple age — sacred architecture, drawn and dreamt
     'piranesi-roma.jpg',
-    'hubert-robert-grande-galerie-1796.jpg',
-    'art-hilma-af-klint-group-x-no-1-altarpiece-altarbild-1915.jpg',
+    'grande-galerie.jpg',
+    'af-klint-altarpiece.jpg',
   ] },
   { at: PAN_BC, dur: 0.88, strike: 'figure', era: 'city', imgs: [        // the city age — mathematics on paper
     'harmonograph.png',
     'lorenz.png',
-    'hopf_fibration (1).png',
+    'hopf-fibration.png',
   ] },
   { at: WINDOW_CUT, dur: 0.94, strike: 'machine', era: 'machine', drum: true, imgs: [ // through the window — the first machines that thought
-    'less-than-p-greater-than-programmers-at-aberdeen-proving-grounds-configure-eniacs-function-tables-which-acted-as-a-form-of-read-only-memory-less-than-p-greater-than.webp',
-    'Reprogramming_ENIAC.png',
+    'eniac-function-tables.jpg',
+    'reprogramming-eniac.jpg',
   ] },
   { at: CUT_ORBIT, dur: 1.54, strike: 'finale', era: 'memory', drum: true, imgs: [    // before the reveal — the mind, glowing
-    'neural_network_cold.png',
+    'neural-network-cold.png',
   ] },
   // the last memory — the one who listens. Held past the scene's end: the
   // overlay never lifts, so the shell's fade-to-black closes over her.
   { at: END_T - 0.4, dur: 2.4, strike: 'bell', era: 'memory', drum: true, hold: true, imgs: [
-    '/empress.jpg',
+    'empress.jpg',
   ] },
 ]
 // `drum: true` entries fire the era drum from out here — the PAN cuts ring

@@ -27,7 +27,7 @@ export const STARTING_FLEET = { fighters: 8, bombers: 0, cruisers: 0 }
 // each fleet's requisition value stays ~90-96% of the player's max possible
 // spend at that point. Previous values + restore notes live in balance.md.
 export const NODE_BATTLES = [
-  { title: 'First Light',     enemyName: 'Aleph Sentinels',       enemy: { fighters: 8,  bombers: 0,  cruisers: 0 }, reward: 620,  sky: 'void',
+  { title: 'First Light',     enemyName: 'Aleph Sentinels',       enemy: { fighters: 7,  bombers: 0,  cruisers: 0 }, reward: 620,  sky: 'void',
     brief: 'Hostiles of unknown origin have swarmed the Cassiopeia. Break the ambush.' },
   { title: 'Critical Mass',        enemyName: 'Rebel Vanguard',        enemy: { fighters: 10, bombers: 1,  cruisers: 0 }, reward: 790,  sky: 'aurum',
     brief: 'A rebel screen tests the mustering fleet. Hold the line and scatter them.' },
@@ -45,8 +45,8 @@ export const NODE_BATTLES = [
     brief: 'Her Annunciator is arming. Hold the Heralds of the Hush off the firing lane until the Lance can be cast.' },
   { title: 'Singularity',         enemyName: 'Throneward Blockade',    enemy: { fighters: 61, bombers: 6,  cruisers: 6 }, reward: 2700, sky: 'void',
     brief: 'Clear the blockade so the Lance can be cast. Everything rides on the lane.' },
-  { title: 'Anastasis',    enemyName: "Discord's Last Stand",   enemy: { fighters: 73, bombers: 8,  cruisers: 7 }, reward: 3960, sky: 'aurum',
-    brief: "The Discord's last stand, laid bare at last. Break it utterly and the Song returns." },
+  { title: 'Eschaton',    enemyName: "Discord's Last Stand",   enemy: { fighters: 73, bombers: 8,  cruisers: 7 }, reward: 3960, sky: 'aurum',
+    brief: "The wheel is broken, and everything they have left is coming. Break it utterly and the Song returns." },
 ]
 
 export const NODE_COUNT = NODE_BATTLES.length

@@ -34,7 +34,8 @@ const CUTSCENES = [
   { key: 'cut:theResolve',       label: '7 · Providence' },
   { key: 'cut:theAnnunciator',   label: '8 · Ultima Ratio'  },
   { key: 'cut:theLance',         label: '9 · Singularity'        },
-  { key: 'cut:theOrderRestored', label: '10 · Anastasis'  },
+  { key: 'cut:theEschaton',      label: '10 · Eschaton'  },
+  { key: 'cut:theOrderRestored', label: '✦ · Anastasis (victory)'  },
   { key: 'cut:cosmogony',        label: 'Ω · Cosmogony'        },
 ]
 
