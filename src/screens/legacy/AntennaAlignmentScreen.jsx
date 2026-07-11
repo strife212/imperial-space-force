@@ -242,7 +242,7 @@ export default function AntennaAlignmentScreen({ onBack, onLogout, onAlignComple
                     fill="rgba(2, 6, 20, 0.93)" stroke="rgba(60, 100, 200, 0.32)" strokeWidth="1" />
               {/* Header */}
               <text x="500" y="351" textAnchor="middle"
-                    fontSize="8" fontFamily="'Cascadia Mono', Consolas, monospace"
+                    fontSize="8" fontFamily="'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace"
                     fill="rgba(90, 130, 210, 0.55)" letterSpacing="0.15em">
                 SIGNAL SPECTRUM ANALYZER / 8.0–12.0 GHz
               </text>
@@ -278,14 +278,14 @@ export default function AntennaAlignmentScreen({ onBack, onLogout, onAlignComple
               <line x1={SPEC_X} y1={SPEC_BOTTOM} x2={SPEC_X + SPEC_W} y2={SPEC_BOTTOM}
                     stroke="rgba(60, 100, 200, 0.28)" strokeWidth="0.5" />
               {/* Freq labels */}
-              <text x={SPEC_X + 2} y="473" fontSize="7" fontFamily="'Cascadia Mono', Consolas, monospace"
+              <text x={SPEC_X + 2} y="473" fontSize="7" fontFamily="'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace"
                     fill="rgba(70, 110, 180, 0.42)">8.0</text>
-              <text x="500" y="473" textAnchor="middle" fontSize="7" fontFamily="'Cascadia Mono', Consolas, monospace"
+              <text x="500" y="473" textAnchor="middle" fontSize="7" fontFamily="'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace"
                     fill="rgba(70, 110, 180, 0.42)">10.0 GHz</text>
-              <text x={SPEC_X + SPEC_W - 2} y="473" textAnchor="end" fontSize="7" fontFamily="'Cascadia Mono', Consolas, monospace"
+              <text x={SPEC_X + SPEC_W - 2} y="473" textAnchor="end" fontSize="7" fontFamily="'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace"
                     fill="rgba(70, 110, 180, 0.42)">12.0</text>
               {/* Status */}
-              <text x="500" y="484" textAnchor="middle" fontSize="7.5" fontFamily="'Cascadia Mono', Consolas, monospace"
+              <text x="500" y="484" textAnchor="middle" fontSize="7.5" fontFamily="'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace"
                     fill={allOk ? 'rgba(58, 255, 138, 0.65)' : 'rgba(70, 110, 180, 0.38)'}
                     letterSpacing="0.12em">
                 {allOk ? '◆ CARRIER LOCK — 10.3 GHz' : '◇ NO CARRIER — AWAITING ALIGNMENT'}
@@ -402,19 +402,19 @@ export default function AntennaAlignmentScreen({ onBack, onLogout, onAlignComple
 
                   {/* Label */}
                   <text y="76" textAnchor="middle"
-                        fontSize="11" fontFamily="'Cascadia Mono', Consolas, monospace"
+                        fontSize="11" fontFamily="'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace"
                         fill={ok ? '#5fff9d' : 'rgba(200, 220, 255, 0.85)'}
                         letterSpacing="0.18em">
                     {dish.label}
                   </text>
                   <text y="91" textAnchor="middle"
-                        fontSize="9" fontFamily="'Cascadia Mono', Consolas, monospace"
+                        fontSize="9" fontFamily="'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace"
                         fill="rgba(120, 150, 210, 0.55)"
                         letterSpacing="0.08em">
                     {dish.designation}
                   </text>
                   <text y="108" textAnchor="middle"
-                        fontSize="9.5" fontFamily="'Cascadia Mono', Consolas, monospace"
+                        fontSize="9.5" fontFamily="'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace"
                         fill={ok ? '#5fff9d' : 'rgba(255, 110, 110, 0.8)'}
                         letterSpacing="0.18em">
                     {ok ? '◆ LOCK' : `◇ DRIFT ${angle >= 0 ? '+' : ''}${angle.toFixed(0)}°`}

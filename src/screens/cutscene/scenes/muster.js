@@ -21,7 +21,7 @@ const MAP_Y = 1500                        // the chart lives far above the world
 const RAY_T0 = CUT_MAP + 1.5, RAY_TRAVEL = 0.45, RAY_STEP = 0.55   // one transmission per garrison, in turn
 const RET_T0 = CUT_MAP + 7.7, RET_STAGGER = 0.35, RET_DUR = 1.15   // reinforcement vectors, reverse order
 const ADDL = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }
-const MONO = '"Cascadia Mono", "Consolas", monospace'
+const MONO = '"Cascadia Mono", "Consolas", ui-monospace, "Menlo", "Monaco", monospace'
 
 // the sector garrisons, and where each hangs on the holographic nav chart —
 // true 3D positions above/below the radar grid, spiralling out from the fleet

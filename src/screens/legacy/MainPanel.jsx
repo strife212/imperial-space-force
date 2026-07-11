@@ -716,7 +716,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTarge
       ctx.strokeStyle = 'rgba(20, 80, 220, 0.35)'; ctx.setLineDash([4, 4])
       ctx.beginPath(); ctx.moveTo(cx - R, cy - R); ctx.lineTo(cx + R, cy + R); ctx.moveTo(cx - R, cy + R); ctx.lineTo(cx + R, cy - R); ctx.stroke()
       ctx.setLineDash([])
-      ctx.fillStyle = 'rgba(106, 173, 255, 0.7)'; ctx.font = '9px Cascadia Mono, Consolas, monospace'
+      ctx.fillStyle = 'rgba(106, 173, 255, 0.7)'; ctx.font = '9px Cascadia Mono, Consolas, ui-monospace, Menlo, Monaco, monospace'
       for (let deg = 0; deg < 360; deg += 30) {
         const a = (deg - 90) * Math.PI / 180
         ctx.fillText(String(deg).padStart(3, '0'), cx + Math.cos(a) * (R + 10) - 8, cy + Math.sin(a) * (R + 10) + 3)
@@ -780,7 +780,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTarge
 
         // "THREAT DETECTED" label above triangle
         ctx.save()
-        ctx.font         = 'bold 18px "Cascadia Mono", Consolas, monospace'
+        ctx.font         = 'bold 18px "Cascadia Mono", Consolas, ui-monospace, Menlo, Monaco, monospace'
         ctx.textAlign    = 'center'
         ctx.textBaseline = 'bottom'
         ctx.shadowColor  = `rgba(255,60,60,${0.6 + pulse * 0.4})`
@@ -887,9 +887,9 @@ export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTarge
       if (hl) drawHighlight(...hl, p * 2.2)
       ctx.strokeStyle = 'rgba(0,50,139,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([2, 3])
       ctx.beginPath(); ctx.moveTo(w * 0.18, h * 0.88); ctx.lineTo(w * 0.82, h * 0.88); ctx.stroke(); ctx.setLineDash([])
-      ctx.fillStyle = 'rgba(94,130,170,0.85)'; ctx.font = `${Math.max(9, h * 0.028)}px Cascadia Mono, Consolas, monospace`; ctx.textAlign = 'center'
+      ctx.fillStyle = 'rgba(94,130,170,0.85)'; ctx.font = `${Math.max(9, h * 0.028)}px Cascadia Mono, Consolas, ui-monospace, Menlo, Monaco, monospace`; ctx.textAlign = 'center'
       ctx.fillText('◄────── RAIL ASSEMBLY  4,200 m ──────►', cx, h * 0.91); ctx.textAlign = 'left'
-      ctx.fillStyle = 'rgba(0,50,139,0.12)'; ctx.font = `bold ${h * 0.09}px Cascadia Mono, Consolas, monospace`; ctx.textAlign = 'center'
+      ctx.fillStyle = 'rgba(0,50,139,0.12)'; ctx.font = `bold ${h * 0.09}px Cascadia Mono, Consolas, ui-monospace, Menlo, Monaco, monospace`; ctx.textAlign = 'center'
       ctx.fillText('TS // SCI // COMPARTMENTED', cx, cy + h * 0.04); ctx.textAlign = 'left'
     }
 
@@ -936,7 +936,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTarge
         bracket(w / 2 + bs, h / 2 + bs, -1, -1)
 
         // ── corner labels ───────────────────────────────────────────────────
-        ctx.font      = `${fs}px "Cascadia Mono", Consolas, monospace`
+        ctx.font      = `${fs}px "Cascadia Mono", Consolas, ui-monospace, Menlo, Monaco, monospace`
         ctx.fillStyle = 'rgba(106,173,255,0.82)'
         ctx.textBaseline = 'top';    ctx.textAlign = 'left';  ctx.fillText('TGT // ASSET-X9', pad, pad)
         ctx.textBaseline = 'top';    ctx.textAlign = 'right'; ctx.fillText('LOCK 98.7%', w - pad, pad)
@@ -947,7 +947,7 @@ export default function MainPanel({ onLogout, onLaunchComplete, onPower, onTarge
         // ── "[ AWAITING TARGET ]" blink centred, no crosshair ───────────────
         if (Math.floor(Date.now() / 600) % 2 === 0) {
           const bigFs = Math.max(12, Math.min(20, Math.round(Math.min(w, h) * 0.09)))
-          ctx.font      = `${bigFs}px "Cascadia Mono", Consolas, monospace`
+          ctx.font      = `${bigFs}px "Cascadia Mono", Consolas, ui-monospace, Menlo, Monaco, monospace`
           ctx.fillStyle = 'rgba(106,173,255,0.65)'
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
           ctx.fillText('[ AWAITING TARGET ]', w / 2, h / 2)

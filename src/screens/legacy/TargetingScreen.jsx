@@ -317,7 +317,7 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
       const dist = Math.hypot(dx, dy) || 1
       const nx = dx / dist, ny = dy / dist
       const labelOffset = p.r + 7
-      ctx.font = '500 10px "Cascadia Mono", Consolas, monospace'
+      ctx.font = '500 10px "Cascadia Mono", Consolas, ui-monospace, Menlo, Monaco, monospace'
       ctx.textBaseline = 'middle'
       ctx.textAlign = nx >= 0 ? 'left' : 'right'
       ctx.fillStyle = `rgba(${r},${g},${b},${isHov || isSel ? 0.95 : 0.65})`
@@ -379,7 +379,7 @@ export default function TargetingScreen({ onBack, initialSelectedIdx = -1, unrea
         const mdist = Math.hypot(mdx, mdy) || 1
         const mnx = mdx / mdist, mny = mdy / mdist
         const [mr, mg, mb] = hexToRgb(m.color)
-        ctx.font = '500 9px "Cascadia Mono", Consolas, monospace'
+        ctx.font = '500 9px "Cascadia Mono", Consolas, ui-monospace, Menlo, Monaco, monospace'
         ctx.textAlign = mnx >= 0 ? 'left' : 'right'
         ctx.fillStyle = `rgba(${mr},${mg},${mb},${mHov || mSel ? 0.95 : 0.60})`
         ctx.fillText(m.name, mx + mnx * (m.r + 5), my + mny * (m.r + 5))

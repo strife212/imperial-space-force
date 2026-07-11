@@ -675,8 +675,10 @@
   --glow-soft: 0 0 6px rgba(20,96,208,0.5);
   --glow-hard: 0 0 14px rgba(26,128,255,0.9);
 
-  --font-mono: "Cascadia Mono", "JetBrains Mono", "Consolas", "Menlo", monospace;
-  --font-disp: "Cascadia Mono", "Consolas", monospace;
+  /* ui-monospace / Menlo / Monaco keep Safari off Courier (its serif default
+     for the bare `monospace` generic) — Cascadia and Consolas are Windows-only */
+  --font-mono: "Cascadia Mono", "JetBrains Mono", "Consolas", ui-monospace, "Menlo", "Monaco", monospace;
+  --font-disp: "Cascadia Mono", "Consolas", ui-monospace, "Menlo", "Monaco", monospace;
 }
 
 * {
@@ -3050,7 +3052,7 @@ body {
   font-size: 9px;
   color: rgba(100, 140, 200, 0.55);
   letter-spacing: 0.06em;
-  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
 }
 
 /* ── Message content ── */
@@ -3127,7 +3129,7 @@ body {
   font-size: 10px;
   color: rgba(100, 140, 200, 0.55);
   letter-spacing: 0.06em;
-  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
 }
 
 .mail-verified {
@@ -3562,7 +3564,7 @@ body {
   align-items: center;
   justify-content: center;
   background: #010208;
-  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
 }
 
 .debug-inner {
@@ -3709,7 +3711,7 @@ body {
   flex-direction: column;
   background: #010208;
   color: #6aadf5;
-  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
   overflow: hidden;
 }
 
@@ -3809,7 +3811,7 @@ body {
   letter-spacing: 0.1em;
   color: rgba(106,173,245,0.4);
   pointer-events: none;
-  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
 }
 
 .monitor-canvas-hint {
@@ -4635,7 +4637,7 @@ body {
 }
 
 .plasma-pct-display {
-  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
   font-size: 28px;
   font-weight: 700;
   color: #d8eeff;
@@ -4659,7 +4661,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
   font-size: 8px;
   color: rgba(106,173,245,0.40);
   pointer-events: none;
@@ -4758,7 +4760,7 @@ body {
 }
 
 .rod-reset {
-  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -4773,7 +4775,7 @@ body {
   background: rgba(180, 40, 20, 0.15);
   border: 1px solid rgba(220, 60, 40, 0.6);
   color: rgba(255, 120, 80, 0.95);
-  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -5194,7 +5196,7 @@ body {
   left: 0;
   right: 0;
   text-align: center;
-  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
   font-size: 1.3rem;
   letter-spacing: 0.08em;
   color: rgba(120, 180, 255, 0.55);

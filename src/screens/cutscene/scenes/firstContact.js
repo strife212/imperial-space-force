@@ -29,7 +29,7 @@ const easeInOut = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) 
 // A 2D survey card (canvas texture) with a live rotating Aleph beside hard
 // numbers: nucleocosmochronometric age, exotic-matter equation of state, the
 // carrier line. Designed at 1440×880, rendered at 1800×1100 for crispness.
-const MONO = '"Cascadia Mono", "Consolas", monospace'
+const MONO = '"Cascadia Mono", "Consolas", ui-monospace, "Menlo", "Monaco", monospace'
 const INK = (a) => `rgba(148,214,255,${a})`
 
 function drawAlephCard(c, W, H) {

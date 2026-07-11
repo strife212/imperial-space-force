@@ -883,9 +883,9 @@ const cosmogony = {
         for (let k = 0; k < 6; k++) { const c = cells[(Math.random() * cells.length) | 0]; c.v = Math.random() * 9.999; c.flash = 1 }
         g2.fillStyle = '#060d1c'; g2.fillRect(0, 0, 512, 320)
         g2.strokeStyle = 'rgba(110,150,255,0.35)'; g2.strokeRect(3, 3, 506, 314)
-        g2.fillStyle = '#9fb0ff'; g2.font = 'bold 17px monospace'; g2.fillText(title, 14, 30)
+        g2.fillStyle = '#9fb0ff'; g2.font = 'bold 17px "Cascadia Mono", Consolas, ui-monospace, Menlo, monospace'; g2.fillText(title, 14, 30)
         g2.fillStyle = 'rgba(110,150,255,0.5)'; g2.fillRect(14, 40, 484, 1)
-        g2.font = '16px monospace'
+        g2.font = '16px "Cascadia Mono", Consolas, ui-monospace, Menlo, monospace'
         for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
           const cell = cells[r * COLS + c], x = X0 + c * CW, y = Y0 + r * RH
           if (cell.flash > 0.02) { g2.fillStyle = `rgba(95, 205, 255, ${0.5 * cell.flash})`; g2.fillRect(x - 4, y - 20, CW - 8, 26) }

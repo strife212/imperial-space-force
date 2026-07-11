@@ -39,7 +39,7 @@ const TYPE_CPS = 55   // dialogue typewriter speed, chars/sec
 // an animated canvas diagram: this aeon's arrow of time running out of the
 // bang, then the Aleph posting the arrow home across the crossover, then the
 // signature rotating time into space. Holds on REPLAY / CONTINUE at the end.
-const MONO = '"Cascadia Mono", "Consolas", monospace'
+const MONO = '"Cascadia Mono", "Consolas", ui-monospace, "Menlo", "Monaco", monospace'
 const INKC = (a) => `rgba(148,214,255,${a})`
 const clamp01 = (v) => Math.max(0, Math.min(1, v))
 const sstep = (v) => { const k = clamp01(v); return k * k * (3 - 2 * k) }

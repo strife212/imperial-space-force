@@ -179,7 +179,7 @@ export default function CryptographyModule({ onComplete }) {
       const fs = Math.round(11 + t * 7)    // 11px settled → 18px full
       const vr = r * 0.72
       ctx.save()
-      ctx.font      = `600 ${fs}px 'Cascadia Mono', Consolas, monospace`
+      ctx.font      = `600 ${fs}px 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace`
       ctx.textAlign = 'center'
       ctx.fillStyle = `rgba(200,225,255,${a.toFixed(3)})`
       if ('letterSpacing' in ctx) ctx.letterSpacing = `${(0.1 + t * 0.12).toFixed(2)}em`
@@ -204,7 +204,7 @@ export default function CryptographyModule({ onComplete }) {
         const vr = QUBIT_R * 0.72
         const fs = 11
         ctx.save()
-        ctx.font      = `600 ${fs}px 'Cascadia Mono', Consolas, monospace`
+        ctx.font      = `600 ${fs}px 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace`
         ctx.textAlign = 'center'
         ctx.fillStyle = `rgba(200,225,255,${a.entangledAlpha.toFixed(3)})`
         if ('letterSpacing' in ctx) ctx.letterSpacing = '0.10em'
