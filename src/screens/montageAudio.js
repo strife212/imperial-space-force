@@ -10,6 +10,8 @@
 //   · a FINALE chord that arrests everything under the last held frame.
 // API: createMontageAudio() → { start, setSlide(slide, k, isLast), finish, dispose }
 
+import { registerAudioContext } from '../lib/audioUnlock'
+
 const ERA_ROOT = { 1: 36.71, 2: 41.2, 3: 49.0, 4: 55.0, 5: 61.74 }   // D1 → E1 → G1 → A1 → B1: a slow ascent
 const ERA_MOOD = {
   1: { cutoff: 130,  air: 0,     wet: 0.5 },    // the void — dark, cavernous
@@ -22,7 +24,7 @@ const ERA_MOOD = {
 export function createMontageAudio() {
   const AC = window.AudioContext || window.webkitAudioContext
   if (!AC) return null
-  const ctx = new AC()
+  const ctx = registerAudioContext(new AC())
 
   const master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination)
   const bus = ctx.createGain(); bus.connect(master)

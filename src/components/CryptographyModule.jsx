@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { registerAudioContext } from '../lib/audioUnlock'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const LINK_TEXT    = 'ESTABLISHING SECURE QUANTUM LINK'
@@ -96,7 +97,7 @@ export default function CryptographyModule({ onComplete }) {
 
   // ── Computer hum audio ──────────────────────────────────────────────────
   useEffect(() => {
-    const ctx  = new (window.AudioContext || window.webkitAudioContext)()
+    const ctx  = registerAudioContext(new (window.AudioContext || window.webkitAudioContext)())
     const gain = ctx.createGain()
     gain.gain.value = 0.5
     gain.connect(ctx.destination)

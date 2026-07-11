@@ -4,6 +4,7 @@ import { buildBlueModel } from '../../battle/geometry'
 import { buildAnnunciator } from '../models'
 import { playLanceCharge, preloadLanceSfx } from '../../../lib/lanceSfx'
 import { getFlag } from '../../../lib/store'
+import { registerAudioContext } from '../../../lib/audioUnlock'
 
 // The last resort of the Empire, never yet fired in anger. The Cathedra's
 // golden word arrives down the light, the launch codes verify box by box —
@@ -22,7 +23,7 @@ const RAY_T = 2.2, CODES_T = 4.6, PANEL_T = 6.8   // the word arrives, is spoken
 const TICK_BASE = import.meta.env?.BASE_URL ?? '/'
 let tickCtx = null, tickBuf = null, tickLoading = null
 function initCodeTick() {
-  try { tickCtx = tickCtx || new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return }
+  try { tickCtx = tickCtx || registerAudioContext(new (window.AudioContext || window.webkitAudioContext)()) } catch (_) { return }
   tickLoading = tickLoading || fetch(`${TICK_BASE}codetick.wav`)
     .then((r) => r.arrayBuffer())
     .then((ab) => tickCtx.decodeAudioData(ab))

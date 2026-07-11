@@ -5,6 +5,8 @@
 // Owns a single lazily-created AudioContext and caches the charge/explosion
 // samples from public/sfx/, with synthesised fallbacks if a file is missing.
 
+import { registerAudioContext } from './audioUnlock'
+
 const BASE = import.meta.env?.BASE_URL ?? '/'
 const FILES = { charge: 'sfx/charge.mp3', explosion: 'sfx/explosion.mp3' }
 
@@ -13,7 +15,7 @@ const buffers = {}
 
 function init() {
   if (ctx) return ctx
-  try { ctx = new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return null }
+  try { ctx = registerAudioContext(new (window.AudioContext || window.webkitAudioContext)()) } catch (_) { return null }
   master = ctx.createGain(); master.gain.value = 0.4; master.connect(ctx.destination)
   // a touch of synthetic reverb for a sense of space
   const conv = ctx.createConvolver()

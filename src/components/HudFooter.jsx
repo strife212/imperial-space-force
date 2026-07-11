@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import AudioSpectrograph from './AudioSpectrograph'
 import { setFlag } from '../lib/store'
+import { registerAudioContext } from '../lib/audioUnlock'
 
 const POEM = [
   "O'er silent Star, beneath broken Sky,",
@@ -27,7 +28,7 @@ export default function HudFooter({ children }) {
 
   // Preload audio buffer on mount
   useEffect(() => {
-    const ctx  = new (window.AudioContext || window.webkitAudioContext)()
+    const ctx  = registerAudioContext(new (window.AudioContext || window.webkitAudioContext)())
     const gain = ctx.createGain()
     gain.gain.value = 0.8
     gain.connect(ctx.destination)

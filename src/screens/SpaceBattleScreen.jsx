@@ -21,6 +21,7 @@ import { buildBlueModel, buildRedModel, buildBlueCapital2, buildRedCapital, buil
 import { makeCampaignBackdrop } from './battle/campaignBackdrop'
 import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
 import { getFlag, setFlag } from '../lib/store'
+import { registerAudioContext } from '../lib/audioUnlock'
 import { playLanceCharge, preloadLanceSfx } from '../lib/lanceSfx'
 import './battle/battle.css'
 
@@ -234,6 +235,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   useEffect(() => {
     let ctx
     try { ctx = new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return }
+    registerAudioContext(ctx)   // Safari: resume must ride a gesture stack — the unlocker covers pointer/touch/key
     const TARGET_VOL = 0.3
 
     // master bus: soft-clip saturation + compressor for glue and punch

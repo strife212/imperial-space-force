@@ -3,6 +3,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import { TEAMS } from '../../battle/constants'
+import { registerAudioContext } from '../../../lib/audioUnlock'
 import { makeGalaxy, makeEarthlike, makeStar, makeMachinePlanet, buildBlueModel, buildBlueCapital2, buildBlueCruiser, buildSimpleStar, buildSimpleGalaxy } from '../../battle/geometry'
 import { makeFacadeTexture } from '../models'
 
@@ -53,7 +54,7 @@ const ORIGIN = new THREE.Vector3()
 let tickCtx = null, tickBuf = null, tickLoading = false
 function ensureTickAudio() {
   if (!tickCtx) {
-    try { tickCtx = new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return }
+    try { tickCtx = registerAudioContext(new (window.AudioContext || window.webkitAudioContext)()) } catch (_) { return }
   }
   if (!tickBuf && !tickLoading) {
     tickLoading = true

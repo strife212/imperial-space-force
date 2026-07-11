@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { registerAudioContext } from '../../lib/audioUnlock'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
@@ -283,7 +284,7 @@ export default function ReactorScreen({ onReturn, onLogout, initialPlasma = 0, u
 
   // ── Power audio: seamless loop via Web Audio API ──────────────────────────
   useEffect(() => {
-    const ctx  = new (window.AudioContext || window.webkitAudioContext)()
+    const ctx  = registerAudioContext(new (window.AudioContext || window.webkitAudioContext)())
     const gain = ctx.createGain()
     gain.gain.value = 0          // start silent; slider gesture will resume ctx
     gain.connect(ctx.destination)

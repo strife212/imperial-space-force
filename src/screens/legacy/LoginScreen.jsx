@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import CryptographyModule from '../../components/CryptographyModule'
 import AudioSpectrograph from '../../components/AudioSpectrograph'
 import { useScreenScale } from '../../hooks/useScreenScale'
+import { registerAudioContext } from '../../lib/audioUnlock'
 
 const OPERATOR_ID = 'HIH V. ASTRAIA // CLR-Ω'
 const PASSWORD    = 'IMPERIAL-CLEARANCE-OMEGA'
@@ -38,7 +39,7 @@ export default function LoginScreen({ onComplete, onBack }) {
 
   // Preload anthem audio buffer
   useEffect(() => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const ctx = registerAudioContext(new (window.AudioContext || window.webkitAudioContext)())
     anthemCtxRef.current = ctx
     fetch(`${import.meta.env.BASE_URL}oempress.mp3`)
       .then(r => r.arrayBuffer())

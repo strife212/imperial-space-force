@@ -1,4 +1,5 @@
 import { getFlag } from '../../lib/store'
+import { registerAudioContext } from '../../lib/audioUnlock'
 
 // ── Cutscene sound engine ────────────────────────────────────────────────────
 // A trimmed-down sibling of the battle screen's procedural audio: one lazily
@@ -27,7 +28,7 @@ const FILES = { laser: 'sfx/laser.mp3', explosion: 'sfx/explosion.mp3' }
 let boomCtx = null, boomIR = null
 function castCathedral(mk2) {
   if (getFlag('soundMuted')) return
-  try { boomCtx = boomCtx || new (window.AudioContext || window.webkitAudioContext)() } catch (_) { return }
+  try { boomCtx = boomCtx || registerAudioContext(new (window.AudioContext || window.webkitAudioContext)()) } catch (_) { return }
   const ctx = boomCtx
   if (ctx.state === 'suspended') ctx.resume().catch(() => {})
   const t0 = ctx.currentTime + 0.03
@@ -145,10 +146,9 @@ export function createCutsceneSfx() {
     src.start()
   }
 
-  // deep-linked scenes may start without a user gesture — resume on the first one
-  const resume = () => { if (ctx.state === 'suspended') ctx.resume().catch(() => {}) }
-  resume()
-  window.addEventListener('pointerdown', resume)
+  // Safari holds the context suspended until a gesture-stack resume — the
+  // shared unlocker retries on every pointer / touch / key gesture
+  registerAudioContext(ctx)
 
   let lastLaser = 0, lastBoom = 0    // rate limits so volleys don't stack into noise
 
@@ -297,9 +297,8 @@ export function createCutsceneSfx() {
   }
 
   const dispose = () => {
-    window.removeEventListener('pointerdown', resume)
     tracks.forEach(a => { a.pause(); a.src = '' })
-    try { ctx.close() } catch (_) { /* already closed */ }
+    try { ctx.close() } catch (_) { /* already closed */ }   // the unlocker prunes closed contexts itself
   }
 
   return { laser, explosion, jump, comms, blip, ping, rumble, bed, dispose }
