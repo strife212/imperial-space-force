@@ -38,8 +38,15 @@ export function rollEnemyCards(n) {
   return rolled
 }
 
-// The node's buffs — rolled and locked into the save on first request.
-export function getEnemyUpgrades(nodeIndex) {
+// From battle 5 on, the enemy flagship also fields GUARANTEED Reinforced Hull
+// cards on top of the random roll — one more level every SECOND node (battle
+// 5 = +1, 7 = +2, 9 = +3; +5 hull each, finale caps at +15) — so
+// late-campaign flagships take visibly more killing however the random
+// cards land.
+const guaranteedCapHp = (nodeIndex) => Math.max(0, Math.floor((nodeIndex - 2) / 2))
+
+// The node's random buffs — rolled and locked into the save on first request.
+function rolledEnemyUpgrades(nodeIndex) {
   const n = ENEMY_CARD_COUNTS[nodeIndex] || 0
   if (!n) return {}
   const saved = getFlag('enemyUpgrades') || {}
@@ -47,6 +54,15 @@ export function getEnemyUpgrades(nodeIndex) {
   const rolled = rollEnemyCards(n)
   setFlag('enemyUpgrades', { ...saved, [nodeIndex]: rolled })
   return rolled
+}
+
+// The node's full buff map: the saved random roll plus the guaranteed hull
+// cards, merged at read time — so the battle and the shipyard intel always
+// agree, and existing saves inherit the guarantee without a reroll.
+export function getEnemyUpgrades(nodeIndex) {
+  const rolled = rolledEnemyUpgrades(nodeIndex)
+  const bonus = guaranteedCapHp(nodeIndex)
+  return bonus ? { ...rolled, capHp: (rolled.capHp || 0) + bonus } : rolled
 }
 
 // Everything the battle (and the shipyard intel) needs for a node's enemy:

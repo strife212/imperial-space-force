@@ -21,26 +21,31 @@ export const STARTING_FLEET = { fighters: 8, bombers: 0, cruisers: 0 }
 // granted the first time the node is cleared. Fleets escalate to a finale.
 // `sky` picks the battle's nebula backdrop (see SKIES in battle/geometry.js);
 // omit it to use the default first sky (Void Indigo).
+//
+// Enemy comps follow per-node archetypes — swarm, balanced, cruiser line,
+// bomber wave — so consecutive nodes ask different tactical questions, while
+// each fleet's requisition value stays ~90-96% of the player's max possible
+// spend at that point. Previous values + restore notes live in balance.md.
 export const NODE_BATTLES = [
-  { title: 'First Light',     enemyName: 'Aleph Sentinels',       enemy: { fighters: 7,  bombers: 0, cruisers: 0 }, reward: 560,  sky: 'void',
+  { title: 'First Light',     enemyName: 'Aleph Sentinels',       enemy: { fighters: 8,  bombers: 0,  cruisers: 0 }, reward: 620,  sky: 'void',
     brief: 'Hostiles of unknown origin have swarmed the Cassiopeia. Break the ambush.' },
-  { title: 'Critical Mass',        enemyName: 'Rebel Vanguard',        enemy: { fighters: 9,  bombers: 1, cruisers: 0 }, reward: 720,  sky: 'aurum',
+  { title: 'Critical Mass',        enemyName: 'Rebel Vanguard',        enemy: { fighters: 10, bombers: 1,  cruisers: 0 }, reward: 790,  sky: 'aurum',
     brief: 'A rebel screen tests the mustering fleet. Hold the line and scatter them.' },
-  { title: 'Antithesis',      enemyName: 'Heretic Battlegroup',   enemy: { fighters: 11, bombers: 1, cruisers: 1 }, reward: 880,  sky: 'ember',
+  { title: 'Antithesis',      enemyName: 'Heretic Battlegroup',   enemy: { fighters: 7,  bombers: 0,  cruisers: 3 }, reward: 970,  sky: 'ember',
     brief: 'The front is open. Punch through the heretic battlegroup and take the lane.' },
-  { title: 'Decoherence',          enemyName: 'The Silent Fleet',      enemy: { fighters: 17, bombers: 2, cruisers: 1 }, reward: 1000, sky: 'rose',
+  { title: 'Decoherence',          enemyName: 'The Silent Fleet',      enemy: { fighters: 13, bombers: 5,  cruisers: 0 }, reward: 1100, sky: 'rose',
     brief: 'They came without signal or hail. Answer the silence in kind.' },
-  { title: 'Logos',  enemyName: 'Apostate Armada',       enemy: { fighters: 22, bombers: 2, cruisers: 2 }, reward: 1220, sky: 'verdant',
+  { title: 'Logos',  enemyName: 'Apostate Armada',       enemy: { fighters: 22, bombers: 3,  cruisers: 2 }, reward: 1340, sky: 'verdant',
     brief: 'Guard the relays of the Great Litany. Do not let the apostates break the chant.' },
-  { title: 'Catabasis',          enemyName: 'The Unsung Host',       enemy: { fighters: 29, bombers: 3, cruisers: 2 }, reward: 1440, sky: 'ember',
+  { title: 'Catabasis',          enemyName: 'The Unsung Host',       enemy: { fighters: 53, bombers: 0,  cruisers: 0 }, reward: 1580, sky: 'ember',
     brief: 'The Unsung Host swarms out of the dark. Hold the line, whatever it costs.' },
-  { title: 'Providence', enemyName: 'The Hush at the Gates', enemy: { fighters: 39, bombers: 3, cruisers: 3 }, reward: 1730, sky: 'aurum',
+  { title: 'Providence', enemyName: 'The Hush at the Gates', enemy: { fighters: 33, bombers: 0,  cruisers: 8 }, reward: 1900, sky: 'aurum',
     brief: 'The Discord has reached the Throneworld itself. Hold the skies over Novaraya while the Empress renders the Final Hearing.' },
-  { title: 'Ultima Ratio',   enemyName: 'Heralds of the Hush',   enemy: { fighters: 51, bombers: 4, cruisers: 3 }, reward: 2020, sky: 'rose',
+  { title: 'Ultima Ratio',   enemyName: 'Heralds of the Hush',   enemy: { fighters: 44, bombers: 12, cruisers: 0 }, reward: 2220, sky: 'rose',
     brief: 'Her Annunciator is arming. Hold the Heralds of the Hush off the firing lane until the Lance can be cast.' },
-  { title: 'Singularity',         enemyName: 'Throneward Blockade',    enemy: { fighters: 64, bombers: 5, cruisers: 4 }, reward: 2450, sky: 'void',
+  { title: 'Singularity',         enemyName: 'Throneward Blockade',    enemy: { fighters: 61, bombers: 6,  cruisers: 6 }, reward: 2700, sky: 'void',
     brief: 'Clear the blockade so the Lance can be cast. Everything rides on the lane.' },
-  { title: 'Anastasis',    enemyName: "Discord's Last Stand",   enemy: { fighters: 69, bombers: 7, cruisers: 6 }, reward: 3600, sky: 'aurum',
+  { title: 'Anastasis',    enemyName: "Discord's Last Stand",   enemy: { fighters: 73, bombers: 8,  cruisers: 7 }, reward: 3960, sky: 'aurum',
     brief: "The Discord's last stand, laid bare at last. Break it utterly and the Song returns." },
 ]
 
@@ -194,6 +199,8 @@ export function resetCampaign() {
   setFlag('fleetName', '')
   setFlag('upgrades', {})           // wipe roguelike upgrades back to none
   setFlag('enemyUpgrades', {})      // enemy nodes reroll their buffs next campaign
+  setFlag('tutSkillSeen', false)    // first-battle tutorial nudges re-arm
+  setFlag('tutBomberSeen', false)
 }
 
 // Selectable operators, in carousel order. Mirrors the roster in CharacterSelect
