@@ -21,15 +21,15 @@ const BANG_T = 1.0
 // the surface scene runs long — three tableaus (hut+fire → stone temple →
 // erupting skyline) panned across — so the machine cut and everything after it
 // sit ~5s later than the original single-tableau timing.
-const CUT_SURFACE = 20.0, CUT_MACHINE = 33.6, CUT_ORBIT = 40.9, FLEET_T = 44.1, END_T = 49.6
+const CUT_SURFACE = 20.0, CUT_MACHINE = 33.0, CUT_ORBIT = 40.3, FLEET_T = 43.5, END_T = 49.0
 // surface tableau layout + beats (scene clock): three centres strung along +x,
 // with quick pans between them and the skyline erupting on the last
 const TAB_A_X = 0, TAB_B_X = 72, TAB_C_X = 144
-const PAN_DUR = 0.7, PAN_AB = 22.7, PAN_BC = 25.6
-const SKY_RISE_FROM = 26.6, SKY_RISE_SPAN = 2.0
+const PAN_DUR = 0.7, PAN_AB = 22.4, PAN_BC = 25.0   // hut & temple each trimmed ~10%; everything after moves up 0.6s
+const SKY_RISE_FROM = 26.0, SKY_RISE_SPAN = 2.0     // towers still erupt 1s after the city cut lands
 // the tail of the surface scene: dive into a lit window on a hero tower, and the
 // room beyond it — figures around a computer box whose eye opens on the machine
-const ZOOM_T = 28.0, WINDOW_CUT = 29.7
+const ZOOM_T = 27.4, WINDOW_CUT = 29.1
 
 const LINE1 = 'In the beginning there was a single note, struck against the dark. Everything that is, is its echo.'
 const LINE2 = 'The echo cooled into stars, and the stars into worlds — and on one world, listeners.'
@@ -76,6 +76,65 @@ function playTick() {
   src.start()
 }
 
+// ── Era beats — the ages announce themselves as the camera cuts ──────────────
+// A ceremonial skin-drum strike (pitch-dropping sine over a felt thump),
+// ringing with inharmonic bronze partials — the same bell for every age.
+// Rides the shared tick context.
+function playEraBeat({ bell = false, vol = 1 } = {}) {
+  if (!tickCtx) return
+  if (tickCtx.state === 'suspended') tickCtx.resume()
+  const c = tickCtx
+  const strike = (t0, v) => {
+    const out = c.createGain(); out.gain.value = v; out.connect(c.destination)
+    const o = c.createOscillator(); o.type = 'sine'
+    o.frequency.setValueAtTime(96, t0); o.frequency.exponentialRampToValueAtTime(42, t0 + 0.5)
+    const og = c.createGain()
+    og.gain.setValueAtTime(0.0001, t0)
+    og.gain.exponentialRampToValueAtTime(0.5, t0 + 0.012)
+    og.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4)
+    o.connect(og); og.connect(out); o.start(t0); o.stop(t0 + 1.5)
+    const nb = c.createBuffer(1, (c.sampleRate * 0.4) | 0, c.sampleRate)
+    const nd = nb.getChannelData(0)
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1
+    const n = c.createBufferSource(); n.buffer = nb
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 240
+    const ng = c.createGain()
+    ng.gain.setValueAtTime(0.28, t0); ng.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3)
+    n.connect(lp); lp.connect(ng); ng.connect(out); n.start(t0); n.stop(t0 + 0.4)
+  }
+  const t0 = c.currentTime + 0.02
+  strike(t0, vol)
+  if (bell) {
+    const out = c.createGain(); out.gain.value = vol; out.connect(c.destination)
+    for (const [f, g0, dur] of [[164, 0.1, 2.6], [219.4, 0.055, 2.0], [327.1, 0.03, 1.5]]) {
+      const b = c.createOscillator(); b.type = 'sine'; b.frequency.value = f
+      const bg = c.createGain()
+      bg.gain.setValueAtTime(0.0001, t0 + 0.015)
+      bg.gain.exponentialRampToValueAtTime(g0, t0 + 0.04)
+      bg.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
+      b.connect(bg); bg.connect(out); b.start(t0 + 0.015); b.stop(t0 + dur + 0.1)
+    }
+  }
+}
+// A low swell under the skyline eruption: filtered noise sweeping upward as
+// the towers climb, dying back once they stand.
+function playCityRise() {
+  if (!tickCtx) return
+  if (tickCtx.state === 'suspended') tickCtx.resume()
+  const c = tickCtx, t0 = c.currentTime + 0.02
+  const nb = c.createBuffer(1, (c.sampleRate * 3.2) | 0, c.sampleRate)
+  const nd = nb.getChannelData(0)
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1
+  const n = c.createBufferSource(); n.buffer = nb
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 1.1
+  lp.frequency.setValueAtTime(90, t0); lp.frequency.exponentialRampToValueAtTime(340, t0 + 2.0)
+  const g = c.createGain()
+  g.gain.setValueAtTime(0.0001, t0)
+  g.gain.linearRampToValueAtTime(0.34, t0 + 1.6)
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.0)
+  n.connect(lp); lp.connect(g); g.connect(c.destination); n.start(t0); n.stop(t0 + 3.2)
+}
+
 const cosmogony = {
   label: 'CUTSCENE / COSMOGONY',
   hideChrome: true,   // full-bleed: no HUD header framing the cosmogony
@@ -91,10 +150,10 @@ const cosmogony = {
     { t: 17.5, level: 'info', text: 'Habitable candidate acquired · liquid-water band' },
     { t: 21.0, level: 'ok',   text: '[OK] Biosphere confirmed · tool-users present' },
     { t: 24.5, level: 'info', text: 'Civilisation ascending · agora → arcology' },
-    { t: 30.1, level: 'warn', text: 'Artificial cognition detected · substrate: silicon' },
-    { t: 36.6, level: 'discord', text: 'IT LEARNS · IT REMEMBERS · IT LISTENS' },
-    { t: 41.5, level: 'discord', text: '✦ CAELUM CANIT · ILLA AVDIT ✦' },
-    { t: 45.7, level: 'ok', text: '[OK] Home Fleet on station · the long watch continues' },
+    { t: 29.5, level: 'warn', text: 'Artificial cognition detected · substrate: silicon' },
+    { t: 36.0, level: 'discord', text: 'IT LEARNS · IT REMEMBERS · IT LISTENS' },
+    { t: 40.9, level: 'discord', text: '✦ CAELUM CANIT · ILLA AVDIT ✦' },
+    { t: 45.1, level: 'ok', text: '[OK] Home Fleet on station · the long watch continues' },
   ].map((l) => ({ ...l, t: l.t + PREROLL })),
   readout: {
     id: 'PNL-000 · Cosmogony',
@@ -958,7 +1017,7 @@ const cosmogony = {
     let pulseCd = 0, novaCd = 1.1, streakCd = 0, worldShown = false, discCrossed = false, lastTickT = 0
     let capCrossed = false, followT = 0   // the capital-ship pan: armed once it passes screen centre
     let roomShown = false                 // surface tail: swapped city → interior room once the window fills
-    let flashAB = false, flashBC = false  // white flashes punctuating the hut→temple→city hard cuts
+    let flashAB = false, flashBC = false, roseBeat = false  // flashes + era beats punctuating the hut→temple→city cuts
     const tableCds = [0.02, 0.06, 0.1]   // staggered redraw phases
     const novas = []
 
@@ -1276,8 +1335,9 @@ const cosmogony = {
         for (const tw of towers) tw.m.visible = cityUp   // fully erect, revealed whole at the city cut
         heroWin.visible = cityUp
         // white flashes punctuate the hard cuts between the ages
-        if (!flashAB && T >= PAN_AB) { flashAB = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4) }
-        if (!flashBC && T >= PAN_BC) { flashBC = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4) }
+        if (!flashAB && T >= PAN_AB) { flashAB = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4); playEraBeat({ bell: true, vol: 0.9 }) }   // the temple age rings in on bronze
+        if (!flashBC && T >= PAN_BC) { flashBC = true; flashMat.color.setHex(0xffffff); fireFlash(1, 0.4); playEraBeat({ bell: true, vol: 0.9 }) }   // the city arrives on the same bell
+        if (!roseBeat && T >= SKY_RISE_FROM) { roseBeat = true; playCityRise() }   // and its towers climb on a swell
         if (T < ZOOM_T) {
           // hard cut between tableaus: snap the camera to each one's own fixed
           // framing, no interpolation — the content change carries the cut. The
@@ -1403,8 +1463,8 @@ const cosmogony = {
       // the room with the computer
       if (!cS && T >= WINDOW_CUT + 0.3) { cS = true; comms.show('Litania Magna', LINE_S) }
       if (!c3 && T >= WINDOW_CUT + 3.4) { c3 = true; comms.show('Litania Magna', LINE3, { persist: true }) }
-      if (!c4 && T >= 41.5) { c4 = true; comms.show('Litania Magna', LINE4, { persist: true }) }
-      if (!c5 && T >= 45.5) { c5 = true; comms.show('Litania Magna', LINE5, { persist: true }) }
+      if (!c4 && T >= 40.9) { c4 = true; comms.show('Litania Magna', LINE4, { persist: true }) }
+      if (!c5 && T >= 44.9) { c5 = true; comms.show('Litania Magna', LINE5, { persist: true }) }
       if (!ended && T >= END_T) { ended = true; end({ holdMs: 900 }) }
     }
   },
