@@ -141,6 +141,23 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   const [blueBomberAlive, setBlueBomberAlive] = useState(() => Array(BOMBER_COUNT).fill(true))  // per-bomber status for the roster
   const callBombersRef = useRef(false)
   const bomberCountdownRef = useRef(null)       // live "auto dispatch in Ns" text element
+  // ── First-battle tutorial nudges (campaign) ───────────────────────────────
+  // If a new player hasn't touched the admiral skill (15s) or dispatched their
+  // bombers (10s), the sim pauses and the untouched button gets a blinking
+  // spotlight. Each fires at most once per campaign ('tutSkillSeen' /
+  // 'tutBomberSeen', re-armed by resetCampaign) and is satisfied forever the
+  // moment the player uses the button on their own.
+  const [tutorial, setTutorial] = useState(null)   // null | 'skill' | 'bombers'
+  const tutorialRef = useRef(null)                 // mirror readable inside handlers/loop
+  const tutSkillPendingRef  = useRef(false)        // armed per battle from the flags
+  const tutBomberPendingRef = useRef(false)
+  const tutPrevSpeedRef = useRef(1)                // sim speed to restore on dismissal
+  const dismissTutorial = () => {
+    if (!tutorialRef.current) return
+    tutorialRef.current = null
+    setTutorial(null)
+    setSimSpeed(tutPrevSpeedRef.current || 1)
+  }
   const capTacticRef      = useRef(capTactic)
   const fighterControlRef = useRef(fighterControl)
   useEffect(() => { capTacticRef.current = capTactic }, [capTactic])
@@ -157,6 +174,13 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   const triggerSkill = (i) => {
     if (skillsUsed[i] || !skillMeta(i)?.ready) return
     if (!isCampaign && skillsUsed.some(Boolean)) return   // skirmish: only one ability per battle
+    // the click itself satisfies the first-battle tutorial (dismiss + resume
+    // even if the skill then declines to fire)
+    if (isCampaign) {
+      tutSkillPendingRef.current = false
+      setFlag('tutSkillSeen', true)
+      if (tutorialRef.current === 'skill') dismissTutorial()
+    }
     const fired = i === 0 ? lanceStrikeRef.current?.()
       : i === 1 ? aceWarpRef.current?.()
       : i === 2 ? nanoRepairRef.current?.()
@@ -424,6 +448,10 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
     callBombersRef.current = false; setBombersCalled(false); setBlueBomberAlive(Array(compRef.current.blue.bombers).fill(true))  // bomber wing in reserve
     simSpeedRef.current = 1; setSimSpeed(1)                               // every battle starts running at 1×
     pipRef.current = null; setPipCaption(null)                           // no event highlight yet
+    // arm the first-battle tutorial nudges — campaign only, once per campaign
+    tutorialRef.current = null; setTutorial(null)
+    tutSkillPendingRef.current  = isCampaign && campaignSkillIdxs.length > 0 && !getFlag('tutSkillSeen')
+    tutBomberPendingRef.current = isCampaign && compRef.current.blue.bombers > 0 && !getFlag('tutBomberSeen')
     setSkillsUsed([false, false, false, false])                          // special skills refresh each engagement
 
     // blue flagship comms wear the chosen operator's portrait in campaign battles;
@@ -1433,6 +1461,22 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           }
           if (!blueBombersLaunched && callBombersRef.current) { blueBombersLaunched = true; launchBombers('blue') }
           if (!redBombersLaunched && t >= redBomberEntry)     { redBombersLaunched = true; launchBombers('red') }
+
+          // first-battle tutorial: pause and spotlight an untouched control.
+          // Pausing freezes battleSimT, so the skill nudge can only fire once
+          // the bomber one (10s < 15s) has been dismissed.
+          const showTutorial = (kind) => {
+            tutorialRef.current = kind
+            setFlag(kind === 'skill' ? 'tutSkillSeen' : 'tutBomberSeen', true)   // shown once, never again this campaign
+            tutPrevSpeedRef.current = simSpeedRef.current || 1
+            setSimSpeed(0)
+            setTutorial(kind)
+          }
+          if (tutBomberPendingRef.current && hasBlueBombers && !callBombersRef.current && battleSimT >= 10) {
+            tutBomberPendingRef.current = false; showTutorial('bombers')
+          } else if (tutSkillPendingRef.current && !tutorialRef.current && battleSimT >= 15) {
+            tutSkillPendingRef.current = false; showTutorial('skill')
+          }
         }
 
         // ── Ships: steer (seek nearest enemy + separation + bounds), then fire ──
@@ -2113,7 +2157,14 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   // restart the engagement immediately (fresh jump-in) without returning to the briefing
   const restartCombat = () => { setWinner(null); setStats(null); setCampResult(null); setRunId(k => k + 1) }
   // order the blue bomber wing to warp in (one-way; the loop picks up the ref)
-  const callBombers = () => { callBombersRef.current = true; setBombersCalled(true) }
+  const callBombers = () => {
+    callBombersRef.current = true; setBombersCalled(true)
+    if (isCampaign) {   // a player who dispatches on their own needs no tutorial
+      tutBomberPendingRef.current = false
+      setFlag('tutBomberSeen', true)
+      if (tutorialRef.current === 'bombers') dismissTutorial()
+    }
+  }
 
   // shared post-battle breakdown (used by both the skirmish and campaign result panels)
   const statsBlock = stats && (
@@ -2149,6 +2200,20 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       <div className="sb-stage">
         <div className="sb-canvas" ref={mountRef} />
         <div className="sb-barrage-layer" ref={barrageLayerRef} />
+
+        {tutorial && (
+          <div className="sb-tut" aria-live="polite">
+            <div className="sb-tut-panel">
+              <div className="sb-tut-title">{tutorial === 'skill' ? 'ADMIRAL SKILL READY' : 'BOMBER WING IN RESERVE'}</div>
+              <div className="sb-tut-body">
+                {tutorial === 'skill'
+                  ? 'Your admiral commands an elite skill, usable once per battle. Try clicking the highlighted button — battles turn on its timing.'
+                  : 'Your bombers are holding in reserve — once dispatched, they strike the enemy flagship. Try clicking the highlighted DISPATCH BOMBERS button.'}
+              </div>
+              <div className="sb-tut-note">◼ BATTLE PAUSED</div>
+            </div>
+          </div>
+        )}
 
         {!started && !isCampaign && (
           <Briefing comp={comp} blueCapName={blueCapName} onCycleBlueName={cycleBlueName} onAdjust={adjustComp} onStart={startBattle} />
@@ -2188,7 +2253,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
               <button
                 key={sp}
                 className={`sb-speed-seg${simSpeed === sp ? ' sb-speed-seg--on' : ''}`}
-                onClick={() => setSimSpeed(sp)}
+                onClick={() => { if (!tutorial) setSimSpeed(sp) }}
+                disabled={!!tutorial}   // a tutorial pause only ends via the spotlit button
+                title={tutorial ? 'Follow the tutorial prompt to resume' : undefined}
               >{sp === 0 ? '0' : sp === 0.5 ? '0.5×' : '1×'}</button>
             ))}
           </div>
@@ -2301,7 +2368,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
                     return (
                       <button
                         key={i}
-                        className={`sb-skill-btn${skillsUsed[i] ? ' sb-skill-btn--used' : ''}`}
+                        className={`sb-skill-btn${skillsUsed[i] ? ' sb-skill-btn--used' : ''}${tutorial === 'skill' && i === campaignSkillIdxs[0] ? ' sb-tut-target' : ''}`}
                         onClick={() => triggerSkill(i)}
                         disabled={skillsUsed[i]}
                         title={sk.hint}
@@ -2342,7 +2409,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
             <div className="sb-dispatch">
               <div className="sb-dispatch-row">
                 <button
-                  className={`sb-dispatch-btn${bombersCalled ? ' sb-dispatch-btn--sent' : ''}`}
+                  className={`sb-dispatch-btn${bombersCalled ? ' sb-dispatch-btn--sent' : ''}${tutorial === 'bombers' ? ' sb-tut-target' : ''}`}
                   onClick={callBombers}
                   disabled={bombersCalled}
                 >
