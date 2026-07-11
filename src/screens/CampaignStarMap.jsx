@@ -432,6 +432,12 @@ export default function CampaignStarMap({ onExit, onPlay, onReviewFleet, onCards
       const ro = new ResizeObserver(onResize); ro.observe(mount)
 
       return () => {
+        // StrictMode's dev-only throwaway mount consumes the unlock flag
+        // before a single visible frame. If the choreography never actually
+        // began (it opens with a 0.7s hold), hand the flag back so the mount
+        // that survives replays it. A finished or visibly-started run keeps
+        // the flag, exactly as before.
+        if (unlock && !unlock.done && unlock.t < 0.7) setFlag('campaignProgressSeen', seen)
         cancelAnimationFrame(raf); ro.disconnect(); controls.dispose()
         renderer.domElement.removeEventListener('pointermove', onMove); renderer.domElement.removeEventListener('pointerdown', onDown); renderer.domElement.removeEventListener('pointerup', onUp)
         const seenD = new Set()

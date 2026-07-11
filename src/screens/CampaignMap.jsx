@@ -395,10 +395,16 @@ export default function CampaignMap({ onExit, onPlay, onReviewFleet, onCards, on
       const ro = new ResizeObserver(onResize); ro.observe(mount)
 
       return () => {
+        // StrictMode's dev-only throwaway mount consumes the unlock flag
+        // before a single visible frame. If the choreography never actually
+        // began (it opens with a 0.7s hold), hand the flag back so the mount
+        // that survives replays it. A finished or visibly-started run keeps
+        // the flag, exactly as before.
+        if (unlock && !unlock.done && unlock.t < 0.7) setFlag('campaignProgressSeen', seen)
         cancelAnimationFrame(raf); ro.disconnect()
         renderer.domElement.removeEventListener('pointermove', onMove); renderer.domElement.removeEventListener('pointerdown', onDown); renderer.domElement.removeEventListener('pointerup', onUp)
-        const seen = new Set()
-        scene.traverse(node => { if (node.geometry && !seen.has(node.geometry)) { seen.add(node.geometry); node.geometry.dispose() } const mats = node.material ? (Array.isArray(node.material) ? node.material : [node.material]) : []; for (const m of mats) if (!seen.has(m)) { seen.add(m); m.dispose() } })
+        const seenD = new Set()
+        scene.traverse(node => { if (node.geometry && !seenD.has(node.geometry)) { seenD.add(node.geometry); node.geometry.dispose() } const mats = node.material ? (Array.isArray(node.material) ? node.material : [node.material]) : []; for (const m of mats) if (!seenD.has(m)) { seenD.add(m); m.dispose() } })
         composer.dispose && composer.dispose(); renderer.dispose()
         if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement)
       }
