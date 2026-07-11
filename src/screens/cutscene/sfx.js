@@ -110,7 +110,7 @@ export function createCutsceneSfx() {
   const tracks = []            // HTMLAudio beds to pause at teardown
   if (!ctx) {
     const silentBed = () => ({ el: null, setVolume: () => {}, play: () => {} })
-    return { laser: () => {}, explosion: () => {}, jump: () => {}, comms: () => {}, blip: () => {}, rumble: () => {}, bed: silentBed, dispose: () => { tracks.forEach(a => a.pause()) } }
+    return { laser: () => {}, explosion: () => {}, jump: () => {}, comms: () => {}, blip: () => {}, ping: () => {}, rumble: () => {}, bed: silentBed, dispose: () => { tracks.forEach(a => a.pause()) } }
   }
 
   const master = ctx.createGain(); master.gain.value = 0.3
@@ -244,6 +244,29 @@ export function createCutsceneSfx() {
     o.start(now); o.stop(now + dur + 0.02)
   }
 
+  // a radar-return ping — a bright sonar strike with a slow downward bend, a
+  // fifth-down body and a generous reverb tail. High and quiet for the sweep;
+  // a lower freq at volume reads as a hostile return.
+  const ping = (freq = 1240, vol = 0.4) => {
+    if (muted()) return
+    const now = ctx.currentTime
+    const out = ctx.createGain(); out.connect(dry); sendTo(out, 0.7)
+    const o = ctx.createOscillator(); o.type = 'sine'
+    o.frequency.setValueAtTime(freq, now)
+    o.frequency.exponentialRampToValueAtTime(freq * 0.93, now + 0.3)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, now)
+    g.gain.exponentialRampToValueAtTime(vol, now + 0.006)
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.34)
+    o.connect(g); g.connect(out); o.start(now); o.stop(now + 0.38)
+    const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 0.667
+    const g2 = ctx.createGain()
+    g2.gain.setValueAtTime(0.0001, now)
+    g2.gain.exponentialRampToValueAtTime(vol * 0.4, now + 0.01)
+    g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.24)
+    o2.connect(g2); g2.connect(out); o2.start(now); o2.stop(now + 0.28)
+  }
+
   // a one-shot deep rumble (impacts, distant detonations) — heavier than blip,
   // softer than a full explosion
   const rumble = (vol = 0.5, dur = 1.6) => {
@@ -279,5 +302,5 @@ export function createCutsceneSfx() {
     try { ctx.close() } catch (_) { /* already closed */ }
   }
 
-  return { laser, explosion, jump, comms, blip, rumble, bed, dispose }
+  return { laser, explosion, jump, comms, blip, ping, rumble, bed, dispose }
 }
