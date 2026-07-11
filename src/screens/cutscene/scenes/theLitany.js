@@ -10,7 +10,7 @@ const LINE1 = 'I have modelled the silence. It propagates. The Song fails in nin
 const LINE1B = 'I shall show you a visualisation that you may better understand.'
 const LINE_EMP1 = 'Then time has recurred forever? Aeon upon aeon, and we merely the latest. Is it right, that we should stop such a thing?'
 const LINE2 = 'There is one instrument the Order has never used. The prophecy names it. So do I.'
-const LINE_LANCE = 'The Divine Lance...'
+const LINE_LANCE = 'The Celestial Lance...'
 const LINE3 = 'Then it is to be in my reign. I had hoped otherwise.'
 // the projection's narration — the Engine explaining the mechanism
 const PROJ1 = 'Figure alpha: time as we thought it was. The arrow runs out of the first moment and never turns. This is the shape of the Song.'

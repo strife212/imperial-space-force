@@ -3,7 +3,7 @@ import { makeBlackHoleLensed } from '../../battle/geometry'
 import { asteroidField, buildAnnunciator } from '../models'
 import { playLanceCharge, preloadLanceSfx } from '../../../lib/lanceSfx'
 
-// The Divine Lance is cast: the Annunciator's package crosses the dark and
+// The Celestial Lance is cast: the Annunciator's package crosses the dark and
 // annihilates the Discord's veiled seat.
 const LINE1 = 'Against the Hush, the Empress’s Chord is brought.'
 const LAUNCH = new THREE.Vector3(-78, 2, 26)
@@ -15,7 +15,7 @@ const GUN_SCALE = 0.55
 
 export default {
   label: 'CUTSCENE / SINGULARITY',
-  establishing: { name: 'SINGULARITY', sub: 'The Divine Lance · Auditio Ultima', stamp: 'PACKAGE TELEMETRY · STRATCON 1 IN EFFECT' },
+  establishing: { name: 'SINGULARITY', sub: 'The Celestial Lance · Auditio Ultima', stamp: 'PACKAGE TELEMETRY · STRATCON 1 IN EFFECT' },
   feed: [
     { t: 0.6,  level: 'info', text: 'Final hold released · tube clear · range to seat 4.7 ls' },
     { t: 2.2,  level: 'crit', text: 'T−0 · LET IT BE CAST' },

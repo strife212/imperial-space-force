@@ -90,10 +90,10 @@ From the Cathedra high, to the listening below,
 Falls the Lance that the Discord besought.
 "Long live the Throne, where she hears alone,
 For the Day when the Discord comes to Naught."*`,
-          `The poem details that in the last days, a mysterious enemy known as the Discord will cause the stars to grow silent and shatter the sky. The once harmonious song of the stars grown discordant. The empress will take up her sword once more and cast her divine lance against the foe, destroying them once and for all.`,
+          `The poem details that in the last days, a mysterious enemy known as the Discord will cause the stars to grow silent and shatter the sky. The once harmonious song of the stars grown discordant. The empress will take up her sword once more and cast her celestial lance against the foe, destroying them once and for all.`,
         ],
         ['empressPanelVisited', 'lancecast'],
-        { src: 'finalhearing.jpg', caption: 'The Divine Lance being cast.' },
+        { src: 'finalhearing.jpg', caption: 'The Celestial Lance being cast.' },
       ),
       entry('the-discord', 'The Discord',
         [
