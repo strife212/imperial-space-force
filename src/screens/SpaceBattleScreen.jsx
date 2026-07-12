@@ -1409,7 +1409,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         6: [{ t: 45, cast: () => startLance('red') }],                                          // mission 7
         7: [{ t: 20, cast: () => startLance('red') }],                                          // mission 8
         8: [{ t: 20, cast: () => startNano('red') }],                                           // mission 9
-        9: [{ t: 15, cast: () => startBarrage('red') }, { t: 30, cast: () => startLance('red') }], // mission 10
+        9: [{ t: 15, cast: () => startBarrage('red') }, { t: 25, cast: () => startLance('red') }], // mission 10
       }
       const redScript = isCampaign ? (RED_SKILL_SCRIPT[campaign.nodeIndex] || []).map(e => ({ ...e, done: false })) : []
       const updateRedScript = (bt) => {

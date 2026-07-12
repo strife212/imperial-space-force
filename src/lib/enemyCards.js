@@ -1,15 +1,15 @@
 // ── Enemy fleet upgrades ──────────────────────────────────────────────────────
-// From battle 5 on, the enemy fields its own card buffs — the same catalog the
+// From battle 4 on, the enemy fields its own card buffs — the same catalog the
 // player draws from after each victory, rolled with the player's rarity rules
 // (legendaries excluded). The roll happens the first time a node is played in a
 // campaign and is saved, so that node fields the same buffs for the whole run;
 // resetCampaign() wipes the saves and the next run rerolls.
 import { getFlag, setFlag } from './store'
-import { aggregateCombatMods } from './campaign'
+import { aggregateCombatMods, getUpgrades } from './campaign'
 import { UPGRADE_CARDS } from '../screens/UpgradeScreen'
 
 // How many card buffs each node fields (index = nodeIndex, battle 1 = index 0).
-export const ENEMY_CARD_COUNTS = [0, 0, 0, 0, 1, 2, 3, 3, 4, 5]
+export const ENEMY_CARD_COUNTS = [0, 0, 0, 1, 1, 2, 3, 3, 4, 5]
 
 // The player's rarity cascade minus the legendary tier — its 1% simply never
 // fires for the enemy, so that slot stays basic like any failed roll.
@@ -56,13 +56,54 @@ function rolledEnemyUpgrades(nodeIndex) {
   return rolled
 }
 
-// The node's full buff map: the saved random roll plus the guaranteed hull
-// cards, merged at read time — so the battle and the shipyard intel always
-// agree, and existing saves inherit the guarantee without a reroll.
+// ── Player-scaled difficulty ─────────────────────────────────────────────────
+// The stronger the player's own deck, the more cards every enemy node fields.
+// Evaluated live whenever a node's upgrades are read (i.e. on entering the
+// battle screen), so it tracks the current inventory:
+//   · +1 card once the player holds an epic, OR two-or-more rare (blue) cards
+//   · +1 more (stacking) once the player owns BOTH legendary cards
+// The rolled bonus is cached per node+count so the shipyard briefing and the
+// battle field the identical fleet within a single deploy.
+function inventoryBonusCards() {
+  const owned = getUpgrades()
+  let epics = 0, rares = 0
+  for (const [id, lvl] of Object.entries(owned)) {
+    const r = UPGRADE_CARDS[id]?.rarity
+    if (r === 'epic') epics += lvl
+    else if (r === 'rare') rares += lvl
+  }
+  let bonus = 0
+  if (epics >= 1 || rares >= 2) bonus += 1
+  const legendaryIds = Object.entries(UPGRADE_CARDS).filter(([, c]) => c.rarity === 'legendary').map(([id]) => id)
+  if (legendaryIds.length && legendaryIds.every(id => (owned[id] || 0) > 0)) bonus += 1
+  return bonus
+}
+
+// In-memory bonus roll, stable per node while the triggering count is unchanged
+// (cleared on reload; re-rolls only when the player's deck crosses a threshold).
+const bonusCache = {}
+function bonusRoll(nodeIndex, count) {
+  const c = bonusCache[nodeIndex]
+  if (c && c.count === count) return c.cards
+  const cards = rollEnemyCards(count)
+  bonusCache[nodeIndex] = { count, cards }
+  return cards
+}
+
+// The node's full buff map: the saved random roll, the guaranteed hull cards,
+// and the live player-scaled bonus cards, merged at read time — so the battle
+// and the shipyard intel always agree, and existing saves inherit both without
+// a reroll of the base cards.
 export function getEnemyUpgrades(nodeIndex) {
   const rolled = rolledEnemyUpgrades(nodeIndex)
-  const bonus = guaranteedCapHp(nodeIndex)
-  return bonus ? { ...rolled, capHp: (rolled.capHp || 0) + bonus } : rolled
+  const merged = { ...rolled }
+  const hull = guaranteedCapHp(nodeIndex)
+  if (hull) merged.capHp = (merged.capHp || 0) + hull
+  const bonusN = inventoryBonusCards()
+  if (bonusN > 0) {
+    for (const [id, lvl] of Object.entries(bonusRoll(nodeIndex, bonusN))) merged[id] = (merged[id] || 0) + lvl
+  }
+  return merged
 }
 
 // Everything the battle (and the shipyard intel) needs for a node's enemy:
