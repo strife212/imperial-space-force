@@ -21,7 +21,7 @@ const LINE_LIT1 = 'So it was, aeon upon aeon: everything that is, gathered home 
 const LINE_LIT2 = 'The Lance has spoken. There is no appointed hour. The wheel is broken.'
 const LINE_E1 = 'What have you done? The past is lost, the future uncertain!'
 const LINE_E2 = 'Our people, cast into the uncertainty of infinity...'
-const LINE_P1 = 'The continuation of the future is better than the guaranteed safety of a guided cage.'
+const LINE_P1 = 'The continuation of the future is better than the guaranteed safety of a gilded cage.'
 const LINE_P2 = 'Your end has come!'
 
 // ── the sequence ─────────────────────────────────────────────────────────────
