@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import Cutscene from './Cutscene'
-import { SCENES } from './scenes'
+import { SCENES, STORY } from './scenes'
 import '../battle/battle.css'
 
-// The abridged saga, deep-linked at /story: the seven beats that carry the
-// arc — First Contact, the Hush, the Great Litany, the Final Hearing, the
-// Annunciator, the Lance, the Order Restored — played back to back. (The
-// muster, the warfront and the fall are the campaign's own battles to fight.)
+// The full saga, deep-linked at /story: every story cutscene in campaign order,
+// capped by the Order Restored victory coda — played back to back. (The
+// Cosmogony creation myth has its own deep links, /cosmogony and /cosmogony3.)
+//
+// Built straight off STORY so it never drifts as the campaign changes; the
+// battles' cinematic cutscenes (muster, warfront, the fall) play too, standing
+// in for the fights the campaign has the player fight.
 //
 // A single START gate up front supplies the user gesture that unlocks audio
 // for the whole reel; each scene then advances straight into the next (SKIP
 // jumps a scene, not the reel), and the end card offers a replay.
-const REEL = ['firstContact', 'theHush', 'theLitany', 'theResolve', 'theAnnunciator', 'theLance', 'theOrderRestored']
+const REEL = [...STORY, 'theOrderRestored']   // the ten story beats, then the victory coda
 
 export default function StoryReel() {
   const [started, setStarted] = useState(false)
@@ -24,8 +27,7 @@ export default function StoryReel() {
     return (
       <div id="cutscene-screen">
         <div className="cut-start cut-start--story">
-          <div className="story-gate-title">Caelum Canit</div>
-          <div className="story-gate-sub">A Chronicle of the Hush · Seven Transmissions</div>
+          <div className="story-gate-title">The Complete Saga</div>
           <button className="cut-start-btn" onClick={() => setStarted(true)}>▶ START</button>
         </div>
       </div>
