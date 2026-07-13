@@ -172,14 +172,14 @@ export const UPGRADE_CARDS = {
   fighterArmor:      { rarity: 'basic',     tag: 'FLEET',    title: 'HARDENED HULLS',         desc: 'Reinforced plating across the whole interceptor wing — each fighter deflects a slice of incoming fire.', stats: ['+6% ARMOUR'], Icon: HardenIcon },
   capFlares:         { rarity: 'basic',     tag: 'FLAGSHIP', title: 'DECOY LAUNCHERS',        desc: 'Extra countermeasure racks for the flagship: more flares to spoof incoming missiles before they connect.', stats: ['+5 FLARES'], Icon: FlareIcon },
   // uncommon (green) — moderate
-  fighterHp:         { rarity: 'uncommon',  tag: 'FLEET',    title: 'VETERAN SQUADRONS',      desc: 'Battle-hardened crews fly tougher hulls — every interceptor gains integrity and lasts longer in the brawl.', stats: ['+2 HP EACH'], Icon: VeteranIcon },
+  fighterHp:         { rarity: 'uncommon',  tag: 'FLEET',    title: 'VETERAN SQUADRONS',      desc: 'Battle-hardened crews fly tougher hulls — every interceptor gains integrity and lasts longer in the brawl.', stats: ['+1 HP EACH'], Icon: VeteranIcon },
   capWeapons:        { rarity: 'uncommon',  tag: 'FLAGSHIP', title: 'FORWARD BATTERIES',      desc: 'An extra gun joins each flagship broadside, putting one more bolt on a fresh target every volley.', stats: ['+1 GUN'], Icon: CannonIcon },
   // rare (blue) — strong
-  fighterRof:        { rarity: 'rare',      tag: 'FLEET',    title: 'TARGETING UPLINK',       desc: 'A fleet-wide fire-control net: your interceptors acquire and fire markedly faster for the whole battle.', stats: ['+25% FIRE RATE'], Icon: RateIcon },
-  capRegen:          { rarity: 'rare',      tag: 'FLAGSHIP', title: 'AUTO-REPAIR BAYS',       desc: 'Damage-control drones knit the hull back together, repairing the flagship steadily throughout the fight.', stats: ['+1 HP/SEC'], Icon: RepairIcon },
+  fighterRof:        { rarity: 'rare',      tag: 'FLEET',    title: 'TARGETING UPLINK',       desc: 'A fleet-wide fire-control net: your interceptors acquire and fire markedly faster for the whole battle.', stats: ['+18% FIRE RATE'], Icon: RateIcon },
+  capRegen:          { rarity: 'rare',      tag: 'FLAGSHIP', title: 'AUTO-REPAIR BAYS',       desc: 'Damage-control drones knit the hull back together, repairing the flagship steadily throughout the fight.', stats: ['+1 HP / 2 SEC'], Icon: RepairIcon },
   // epic (purple) — powerful packages
-  bastionHull:       { rarity: 'epic',      tag: 'FLAGSHIP', title: 'BASTION BULWARK',        desc: 'A fortress refit — a major hull increase plus heavier armour and extra flares turn the flagship into a wall.', stats: ['+35 HP', '+15% ARMOUR', '+8 FLARES'], Icon: BastionIcon },
-  praetorianWing:    { rarity: 'epic',      tag: 'FLEET',    title: 'PRAETORIAN WING',        desc: 'Elite doctrine for the entire wing: every interceptor gains substantial hull and armour — a hardened vanguard.', stats: ['+4 HP EACH', '+14% ARMOUR'], Icon: WingIcon },
+  bastionHull:       { rarity: 'epic',      tag: 'FLAGSHIP', title: 'BASTION BULWARK',        desc: 'A fortress refit — a major hull increase plus heavier armour and extra flares turn the flagship into a wall.', stats: ['+30 HP', '+15% ARMOUR', '+8 FLARES'], Icon: BastionIcon },
+  praetorianWing:    { rarity: 'epic',      tag: 'FLEET',    title: 'PRAETORIAN WING',        desc: 'Elite doctrine for the entire wing: every interceptor gains substantial hull and armour — a hardened vanguard.', stats: ['+3 HP EACH', '+10% ARMOUR'], Icon: WingIcon },
   // legendary (orange) — apotheosis
   throneAegis:       { rarity: 'legendary', tag: 'FLAGSHIP', title: 'THRONE-FORGED AEGIS',    desc: 'The flagship ascends: vast hull and armour, more flares, an added broadside gun, and a hull that repairs itself.', stats: ['+50 HP', '+25% ARMOUR', '+15 FLARES', '+2 GUNS', '+2 HP/SEC'], Icon: AegisIcon },
 }

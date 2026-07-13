@@ -35,17 +35,17 @@ export const NODE_BATTLES = [
     brief: 'The front is open. Punch through the heretic battlegroup and take the lane.' },
   { title: 'Decoherence',          enemyName: 'The Silent Fleet',      enemy: { fighters: 13, bombers: 5,  cruisers: 0 }, reward: 1100, sky: 'rose',
     brief: 'They came without signal or hail. Answer the silence in kind.' },
-  { title: 'Logos',  enemyName: 'Apostate Armada',       enemy: { fighters: 22, bombers: 3,  cruisers: 2 }, reward: 1340, sky: 'verdant',
+  { title: 'Logos',  enemyName: 'Apostate Armada',       enemy: { fighters: 23, bombers: 3,  cruisers: 2 }, reward: 1340, sky: 'verdant',
     brief: 'Guard the relays of the Great Litany. Do not let the apostates break the chant.' },
-  { title: 'Catabasis',          enemyName: 'The Unsung Host',       enemy: { fighters: 53, bombers: 0,  cruisers: 0 }, reward: 1580, sky: 'ember',
+  { title: 'Catabasis',          enemyName: 'The Unsung Host',       enemy: { fighters: 56, bombers: 0,  cruisers: 0 }, reward: 1580, sky: 'ember',
     brief: 'The Unsung Host swarms out of the dark. Hold the line, whatever it costs.' },
-  { title: 'Providence', enemyName: 'The Hush at the Gates', enemy: { fighters: 33, bombers: 0,  cruisers: 8 }, reward: 1900, sky: 'aurum',
+  { title: 'Providence', enemyName: 'The Hush at the Gates', enemy: { fighters: 36, bombers: 0,  cruisers: 8 }, reward: 1900, sky: 'aurum',
     brief: 'The Discord has reached the Throneworld itself. Hold the skies over Novaraya while the Empress renders the Final Hearing.' },
-  { title: 'Ultima Ratio',   enemyName: 'Heralds of the Hush',   enemy: { fighters: 44, bombers: 12, cruisers: 0 }, reward: 2220, sky: 'rose',
+  { title: 'Ultima Ratio',   enemyName: 'Heralds of the Hush',   enemy: { fighters: 49, bombers: 12, cruisers: 0 }, reward: 2220, sky: 'rose',
     brief: 'Her Annunciator is arming. Hold the Heralds of the Hush off the firing lane until the Lance can be cast.' },
-  { title: 'Singularity',         enemyName: 'Throneward Blockade',    enemy: { fighters: 61, bombers: 6,  cruisers: 6 }, reward: 2700, sky: 'void',
+  { title: 'Singularity',         enemyName: 'Throneward Blockade',    enemy: { fighters: 65, bombers: 6,  cruisers: 6 }, reward: 2700, sky: 'void',
     brief: 'Clear the blockade so the Lance can be cast. Everything rides on the lane.' },
-  { title: 'Eschaton',    enemyName: "Discord's Last Stand",   enemy: { fighters: 73, bombers: 8,  cruisers: 7 }, reward: 3960, sky: 'aurum',
+  { title: 'Eschaton',    enemyName: "Discord's Last Stand",   enemy: { fighters: 81, bombers: 8,  cruisers: 7 }, reward: 3960, sky: 'aurum',
     brief: "The wheel is broken, and everything they have left is coming. Break it utterly and the Song returns." },
 ]
 
@@ -110,16 +110,16 @@ export function aggregateCombatMods(u) {
   const L = (id) => u[id] || 0
   return {
     flagship: {
-      hp:      35 * L('bastionHull') + 50 * L('throneAegis'),                   // extra max hull
+      hp:      30 * L('bastionHull') + 50 * L('throneAegis'),                   // extra max hull
       armor:    8 * L('capArmor')    + 15 * L('bastionHull') + 25 * L('throneAegis'),  // +% bolt deflect
       flares:   5 * L('capFlares')   +  8 * L('bastionHull') + 15 * L('throneAegis'),  // extra missile decoys
       weapons:  1 * L('capWeapons')  +  2 * L('throneAegis'),                   // extra bolts per broadside
-      regen:    1 * L('capRegen')    +  2 * L('throneAegis'),                   // hull repaired per second
+      regen:  0.5 * L('capRegen')    +  2 * L('throneAegis'),                   // hull repaired per second (auto-repair: 1 per 2s)
     },
     fighter: {
-      hp:      2 * L('fighterHp')    + 4 * L('praetorianWing'),                 // extra interceptor hull
-      armor:   6 * L('fighterArmor') + 14 * L('praetorianWing'),               // +% bolt deflect
-      fireMul: Math.pow(0.75, L('fighterRof')),                                // each level fires 25% faster
+      hp:      1 * L('fighterHp')    + 3 * L('praetorianWing'),                 // extra interceptor hull
+      armor:   6 * L('fighterArmor') + 10 * L('praetorianWing'),               // +% bolt deflect
+      fireMul: Math.pow(0.82, L('fighterRof')),                                // each level fires 18% faster
     },
   }
 }

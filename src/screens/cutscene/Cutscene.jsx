@@ -12,6 +12,7 @@ import '../battle/battle.css'
 const titleCase = (s) => s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
 
 const COMMS_DWELL_MS = 4200   // how long a line lingers after it's fully typed
+const MS_PER_CHAR = 42        // typewriter speed (advanced by elapsed time, not tick count)
 const FADE_MS = 1300          // matches the .cut-fade transition before we resolve
 const FEED_TICK_MS = 200      // shell clock driving the telemetry feed + readout
 const FEED_MAX_LINES = 6
@@ -86,13 +87,15 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
     setReplayNonce((n) => n + 1)
   }
 
-  // Debug: Z force-advances any cutscene — even ones rendered unskippable
-  // (canSkip={false}), mid-title-card, or holding on an urgent overlay.
+  // Debug: with "advanced cutscenes" mode on, Z force-advances any cutscene —
+  // even ones rendered unskippable (canSkip={false}), mid-title-card, or holding
+  // on an urgent overlay. Off in normal play, so a stray Z never skips a scene.
   useEffect(() => {
+    if (!advanced) return undefined
     const onKey = (e) => { if (!e.repeat && (e.key === 'z' || e.key === 'Z')) advance() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [advanced])  // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // telemetry clock — drives scene.feed reveal and scene.readout live values
@@ -105,16 +108,23 @@ export default function Cutscene({ scene, onReturn, onComplete, canSkip = true, 
     return () => clearInterval(iv)
   }, [scene, replayNonce, started, stageGate])
 
-  // typewriter: type the line out, let it sit, then (unless it persists) hide
+  // typewriter: type the line out, let it sit, then (unless it persists) hide.
+  // Advance by ELAPSED wall time, not by tick count — on a laggy machine the
+  // browser starves/coalesces the interval, so a tick-per-character writer types
+  // in slow motion and the next scripted beat replaces the line before it's
+  // finished (dialogue "cuts off"). Reading real elapsed time lets a late tick
+  // jump straight to the correct character, keeping a steady chars/second.
   useEffect(() => {
     if (!comms) { setCommsText(''); return }
     setCommsText('')
-    let i = 0, hide
+    let hide
     const full = comms.text
+    const start = performance.now()
     const typer = setInterval(() => {
-      i++; setCommsText(full.slice(0, i))
-      if (i >= full.length) { clearInterval(typer); if (!comms.persist) hide = setTimeout(() => setComms(null), COMMS_DWELL_MS) }
-    }, 42)
+      const shown = Math.min(full.length, Math.floor((performance.now() - start) / MS_PER_CHAR))
+      setCommsText(full.slice(0, shown))
+      if (shown >= full.length) { clearInterval(typer); if (!comms.persist) hide = setTimeout(() => setComms(null), COMMS_DWELL_MS) }
+    }, MS_PER_CHAR)
     return () => { clearInterval(typer); clearTimeout(hide) }
   }, [comms?.id])
 
