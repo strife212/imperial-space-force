@@ -31,6 +31,7 @@ import CardVaultScreen from './screens/CardVaultScreen'
 import DrawTestScreen from './screens/DrawTestScreen'
 import FleetBoot from './screens/FleetBoot'
 import CreditsScreen from './screens/CreditsScreen'
+import DialogueScreen from './screens/DialogueScreen'
 import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, hasMacroMissile, getCombatMods, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
 import { getEnemyBattleExtras } from './lib/enemyCards'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
@@ -44,7 +45,7 @@ const countTrueFlags = () => Object.values(getFlags()).filter(Boolean).length
 // ── Deep links: a bare path (e.g. /battlesim) opens straight to that screen ───
 // On GitHub Pages the unknown path is served by 404.html, which bounces it back
 // to index.html where a snippet restores the real URL before React mounts.
-const DEEP_LINKS = { battlesim: 'home', fleetbuilder: 'fleetbuilder', cosmogony: 'cosmogony', cosmogony2: 'cosmogony2', cosmogony3: 'cosmogony3', story: 'story' }
+const DEEP_LINKS = { battlesim: 'home', fleetbuilder: 'fleetbuilder', cosmogony: 'cosmogony', cosmogony2: 'cosmogony2', cosmogony3: 'cosmogony3', story: 'story', dialogue: 'dialogue' }
 const pathScreen = () => {
   const slug = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase()
   return DEEP_LINKS[slug] || null
@@ -80,6 +81,7 @@ export default function App() {
   const [powerSource,       setPowerSource]       = useState('debug')
   const [battleSource,      setBattleSource]      = useState('debug')
   const [cutsceneSource,    setCutsceneSource]    = useState('debug')
+  const [dialogueSource,    setDialogueSource]    = useState('home')   // where the /dialogue reader returns to
   const [cutsceneId,        setCutsceneId]        = useState('firstContact')   // which cutscene is showing
   const [cutsceneChain,     setCutsceneChain]     = useState(false)            // advance through STORY on complete
   const [campaignNode,      setCampaignNode]      = useState(null)             // active campaign node: cutscene → shipyard → battle (null = not in campaign flow)
@@ -235,6 +237,7 @@ export default function App() {
     if (s === 'reset-campaign') { resetCampaign(); setScreen('campaign-map'); return }
     if (s === 'shipyard') { setCampaignNode(Math.min(NODE_BATTLES.length - 1, getFlag('campaignProgress') || 0)); setScreen('shipyard'); return }
     if (s === 'fleet-review') { setFleetReviewSource('debug'); setScreen('fleet-review'); return }
+    if (s === 'dialogue') { setDialogueSource('debug'); setScreen('dialogue'); return }
     if (s === 'campaign') { setCutsceneSource('debug'); setCutsceneId(STORY[0]); setCutsceneChain(true); setScreen('cutscene'); return }
     if (s.startsWith('cut:')) { setCutsceneSource('debug'); setCutsceneId(s.slice(4)); setCutsceneChain(false); setScreen('cutscene'); return }
     if (s === 'targeting') setTargetingSource('debug'); if (s === 'reactor') setReactorSource('main'); if (s === 'blackhole') setBlackholeSource('debug'); if (s === 'power') setPowerSource('debug'); if (s === 'battle') setBattleSource('debug'); setGameOverFail(false); setUnderAttack(false); setScreen(s)
@@ -283,6 +286,7 @@ export default function App() {
       {screen === 'cosmogony2'      && <MontageScreen onReturn={() => setScreen('home')} />}
       {screen === 'cosmogony3'      && <Cosmogony3 />}
       {screen === 'credits'         && <CreditsScreen onComplete={() => setScreen('campaign-map')} />}
+      {screen === 'dialogue'        && <DialogueScreen onBack={() => setScreen(dialogueSource)} />}
       {screen === 'story'           && <StoryReel />}
       {screen === 'cutscene'        && (() => {
           // A campaign replay (re-watching a cleared node) may be skipped; a

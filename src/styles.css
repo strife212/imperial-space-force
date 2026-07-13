@@ -6453,3 +6453,79 @@ body {
   color: #5aa0ff;
   text-shadow: 0 0 22px rgba(40, 120, 255, 0.6);
 }
+
+/* ---------- Cutscene dialogue reader (/dialogue) ---------- */
+.dlgview {
+  position: fixed; inset: 0; z-index: 7000;
+  display: flex; flex-direction: column;
+  background: radial-gradient(ellipse at top, #04101f 0%, #01050e 60%, #000 100%);
+  font-family: var(--font-mono);
+}
+.dlgview-bar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(140, 175, 235, 0.22);
+  background: rgba(2, 8, 18, 0.6);
+  flex-shrink: 0;
+}
+.dlgview-back {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em;
+  color: rgba(168, 198, 240, 0.9); background: rgba(20, 60, 120, 0.25);
+  border: 1px solid rgba(120, 180, 255, 0.35); border-radius: 3px;
+  padding: 6px 14px; cursor: pointer;
+}
+.dlgview-back:hover { background: rgba(40, 100, 200, 0.35); color: #eaf4ff; }
+.dlgview-bar-title {
+  font-size: 14px; font-weight: 700; letter-spacing: 0.24em;
+  color: #eaf2ff; text-transform: uppercase;
+}
+.dlgview-bar-meta {
+  margin-left: auto; font-size: 11px; letter-spacing: 0.1em;
+  color: rgba(130, 160, 205, 0.6); text-transform: uppercase;
+}
+.dlgview-scroll { flex: 1; overflow-y: auto; }
+.dlgview-inner { max-width: 820px; margin: 0 auto; padding: 40px 28px 80px; }
+.dlgview-head { text-align: center; margin-bottom: 44px; }
+.dlgview-head h1 {
+  margin: 0; font-size: clamp(22px, 3.4vw, 34px); font-weight: 800;
+  letter-spacing: 0.18em; text-transform: uppercase; color: #eaf2ff;
+  text-shadow: 0 0 22px rgba(120, 170, 255, 0.4);
+}
+.dlgview-head p {
+  margin: 12px 0 0; font-size: 12px; letter-spacing: 0.08em;
+  color: rgba(150, 182, 224, 0.7);
+}
+.dlgview-scene { margin-bottom: 40px; }
+.dlgview-scene-head {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  padding-bottom: 12px; margin-bottom: 18px;
+  border-bottom: 1px solid rgba(140, 175, 235, 0.3);
+}
+.dlgview-scene-num {
+  font-size: 15px; font-weight: 800; letter-spacing: 0.1em;
+  color: #5aa0ff; min-width: 30px;
+}
+.dlgview-scene-title {
+  font-size: 17px; font-weight: 800; letter-spacing: 0.16em;
+  text-transform: uppercase; color: #eaf2ff;
+}
+.dlgview-scene-sub {
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(150, 182, 224, 0.6);
+}
+.dlgview-lines { display: flex; flex-direction: column; gap: 16px; }
+.dlgview-line {
+  padding-left: 14px;
+  border-left: 2px solid rgba(120, 180, 255, 0.4);
+}
+.dlgview-line--red { border-left-color: rgba(255, 110, 90, 0.55); }
+.dlgview-speaker {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+  text-transform: uppercase; color: rgba(150, 190, 245, 0.9);
+  margin-bottom: 4px;
+}
+.dlgview-line--red .dlgview-speaker { color: rgba(255, 140, 120, 0.95); }
+.dlgview-text {
+  font-size: 15px; line-height: 1.5; letter-spacing: 0.01em;
+  color: #dce8f7;
+}
