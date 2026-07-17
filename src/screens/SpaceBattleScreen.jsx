@@ -2421,7 +2421,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         {comms && <CommsBox key={comms.id} comms={comms} />}
 
         <div className="sb-tactics">
-          <div className="sb-tac-title">⬢ TACTICAL COMMAND // BLUE FLEET</div>
+          <div className="sb-tac-title">⬢ TACTICAL COMMAND</div>
           <div className="sb-tac-group">
             <div className="sb-tac-label">CAPITAL SHIP</div>
             <div className="sb-tac-btns">

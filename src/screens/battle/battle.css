@@ -1553,6 +1553,9 @@
   font-family: var(--font-mono);
 }
 .sb-tac-title {
+  position: absolute;       /* floats just above the console glass */
+  bottom: 100%; left: 0; right: 0;
+  margin-bottom: 7px;
   font-size: 9px;
   letter-spacing: 0.22em;
   color: var(--c-rose);
@@ -2582,7 +2585,8 @@
   gap: 10px;
   font-size: 9.5px;
   color: #d3e4ff;
-  text-shadow: 0 0 10px rgba(64, 138, 255, 0.55);
+  /* dark understroke keeps it legible over the raw nebula, outside the glass */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 10px rgba(64, 138, 255, 0.55);
 }
 .sb-tac-title::after {
   content: '';
