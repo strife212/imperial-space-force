@@ -27,7 +27,7 @@ const FIGHTER_RANGE = 45     // fighters hold fire past this (was 50; −10% wea
 const TURN_RATE   = 7        // orientation slerp responsiveness
 const FIELD_FIGHTER_CAP = 25 // max fighters a team can have on the field at once
 const REINFORCE_INTERVAL = 10 // seconds between reinforcement waves from the reserve
-const BOMBER_AUTO_DISPATCH = 15 // sim-seconds before the blue bomber wing auto-launches if the player hasn't
+const BOMBER_AUTO_DISPATCH = 30 // sim-seconds before the blue bomber wing auto-launches if the player hasn't
 // Missile cruiser — a ranged support ship that holds back and lobs homing missiles
 const CRUISER_HP    = 16
 const CRUISER_SPEED = 2.0    // slow, ponderous missile platform

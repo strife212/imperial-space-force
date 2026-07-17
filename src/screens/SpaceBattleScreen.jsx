@@ -667,8 +667,24 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           mesh.add(new THREE.Mesh(cruiserGeo[team], mat))
           const glow = new THREE.Mesh(blastGeo, glowMat[team])
           glow.scale.setScalar(0.42); glow.position.set(0, 0, -1.5); mesh.add(glow)
-          const pos = new THREE.Vector3(sx + (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 12)
-          const vel = new THREE.Vector3(vdir * (2 + Math.random() * 2), (Math.random() - 0.5), (Math.random() - 0.5))
+          // each cruiser gets its own slot so the wing warps in spread out
+          // instead of stacked — the offset phases also keep their standoff
+          // orbits from overlapping. Rows hold at most four abreast (z); bigger
+          // wings stack extra rows vertically (y) rather than stringing the
+          // line out so wide the ends arrive far from the battle
+          const n = compRef.current[team].cruisers
+          const perRow = 4
+          const rows = Math.ceil(n / perRow)
+          const row = Math.floor(i / perRow)
+          const inRow = Math.min(perRow, n - row * perRow)
+          const lane = (i % perRow) - (inRow - 1) / 2
+          const tier = row - (rows - 1) / 2
+          const pos = new THREE.Vector3(
+            sx + (Math.random() - 0.5) * 8,
+            tier * 14 + lane * 3 + (Math.random() - 0.5) * 4,
+            lane * 14 + (Math.random() - 0.5) * 6,
+          )
+          const vel = new THREE.Vector3(vdir * (2 + Math.random() * 2), 0, 0)   // bow-on toward the enemy line
           mesh.position.copy(pos)
           orient(mesh, vel)
           mesh.scale.setScalar(CRUISER_SCALE)
@@ -831,6 +847,10 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           const sgn = s.route.omega >= 0 ? 1 : -1
           _dir.set(-Math.sin(s.route.angle) * sgn, 0, Math.cos(s.route.angle) * sgn)
           s.jumpFrom = s.home.clone().addScaledVector(_dir, -95)
+        } else if (s.isCruiser) {
+          // cruisers make a bow-on entrance: streak straight down the advance
+          // axis so they arrive facing the enemy, then bank onto their headings
+          s.jumpFrom = s.home.clone(); s.jumpFrom.x += s.team === 'blue' ? -95 : 95
         } else {
           s.jumpFrom = s.home.clone().addScaledVector(jumpAxis[s.team], 95)
         }
@@ -1245,6 +1265,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         return true
       }
       lanceStrikeRef.current = () => startLance('blue')
+      // dev probe — fire either team's lance and inspect the fleet
+      if (import.meta.env.DEV) window.__battleLance = Object.assign((t) => startLance(t), { caps: () => ({ blue: blueCapital, red: redCapital }), ships: () => ships })
 
       // ── "Fighter Ace" — once-per-battle elite reinforcement special ───────────
       // Warps a single gold fighter onto the blue flank: double HP, 1.5× speed,
@@ -1539,7 +1561,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         for (const s of ships) {
           if (!s.alive) continue
           if (s.regen && !gameOver && s.hp > 0) s.hp = Math.min(shipMaxHp(s), s.hp + s.regen * dt)   // flagship auto-repair upgrade
-          const lancing = lance.active && s === blueCapital   // mid spinal-lance special
+          const lancing = lance.active && s === lance.caster   // mid spinal-lance special
 
           // retreat: streak away in a hyperspace jump, then vanish from the field
           if (s.warpOut) {
@@ -1611,7 +1633,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
             const rt = s.route
             if (lancing) {
               // Lance Strike: hold station and swing the bow onto the enemy flagship
-              if (redCapital && redCapital.alive) lanceAimAt.copy(redCapital.pos)
+              if (lance.victim && lance.victim.alive) lanceAimAt.copy(lance.victim.pos)
               orient(s.mesh, _dir.subVectors(lanceAimAt, s.pos), 1 - Math.exp(-3.5 * dt))
               s.mesh.position.copy(s.pos)
             } else {
@@ -2413,7 +2435,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
               <button className={`sb-tac-btn${fighterControl === 'default' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('default')}>DEFAULT</button>
               <button className={`sb-tac-btn${fighterControl === 'screen' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('screen')}>SCREEN CARRIER</button>
               <button className={`sb-tac-btn${fighterControl === 'pursue' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('pursue')}>PURSUE BOMBERS</button>
-              <button className={`sb-tac-btn${fighterControl === 'capital' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('capital')}>ATTACK CAPITAL SHIP</button>
+              <button className={`sb-tac-btn${fighterControl === 'capital' ? ' sb-tac-btn--on' : ''}`} onClick={() => setFighterControl('capital')}>ATTACK FLAGSHIP</button>
             </div>
           </div>
 

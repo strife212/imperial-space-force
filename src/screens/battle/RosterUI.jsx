@@ -307,7 +307,7 @@ function InstructionsModal({ onClose }) {
               <li><b>Fighter Control — Default:</b> engage the nearest enemy, prioritising any bomber that gets close.</li>
               <li><b>Fighter Control — Screen Carrier:</b> fighters hold a defensive ring around your flagship instead of pushing forward.</li>
               <li><b>Fighter Control — Pursue Bombers:</b> hunt down enemy bombers first — the counter to an enemy bomber run.</li>
-              <li><b>Fighter Control — Attack Capital Ship:</b> throw your fighters at the enemy flagship.</li>
+              <li><b>Fighter Control — Attack Flagship:</b> throw your fighters at the enemy flagship.</li>
             </ul>
           </section>
 

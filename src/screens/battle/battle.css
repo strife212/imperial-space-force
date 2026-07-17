@@ -1567,7 +1567,8 @@
   text-transform: uppercase;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
-.sb-tac-btns { display: flex; gap: 5px; flex-wrap: wrap; }
+/* two columns max — the console reads as a tall, narrow stack */
+.sb-tac-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
 .sb-tac-btn {
   pointer-events: auto;
   background: rgba(2, 6, 18, 0.6);
@@ -1598,7 +1599,7 @@
 .sb-dispatch {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 7px;
   margin-top: 5px;
   pointer-events: none;     /* only the button + live sprites capture clicks */
@@ -1606,8 +1607,9 @@
 }
 .sb-dispatch-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 .sb-dispatch-btn {
   pointer-events: auto;
@@ -1647,11 +1649,14 @@
 .sb-dispatch-icons {
   display: flex;
   align-items: center;
-  gap: 7px;
-  flex-wrap: nowrap;       /* keep the whole bomber roster on one line beside the button */
+  justify-content: center;
+  align-self: center;                       /* shrink to the roster and centre it in the console */
+  gap: 5px 3px;
+  flex-wrap: wrap;                          /* roster sits on its own line under the button */
+  max-width: calc(10 * (22px + 3px));       /* ten bombers per row, then wrap */
 }
 .sb-dispatch-bomber { position: relative; display: block; line-height: 0; }
-.sb-dispatch-bomber .sb-sprite { width: 26px; height: 26px; }
+.sb-dispatch-bomber .sb-sprite { width: 22px; height: 22px; }
 /* default — not yet dispatched: grey, no glow */
 .sb-dispatch-bomber .sb-sprite path { fill: var(--c-ash-dim); }
 .sb-dispatch-bomber .sb-sprite { filter: none; }
@@ -1675,16 +1680,19 @@
   pointer-events: none;
 }
 .sb-dispatch-countdown {
+  position: absolute;       /* sits in the strip just below the console glass */
+  top: 100%; left: 0; right: 0;
+  margin-top: 8px;
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--c-ash-dim);
   text-align: center;
-  min-height: 12px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
 
 /* ── Special skills — three once-per-battle ability buttons ─────────────────── */
-.sb-skill-btns { display: flex; gap: 6px; }
+.sb-skill-btns { display: flex; flex-direction: column; gap: 6px; }
 .sb-skill-btn {
   pointer-events: auto;
   display: flex;
@@ -1723,7 +1731,7 @@
 
 /* ── Campaign: the operator's single elite skill (portrait + one button) ─────── */
 .sb-elite { display: flex; align-items: flex-start; gap: 8px; pointer-events: none; }
-.sb-elite-skills { display: flex; flex-direction: column; gap: 6px; }
+.sb-elite-skills { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; }   /* skill cards span the console */
 .sb-elite-portrait {
   width: 46px;
   height: 46px;
@@ -2558,6 +2566,7 @@
 /* ── Tactical command console: one coherent glass panel, sectioned ──────── */
 .sb-tactics {
   pointer-events: auto;   /* it reads as a solid console now — don't let drags orbit the camera through it */
+  width: 300px;           /* tall + narrow: 2-col orders, stacked skills, 10-wide bomber roster */
   gap: 10px;
   padding: 13px 15px 15px;
   background: linear-gradient(168deg, rgba(11, 22, 46, 0.42), rgba(3, 7, 17, 0.52));
