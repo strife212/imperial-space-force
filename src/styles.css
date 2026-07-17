@@ -675,6 +675,12 @@
   --glow-soft: 0 0 6px rgba(20,96,208,0.5);
   --glow-hard: 0 0 14px rgba(26,128,255,0.9);
 
+  /* ── HUD kit (battle sim + fleet screens): shared glass panel materials ── */
+  --hud-glass:      linear-gradient(172deg, rgba(13, 26, 52, 0.78) 0%, rgba(5, 10, 24, 0.88) 48%, rgba(2, 5, 14, 0.92) 100%);
+  --hud-glass-edge: rgba(92, 144, 226, 0.38);
+  --hud-hairline:   inset 0 1px 0 rgba(160, 205, 255, 0.13), inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+  --hud-drop:       0 14px 34px rgba(0, 0, 0, 0.48);
+
   /* ui-monospace / Menlo / Monaco keep Safari off Courier (its serif default
      for the bare `monospace` generic) — Cascadia and Consolas are Windows-only */
   --font-mono: "Cascadia Mono", "JetBrains Mono", "Consolas", ui-monospace, "Menlo", "Monaco", monospace;
@@ -756,8 +762,12 @@ body {
   align-items: center;
   gap: 16px;
   padding: 8px 18px;
-  border-bottom: 1px solid var(--c-line-2);
-  background: linear-gradient(180deg, #030a1a 0%, #020310 100%);
+  border-bottom: 1px solid rgba(58, 108, 190, 0.42);
+  background: linear-gradient(180deg, rgba(9, 20, 44, 0.96) 0%, #020310 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(150, 200, 255, 0.07),
+    0 1px 0 rgba(0, 0, 0, 0.65),
+    0 8px 26px rgba(0, 12, 45, 0.4);
   text-transform: uppercase;
   font-size: 12px;
   z-index: 10;
@@ -2607,8 +2617,9 @@ body {
   align-items: center;
   gap: 10px;
   padding: 6px 18px;
-  border-top: 1px solid var(--c-line-2);
-  background: linear-gradient(0deg, #030a1a 0%, #020310 100%);
+  border-top: 1px solid rgba(58, 108, 190, 0.38);
+  background: linear-gradient(0deg, rgba(9, 20, 44, 0.94) 0%, #020310 100%);
+  box-shadow: inset 0 -1px 0 rgba(150, 200, 255, 0.05), 0 -6px 22px rgba(0, 12, 45, 0.3);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -3283,6 +3294,63 @@ body {
 #menu-screen .login-inner,
 #menu-screen .login-footer { position: relative; z-index: 1; }
 
+/* ── AAA pass: cinematic title lockup over the idle scene ── */
+#menu-screen .boot-title {
+  font-size: clamp(20px, 3.9vw, 40px);
+  letter-spacing: 0.36em;
+  text-indent: 0.36em;   /* recentre: tracking trails the last glyph */
+  /* the line is wider than the menu column; engines disagree on how centered
+     text overflows (Safari shoves it right), so centre the box itself */
+  width: max-content;
+  max-width: none;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #edf4ff;
+  text-shadow:
+    0 0 3px rgba(205, 232, 255, 0.6),
+    0 0 26px rgba(74, 144, 255, 0.55),
+    0 3px 22px rgba(0, 0, 0, 0.95);
+  margin-bottom: 10px;
+}
+#menu-screen .boot-emblem {
+  filter: drop-shadow(0 0 18px rgba(255, 196, 66, 0.28)) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.8));
+}
+#menu-screen .boot-divider {
+  margin: 14px auto 0;
+  width: min(420px, 72%);
+  background: linear-gradient(90deg, transparent, rgba(120, 176, 255, 0.85) 22%, rgba(120, 176, 255, 0.85) 78%, transparent);
+  box-shadow: 0 0 12px rgba(60, 130, 255, 0.5);
+}
+/* section eyebrows: flanked by hairline rules, like a chapter heading */
+#menu-screen .start-section-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+}
+#menu-screen .start-section-label::before,
+#menu-screen .start-section-label::after {
+  content: '';
+  height: 1px;
+  flex: 0 0 44px;
+}
+#menu-screen .start-section-label::before { background: linear-gradient(90deg, transparent, rgba(140, 190, 255, 0.6)); }
+#menu-screen .start-section-label::after  { background: linear-gradient(270deg, transparent, rgba(140, 190, 255, 0.6)); }
+/* staggered rise as the menu reveals */
+#menu-screen .menu-content--visible .menu-buttons > * {
+  animation: menu-item-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+#menu-screen .menu-content--visible .menu-buttons > *:nth-child(2) { animation-delay: 0.08s; }
+#menu-screen .menu-content--visible .menu-buttons > *:nth-child(3) { animation-delay: 0.16s; }
+#menu-screen .menu-content--visible .menu-buttons > *:nth-child(4) { animation-delay: 0.24s; }
+#menu-screen .menu-content--visible .menu-buttons > *:nth-child(n+5) { animation-delay: 0.3s; }
+@keyframes menu-item-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
 .menu-content {
   opacity: 0;
   transform: translateY(10px);
@@ -3442,20 +3510,60 @@ body {
   color: #fff;
   box-shadow: 0 0 20px rgba(26,100,255,0.3);
 }
-/* start menu only: solid dark fill + brighter text/border so the buttons hold
-   their own against the bright accretion disk behind them */
+/* start menu only: chamfered command keys — a 1px gradient frame (::before)
+   under an inset glass fill (::after), a light-sweep across the face on hover,
+   and a drop-shadow glow that follows the cut corners. Dark enough to hold
+   their own against the bright accretion disk behind them. */
 .start-content .menu-btn--primary {
-  background: rgba(4, 9, 22, 0.66);
-  border-color: rgba(110, 170, 255, 0.85);
-  color: #e2efff;
+  position: relative;
+  z-index: 0;
+  border: none;
+  border-radius: 0;
+  padding: 18px 24px;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: #dcecff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-  box-shadow: 0 0 14px rgba(8, 30, 90, 0.55), inset 0 0 18px rgba(20, 70, 180, 0.14);
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+  /* the hover light-sweep lives on the button face itself */
+  background: linear-gradient(115deg, transparent 42%, rgba(195, 228, 255, 0.22) 50%, transparent 58%) no-repeat;
+  background-size: 300% 100%;
+  background-position: 135% 0;
+  transition: background-position 0s, color 0.15s, filter 0.2s;
+}
+.start-content .menu-btn--primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(180deg, rgba(140, 192, 255, 0.9), rgba(46, 96, 196, 0.55) 55%, rgba(120, 176, 255, 0.8));
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+}
+.start-content .menu-btn--primary::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background:
+    radial-gradient(130% 120% at 50% -10%, rgba(38, 88, 190, 0.5), rgba(9, 20, 48, 0.4) 55%, rgba(3, 8, 20, 0.3)),
+    rgba(3, 7, 18, 0.78);
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+  transition: filter 0.18s ease;
 }
 .start-content .menu-btn--primary:hover {
-  background: rgba(20, 62, 150, 0.5);
-  border-color: rgba(150, 205, 255, 1);
   color: #fff;
-  box-shadow: 0 0 24px rgba(40, 120, 255, 0.45), inset 0 0 18px rgba(40, 110, 230, 0.22);
+  background-position: -55% 0;
+  transition: background-position 0.55s ease, color 0.15s, filter 0.2s;
+  filter: drop-shadow(0 0 14px rgba(56, 136, 255, 0.5));
+}
+.start-content .menu-btn--primary:hover::after { filter: brightness(1.45); }
+.start-content .menu-btn--primary:active { transform: translateY(1px); }
+.start-content .menu-btn--primary:focus-visible {
+  outline: none;
+  filter: drop-shadow(0 0 14px rgba(56, 136, 255, 0.65));
+  color: #fff;
 }
 
 /* Subtle pulsing glow marking the default choice (Skirmish Battle) */

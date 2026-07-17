@@ -2444,3 +2444,460 @@
 }
 /* the sim-speed control locks while a tutorial prompt holds the pause */
 .sb-speed-seg:disabled { opacity: 0.4; cursor: default; }
+
+/* =====================================================================
+   HUD RE-SKIN — the AAA pass
+   Overrides the base sb-* chrome above: glass panels with bracketed
+   corners, chamfered command keys, segmented readout bars and entrance
+   motion. Layout and behaviour are untouched — this section is
+   presentation only, and every selector matches markup already styled
+   above (base values kept there for reference).
+   ===================================================================== */
+
+/* shared entrance motion */
+@keyframes sb-hud-drop {
+  from { opacity: 0; transform: translate(-50%, -12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes sb-hud-left {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Fleet scoreboard: command-glass banner with [ ] bracket corners ────── */
+.sb-scoreboard {
+  gap: 6px;
+  padding: 10px 26px 9px;
+  background: var(--hud-glass);
+  border: 1px solid var(--hud-glass-edge);
+  border-radius: 0;
+  box-shadow: var(--hud-hairline), var(--hud-drop), 0 0 26px rgba(18, 64, 160, 0.28);
+  backdrop-filter: blur(7px) saturate(1.25);
+  animation: sb-hud-drop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.sb-scoreboard::before,
+.sb-scoreboard::after {
+  content: '';
+  position: absolute;
+  top: -1px; bottom: -1px;
+  width: 8px;
+  pointer-events: none;
+}
+.sb-scoreboard::before { left: -1px;  border: 1px solid rgba(168, 210, 255, 0.8); border-right: none; }
+.sb-scoreboard::after  { right: -1px; border: 1px solid rgba(168, 210, 255, 0.8); border-left: none; }
+.sb-vs { font-size: 9px; letter-spacing: 0.3em; color: rgba(126, 150, 195, 0.75); }
+.sb-strength-row { border-top-color: rgba(80, 120, 190, 0.3); }
+/* segmented force-ratio bar: deep enamel track, lit blue fill, tick divisions */
+.sb-power-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 1px;
+  background: linear-gradient(180deg, #c22c18, #6e1206);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.75), 0 0 8px rgba(255, 50, 20, 0.25);
+}
+.sb-power-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(1, 3, 9, 0.72) calc(10% - 1px) 10%);
+  pointer-events: none;
+}
+.sb-power-bar-blue {
+  background: linear-gradient(180deg, #5aa4ff, #1257cf);
+  border-right: 1px solid rgba(225, 242, 255, 0.95);
+  box-shadow: 0 0 10px rgba(40, 130, 255, 0.85);
+}
+
+/* ── Sim controls: speed selector + battle clock as one glass cluster ───── */
+.sb-simctl { animation: sb-hud-left 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both; }
+.sb-speed {
+  background: var(--hud-glass);
+  border-color: var(--hud-glass-edge);
+  border-radius: 0;
+  box-shadow: var(--hud-hairline), 0 8px 22px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+}
+.sb-speed-seg {
+  min-width: 42px;
+  padding: 6px 9px;
+  font-weight: 700;
+  border-left-color: rgba(70, 110, 180, 0.35);
+}
+.sb-speed-seg--on {
+  background: linear-gradient(180deg, rgba(58, 126, 245, 0.42), rgba(16, 58, 158, 0.26));
+  color: #fff;
+  text-shadow: 0 0 8px rgba(130, 195, 255, 0.9);
+  box-shadow: inset 0 1px 0 rgba(185, 222, 255, 0.35), inset 0 0 12px rgba(26, 128, 255, 0.4);
+}
+.sb-timer {
+  background: var(--hud-glass);
+  border-color: var(--hud-glass-edge);
+  border-radius: 0;
+  box-shadow: var(--hud-hairline), 0 8px 22px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+}
+.sb-timer-clock { text-shadow: 0 0 10px rgba(140, 195, 255, 0.5); }
+
+/* ── Stage utility keys (restart / sound), top-right ────────────────────── */
+.sb-sound,
+.sb-restart-top {
+  background: var(--hud-glass);
+  border-color: var(--hud-glass-edge);
+  border-radius: 0;
+  padding: 6px 12px;
+  box-shadow: var(--hud-hairline), 0 6px 18px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(6px);
+}
+.sb-restart-top:hover,
+.sb-sound:hover {
+  border-color: rgba(150, 205, 255, 0.85);
+  color: #eaf4ff;
+  box-shadow: var(--hud-hairline), 0 0 14px rgba(40, 110, 230, 0.4);
+}
+
+/* ── Tactical command console: one coherent glass panel, sectioned ──────── */
+.sb-tactics {
+  pointer-events: auto;   /* it reads as a solid console now — don't let drags orbit the camera through it */
+  gap: 10px;
+  padding: 13px 15px 15px;
+  background: linear-gradient(168deg, rgba(11, 22, 46, 0.42), rgba(3, 7, 17, 0.52));
+  border: 1px solid rgba(84, 132, 212, 0.34);
+  border-left: 2px solid rgba(64, 138, 255, 0.8);
+  box-shadow: var(--hud-hairline), 0 14px 34px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(7px) saturate(1.2);
+  animation: sb-hud-left 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+.sb-tac-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 9.5px;
+  color: #d3e4ff;
+  text-shadow: 0 0 10px rgba(64, 138, 255, 0.55);
+}
+.sb-tac-title::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(110, 170, 255, 0.45), transparent);
+}
+.sb-tac-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sb-tac-label::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(90, 130, 200, 0.22), transparent);
+}
+.sb-tac-btn {
+  padding: 6px 10px;
+  border-radius: 1px;
+  background: linear-gradient(180deg, rgba(17, 34, 68, 0.55), rgba(5, 10, 24, 0.62));
+  border-color: rgba(74, 114, 184, 0.45);
+  color: #97abce;
+  box-shadow: inset 0 1px 0 rgba(150, 200, 255, 0.08);
+}
+.sb-tac-btn:hover {
+  border-color: rgba(136, 192, 255, 0.85);
+  color: #eaf4ff;
+  background: linear-gradient(180deg, rgba(26, 52, 100, 0.6), rgba(8, 16, 36, 0.66));
+}
+.sb-tac-btn--on {
+  background: linear-gradient(180deg, rgba(52, 116, 235, 0.5), rgba(16, 56, 152, 0.3));
+  border-color: #4d9aff;
+  color: #fff;
+  text-shadow: 0 0 7px rgba(140, 200, 255, 0.85);
+  box-shadow: inset 0 1px 0 rgba(190, 225, 255, 0.35), 0 0 12px rgba(26, 128, 255, 0.35);
+}
+
+/* skill cards: armed = lit edge + inner sheen; expended = struck hazard tape */
+.sb-skill-btn {
+  min-width: 110px;
+  padding: 7px 10px;
+  border-radius: 1px;
+  background: linear-gradient(180deg, rgba(13, 27, 56, 0.68), rgba(4, 9, 20, 0.74));
+}
+.sb-skill-btn:not(:disabled) {
+  border-color: rgba(74, 150, 255, 0.8);
+  box-shadow: inset 0 1px 0 rgba(175, 216, 255, 0.2), 0 0 10px rgba(26, 128, 255, 0.24);
+}
+.sb-skill-btn--used {
+  opacity: 0.45;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 6px, rgba(130, 160, 210, 0.08) 6px 7px),
+    linear-gradient(180deg, rgba(10, 18, 36, 0.6), rgba(3, 7, 16, 0.66));
+}
+
+/* bomber dispatch: the hero order — heavier plate, brighter pulse */
+.sb-dispatch-btn {
+  padding: 11px 16px;
+  border-width: 1px;
+  border-radius: 1px;
+  background:
+    linear-gradient(115deg, transparent 42%, rgba(195, 228, 255, 0.16) 50%, transparent 58%) no-repeat,
+    linear-gradient(180deg, rgba(48, 110, 235, 0.4), rgba(14, 48, 132, 0.28));
+  background-size: 300% 100%, 100% 100%;
+  background-position: 135% 0, 0 0;
+  box-shadow: inset 0 1px 0 rgba(185, 222, 255, 0.3);
+}
+.sb-dispatch-btn:hover {
+  background-position: -55% 0, 0 0;
+  transition: background-position 0.5s ease, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+.sb-dispatch-btn--sent {
+  background: linear-gradient(180deg, rgba(8, 15, 32, 0.6), rgba(3, 6, 14, 0.66));
+  box-shadow: none;
+}
+.sb-elite-portrait {
+  border-color: rgba(110, 170, 255, 0.75);
+  box-shadow: inset 0 0 10px rgba(10, 30, 80, 0.6), 0 0 10px rgba(26, 128, 255, 0.3);
+}
+
+/* ── Kill feed: glass chips, the oldest entries falling away ────────────── */
+.sb-kill {
+  padding: 4px 10px;
+  background: linear-gradient(270deg, rgba(10, 21, 44, 0.78), rgba(4, 9, 20, 0.42));
+  border-right-width: 2px;
+  border-right-color: rgba(96, 148, 228, 0.55);
+  backdrop-filter: blur(3px);
+  box-shadow: inset 0 1px 0 rgba(150, 200, 255, 0.06);
+}
+.sb-kill:nth-last-child(n+5) { opacity: 0.72; }
+.sb-kill:nth-last-child(n+7) { opacity: 0.45; }
+
+/* ── Capital nameplates projected over the flagships ────────────────────── */
+.sb-cap-label {
+  padding: 4px 12px 5px;
+  background: rgba(3, 8, 19, 0.7);
+  border: 1px solid rgba(90, 140, 220, 0.32);
+  border-bottom-width: 2px;
+  border-radius: 1px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(150, 200, 255, 0.08);
+  backdrop-filter: blur(4px);
+}
+.sb-cap-label--blue { border-bottom-color: var(--c-scarlet); }
+.sb-cap-label--red  { border-bottom-color: var(--c-bad); }
+
+/* ── Tracking banner + hull readout ─────────────────────────────────────── */
+.sb-follow-label {
+  padding: 4px 14px;
+  background: rgba(3, 8, 19, 0.62);
+  border: 1px solid rgba(90, 140, 220, 0.3);
+  backdrop-filter: blur(4px);
+}
+.sb-track-hpbar {
+  height: 6px;
+  border-radius: 1px;
+  background: rgba(8, 16, 34, 0.75);
+  border-color: rgba(80, 120, 190, 0.45);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Victory / defeat: cinematic smash-in ───────────────────────────────── */
+.sb-victory {
+  gap: 20px;
+  /* the comms broadcast rides the bottom of the stage (bottom: 40px, ~140px
+     tall) — reserve that band so the reward row / CONTINUE never sit under it */
+  padding-bottom: clamp(120px, 17vh, 168px);
+  justify-content: safe center;   /* on very short windows, overflow down (toward the reserved band), not off the top */
+  background: radial-gradient(ellipse at center, rgba(3, 8, 20, 0.38) 0%, rgba(1, 2, 6, 0.92) 82%);
+  backdrop-filter: blur(2px);
+}
+.sb-victory-sub {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.sb-victory-sub::before,
+.sb-victory-sub::after {
+  content: '';
+  height: 1px;
+  width: 64px;
+}
+.sb-victory-sub::before { background: linear-gradient(90deg, transparent, rgba(140, 190, 255, 0.55)); }
+.sb-victory-sub::after  { background: linear-gradient(270deg, transparent, rgba(140, 190, 255, 0.55)); }
+.sb-victory-title {
+  font-size: clamp(30px, 5.4vw, 56px);
+  animation: sb-victory-title-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes sb-victory-title-in {
+  from { opacity: 0; letter-spacing: 0.34em; filter: blur(7px); }
+  to   { opacity: 1; letter-spacing: 0.14em; filter: blur(0); }
+}
+.sb-stats {
+  padding: 16px 30px 18px;
+  background: var(--hud-glass);
+  border: 1px solid var(--hud-glass-edge);
+  box-shadow: var(--hud-hairline), var(--hud-drop);
+  position: relative;
+}
+.sb-stats::before,
+.sb-stats::after {
+  content: '';
+  position: absolute;
+  top: -1px; bottom: -1px;
+  width: 8px;
+  pointer-events: none;
+}
+.sb-stats::before { left: -1px;  border: 1px solid rgba(168, 210, 255, 0.75); border-right: none; }
+.sb-stats::after  { right: -1px; border: 1px solid rgba(168, 210, 255, 0.75); border-left: none; }
+.sb-restart {
+  background:
+    linear-gradient(115deg, transparent 42%, rgba(195, 228, 255, 0.14) 50%, transparent 58%) no-repeat,
+    linear-gradient(180deg, rgba(44, 100, 220, 0.28), rgba(12, 36, 100, 0.2));
+  background-size: 300% 100%, 100% 100%;
+  background-position: 135% 0, 0 0;
+  border-color: rgba(120, 180, 255, 0.65);
+  box-shadow: inset 0 1px 0 rgba(180, 218, 255, 0.22);
+}
+.sb-restart:hover {
+  background-position: -55% 0, 0 0;
+  transition: background-position 0.5s ease, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+  box-shadow: inset 0 1px 0 rgba(180, 218, 255, 0.22), 0 0 18px rgba(80, 140, 220, 0.45);
+}
+.sb-restart--ghost {
+  background:
+    linear-gradient(115deg, transparent 42%, rgba(255, 210, 200, 0.12) 50%, transparent 58%) no-repeat,
+    linear-gradient(180deg, rgba(200, 62, 44, 0.22), rgba(90, 22, 12, 0.18));
+  background-size: 300% 100%, 100% 100%;
+  background-position: 135% 0, 0 0;
+}
+.sb-restart--ghost:hover { background-position: -55% 0, 0 0; }
+
+/* ── Pre-battle briefing: war-room table ────────────────────────────────── */
+.sb-briefing {
+  gap: 24px;
+  background:
+    radial-gradient(ellipse 95% 70% at 50% -12%, rgba(22, 58, 136, 0.28), transparent 62%),
+    radial-gradient(ellipse at center, #050b1c 0%, #01030a 65%, #000 100%);
+}
+.sb-brief-sub {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: rgba(150, 185, 235, 0.85);
+}
+.sb-brief-sub::before,
+.sb-brief-sub::after {
+  content: '';
+  height: 1px;
+  width: 74px;
+}
+.sb-brief-sub::before { background: linear-gradient(90deg, transparent, rgba(140, 190, 255, 0.6)); }
+.sb-brief-sub::after  { background: linear-gradient(270deg, transparent, rgba(140, 190, 255, 0.6)); }
+/* the START key: chamfered plate + light-sweep, glow riding the cut corners */
+.sb-brief-start {
+  position: relative;
+  z-index: 0;
+  border: none;
+  border-radius: 0;
+  padding: 16px 52px;
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+  background: linear-gradient(115deg, transparent 42%, rgba(195, 228, 255, 0.2) 50%, transparent 58%) no-repeat;
+  background-size: 300% 100%;
+  background-position: 135% 0;
+  transition: background-position 0s, color 0.15s, filter 0.2s;
+}
+.sb-brief-start::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(180deg, rgba(140, 192, 255, 0.9), rgba(46, 96, 196, 0.55) 55%, rgba(120, 176, 255, 0.8));
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+}
+.sb-brief-start::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background:
+    radial-gradient(130% 120% at 50% -10%, rgba(38, 88, 190, 0.5), rgba(9, 20, 48, 0.42) 55%, rgba(3, 8, 20, 0.34)),
+    rgba(3, 7, 18, 0.8);
+  clip-path: polygon(17px 0, 100% 0, 100% calc(100% - 17px), calc(100% - 17px) 100%, 0 100%, 0 17px);
+  transition: filter 0.18s ease;
+}
+.sb-brief-start:hover {
+  color: #fff;
+  background-position: -55% 0;
+  transition: background-position 0.55s ease, color 0.15s, filter 0.2s;
+  filter: drop-shadow(0 0 16px rgba(56, 136, 255, 0.55));
+  box-shadow: none;
+}
+.sb-brief-start:hover::after { filter: brightness(1.45); }
+.sb-brief-start:active { transform: translateY(1px); }
+
+/* fleet roster panels: bracketed intel plates with a per-team tint */
+.sb-brief-team {
+  position: relative;
+  background: linear-gradient(170deg, rgba(9, 18, 38, 0.82), rgba(3, 6, 16, 0.88));
+  border: 1px solid rgba(74, 114, 184, 0.4);
+  border-radius: 0;
+  padding: 16px 20px 18px;
+  box-shadow: var(--hud-hairline), 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+.sb-brief-team--blue { border-top: 2px solid var(--c-scarlet); box-shadow: var(--hud-hairline), 0 18px 44px rgba(0, 0, 0, 0.45), inset 0 0 70px rgba(20, 80, 200, 0.09); }
+.sb-brief-team--red  { border-top: 2px solid var(--c-bad);     box-shadow: var(--hud-hairline), 0 18px 44px rgba(0, 0, 0, 0.45), inset 0 0 70px rgba(200, 40, 20, 0.07); }
+.sb-brief-team::before,
+.sb-brief-team::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  width: 9px;
+  height: 9px;
+  pointer-events: none;
+}
+.sb-brief-team::before { left: -1px;  border-left: 1px solid rgba(168, 210, 255, 0.8);  border-bottom: 1px solid rgba(168, 210, 255, 0.8); }
+.sb-brief-team::after  { right: -1px; border-right: 1px solid rgba(168, 210, 255, 0.8); border-bottom: 1px solid rgba(168, 210, 255, 0.8); }
+.sb-brief-team-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sb-brief-team-title::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+}
+.sb-brief-team--blue .sb-brief-team-title::after { background: linear-gradient(90deg, rgba(26, 128, 255, 0.5), transparent); }
+.sb-brief-team--red  .sb-brief-team-title::after { background: linear-gradient(90deg, rgba(255, 60, 30, 0.45), transparent); }
+.sb-brief-adj-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 1px;
+  background: linear-gradient(180deg, rgba(24, 48, 96, 0.5), rgba(8, 16, 36, 0.55));
+  border-color: rgba(90, 140, 220, 0.5);
+  color: #cfe0ff;
+}
+.sb-brief-adj-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(40, 82, 160, 0.6), rgba(14, 30, 66, 0.6));
+  border-color: rgba(150, 205, 255, 0.85);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(40, 110, 230, 0.35);
+}
+.sb-brief-adj-btn:disabled { opacity: 0.22; }
+.sb-brief-strength { border-top-color: rgba(80, 120, 190, 0.3); }
+
+/* the instructions key + field manual pick up the same glass material */
+.sb-brief-instr {
+  background: rgba(4, 9, 20, 0.5);
+  backdrop-filter: blur(4px);
+}
+.sb-instr-box {
+  background:
+    radial-gradient(ellipse at top, rgba(12, 26, 56, 0.9) 0%, rgba(3, 7, 17, 0.96) 70%);
+  border-color: rgba(84, 132, 212, 0.4);
+  box-shadow: var(--hud-hairline), 0 30px 70px rgba(0, 0, 0, 0.7);
+}
+
+/* ── Comms broadcast: transmission glass ────────────────────────────────── */
+.sb-comms {
+  background: linear-gradient(172deg, rgba(9, 18, 38, 0.9), rgba(2, 5, 13, 0.95));
+  border-color: rgba(84, 132, 212, 0.4);
+  border-radius: 0;
+  box-shadow: var(--hud-hairline), 0 16px 40px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+}

@@ -123,15 +123,32 @@
 .cs-card {
   flex: 1 1 auto;
   max-width: 840px;
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: stretch;
   gap: 28px;
-  border: 2px solid var(--c-cardinal);
-  background: linear-gradient(160deg, rgba(9, 16, 34, 0.92), rgba(2, 4, 12, 0.96));
-  box-shadow: 0 0 34px rgba(20, 96, 208, 0.3);
+  border: 1px solid rgba(90, 144, 226, 0.55);
+  border-top: 2px solid var(--c-scarlet);
+  background: linear-gradient(160deg, rgba(10, 19, 40, 0.92), rgba(2, 4, 12, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(160, 205, 255, 0.12),
+    0 22px 54px rgba(0, 0, 0, 0.55),
+    0 0 34px rgba(20, 96, 208, 0.28);
   padding: 26px;
 }
+/* bracketed lower corners, same family as the battle-sim intel plates */
+.cs-card::before,
+.cs-card::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+}
+.cs-card::before { left: -1px;  border-left: 1px solid rgba(168, 210, 255, 0.85);  border-bottom: 1px solid rgba(168, 210, 255, 0.85); }
+.cs-card::after  { right: -1px; border-right: 1px solid rgba(168, 210, 255, 0.85); border-bottom: 1px solid rgba(168, 210, 255, 0.85); }
 .cs-card[data-dir="next"] { animation: cs-slide-next 0.32s ease both; }
 .cs-card[data-dir="prev"] { animation: cs-slide-prev 0.32s ease both; }
 @keyframes cs-slide-next { from { opacity: 0; transform: translateX(34px); } to { opacity: 1; transform: translateX(0); } }
@@ -159,6 +176,21 @@
   inset: 0;
   pointer-events: none;
   background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.16) 2px 4px);
+}
+/* slow biometric scan band drifting down the portrait */
+.cs-portrait-frame::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: -22%;
+  height: 18%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(120, 190, 255, 0.14) 45%, rgba(160, 215, 255, 0.28) 50%, rgba(120, 190, 255, 0.14) 55%, transparent);
+  animation: cs-scan 4.6s linear infinite;
+}
+@keyframes cs-scan {
+  from { transform: translateY(0); }
+  to   { transform: translateY(680%); }
 }
 
 .cs-dossier {
@@ -250,25 +282,53 @@
 .cs-dot:hover { transform: scale(1.2); }
 .cs-dot--on { background: var(--c-pink); box-shadow: 0 0 10px var(--c-pink); }
 
+/* AUTHENTICATE: chamfered hero key with the shared light-sweep */
 .cs-confirm {
-  background: transparent;
-  border: 2px solid var(--c-cardinal);
-  color: var(--c-pink);
+  position: relative;
+  z-index: 0;
+  border: none;
+  color: #dcecff;
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.28em;
+  text-indent: 0.28em;
   text-transform: uppercase;
-  padding: 16px 64px;
+  padding: 17px 64px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+  background: linear-gradient(115deg, transparent 42%, rgba(195, 228, 255, 0.2) 50%, transparent 58%) no-repeat;
+  background-size: 300% 100%;
+  background-position: 135% 0;
+  transition: background-position 0s, color 0.15s, filter 0.2s;
+}
+.cs-confirm::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(180deg, rgba(140, 192, 255, 0.9), rgba(46, 96, 196, 0.55) 55%, rgba(120, 176, 255, 0.8));
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+}
+.cs-confirm::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background:
+    radial-gradient(130% 120% at 50% -10%, rgba(38, 88, 190, 0.5), rgba(9, 20, 48, 0.42) 55%, rgba(3, 8, 20, 0.34)),
+    rgba(3, 7, 18, 0.8);
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+  transition: filter 0.18s ease;
 }
 .cs-confirm:hover {
-  background: rgba(20, 96, 208, 0.18);
-  border-color: var(--c-scarlet);
-  color: var(--c-ash);
-  box-shadow: 0 0 24px rgba(20, 96, 208, 0.45);
+  color: #fff;
+  background-position: -55% 0;
+  transition: background-position 0.55s ease, color 0.15s, filter 0.2s;
+  filter: drop-shadow(0 0 16px rgba(56, 136, 255, 0.55));
 }
+.cs-confirm:hover::after { filter: brightness(1.45); }
+.cs-confirm:active { transform: translateY(1px); }
 
 @media (max-width: 720px) {
   .cs-card { flex-direction: column; align-items: center; text-align: center; }
