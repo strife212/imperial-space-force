@@ -32,6 +32,7 @@ import DrawTestScreen from './screens/DrawTestScreen'
 import FleetBoot from './screens/FleetBoot'
 import CreditsScreen from './screens/CreditsScreen'
 import DialogueScreen from './screens/DialogueScreen'
+import TrailerScreen from './screens/TrailerScreen'
 import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, hasMacroMissile, getCombatMods, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
 import { getEnemyBattleExtras } from './lib/enemyCards'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
@@ -45,7 +46,7 @@ const countTrueFlags = () => Object.values(getFlags()).filter(Boolean).length
 // ── Deep links: a bare path (e.g. /battlesim) opens straight to that screen ───
 // On GitHub Pages the unknown path is served by 404.html, which bounces it back
 // to index.html where a snippet restores the real URL before React mounts.
-const DEEP_LINKS = { battlesim: 'home', fleetbuilder: 'fleetbuilder', cosmogony: 'cosmogony', cosmogony2: 'cosmogony2', cosmogony3: 'cosmogony3', story: 'story', dialogue: 'dialogue' }
+const DEEP_LINKS = { battlesim: 'home', fleetbuilder: 'fleetbuilder', cosmogony: 'cosmogony', cosmogony2: 'cosmogony2', cosmogony3: 'cosmogony3', story: 'story', dialogue: 'dialogue', trailer: 'trailer' }
 const pathScreen = () => {
   const slug = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase()
   return DEEP_LINKS[slug] || null
@@ -287,6 +288,7 @@ export default function App() {
       {screen === 'cosmogony3'      && <Cosmogony3 />}
       {screen === 'credits'         && <CreditsScreen onComplete={() => setScreen('campaign-map')} />}
       {screen === 'dialogue'        && <DialogueScreen onBack={() => setScreen(dialogueSource)} />}
+      {screen === 'trailer'         && <TrailerScreen />}
       {screen === 'story'           && <StoryReel />}
       {screen === 'cutscene'        && (() => {
           // A campaign replay (re-watching a cleared node) may be skipped; a

@@ -470,7 +470,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
 
       const scene = new THREE.Scene()
       const camera = new THREE.PerspectiveCamera(52, w / h, 0.1, 600)
-      camera.position.set(0, 25, 60)   // ~30% further back
+      camera.position.set(...(campaign?.camera ?? [0, 25, 60]))   // ~30% further back (campaign may seat the lens elsewhere — the trailer's close-ups)
 
       // picture-in-picture camera (centre-right box) for highlighting key events
       const PIP_W = 300, PIP_H = 190, PIP_RIGHT = 24   // css px

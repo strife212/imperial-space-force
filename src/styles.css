@@ -6529,3 +6529,83 @@ body {
   font-size: 15px; line-height: 1.5; letter-spacing: 0.01em;
   color: #dce8f7;
 }
+
+/* ---------- Trailer (/trailer) — the 30s montage, built for screen capture ---------- */
+.trailer {
+  position: fixed; inset: 0; z-index: 6000;
+  background: #000;
+  font-family: var(--font-mono);
+}
+.trailer--rolling { cursor: none; }
+.trailer-layer { position: absolute; inset: 0; }
+.trailer-layer > * { height: 100%; }
+.trailer-start, .trailer-end {
+  position: absolute; inset: 0; z-index: 8600;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  background: #000;
+}
+.trailer-start-btn {
+  font-family: var(--font-mono); font-size: 16px; font-weight: 700; letter-spacing: 0.2em;
+  color: #d8ecff; background: rgba(20, 60, 120, 0.3);
+  border: 1px solid rgba(120, 180, 255, 0.5); border-radius: 4px;
+  padding: 14px 34px; cursor: pointer;
+}
+.trailer-start-btn:hover { background: rgba(40, 100, 200, 0.4); color: #fff; }
+.trailer-start-hint { font-size: 11px; letter-spacing: 0.14em; color: rgba(130, 160, 205, 0.55); text-transform: uppercase; }
+/* lower-third caption riding inside each shot */
+.trailer-caption {
+  position: absolute; left: 6vw; bottom: 9vh; z-index: 7000;
+  font-size: clamp(13px, 1.6vw, 19px); font-weight: 700;
+  letter-spacing: 0.34em; text-transform: uppercase;
+  color: #eaf2ff; text-shadow: 0 0 18px rgba(120, 170, 255, 0.6), 0 2px 6px rgba(0,0,0,0.8);
+  animation: trailer-caption-in 0.5s ease both;
+  pointer-events: none;
+}
+@keyframes trailer-caption-in {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+/* the closing logo card */
+.trailer-logo {
+  position: absolute; inset: 0; z-index: 8400;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, #04101f 0%, #01050e 55%, #000 100%);
+  transition: opacity 1s ease;
+}
+.trailer-logo--out { opacity: 0; }
+.trailer-flash {
+  position: absolute; inset: 0; background: #fff;
+  animation: trailer-flash-out 0.45s ease-out both;
+  pointer-events: none;
+}
+@keyframes trailer-flash-out { from { opacity: 0.95; } to { opacity: 0; } }
+.trailer-logo-name {
+  font-family: var(--font-disp);
+  font-size: clamp(28px, 5vw, 62px); font-weight: 800;
+  letter-spacing: 0.22em; text-indent: 0.22em; text-transform: uppercase;
+  color: #eaf2ff; text-align: center; padding: 0 4vw;
+  text-shadow: 0 0 26px rgba(120, 170, 255, 0.55), 0 0 60px rgba(80, 130, 235, 0.28);
+  animation: cut-title-slam 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.trailer-logo-motto {
+  margin-top: 20px;
+  font-size: clamp(12px, 1.5vw, 17px); letter-spacing: 0.3em; text-transform: uppercase;
+  color: rgba(160, 195, 240, 0.85);
+}
+.trailer-logo-url {
+  margin-top: 34px;
+  font-size: clamp(11px, 1.2vw, 14px); letter-spacing: 0.22em;
+  color: #5aa0ff; text-shadow: 0 0 16px rgba(40, 120, 255, 0.5);
+}
+
+/* trailer: hard-cut blink mask between shots */
+.trailer-blink {
+  position: absolute; inset: 0; z-index: 8400;
+  background: #000;
+  pointer-events: none;
+}
+/* trailer: cinematic battles — the whole HUD steps aside, only the sim shows.
+   Root level: keep the stage, drop the header/footer/stats; stage level: keep
+   the canvas, drop every overlay (topbar, tactical panel, comms, labels, PiP). */
+.trailer-layer--clean > * > :not(.sb-stage) { display: none !important; }
+.trailer-layer--clean .sb-stage > :not(.sb-canvas) { display: none !important; }

@@ -19,6 +19,7 @@ const NEW_SCREENS = [
   { key: 'fleet-review',   label: 'Fleet Review'             },
   { key: 'campaign',       label: 'Story Campaign (1 → 10)'  },
   { key: 'dialogue',       label: 'Cutscene Dialogue (script)' },
+  { key: 'trailer',        label: 'Trailer (30s montage)'    },
   { key: 'character-select', label: 'Character Select'        },
   { key: 'fleet-boot',     label: 'Fleet Boot (Muster)'      },
   { key: 'reset-campaign', label: 'Reset Campaign Progress'  },
