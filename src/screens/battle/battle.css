@@ -2465,6 +2465,10 @@
 }
 
 /* ── Fleet scoreboard: command-glass banner with [ ] bracket corners ────── */
+/* NOTE (perf): the in-battle HUD avoids backdrop-filter — the WebGL canvas
+   beneath repaints every frame, so each blurred region forces a per-frame
+   readback + blur. The glass gradients are near-opaque; only the tactics
+   console (deliberately see-through) keeps a real blur. */
 .sb-scoreboard {
   gap: 6px;
   padding: 10px 26px 9px;
@@ -2472,7 +2476,6 @@
   border: 1px solid var(--hud-glass-edge);
   border-radius: 0;
   box-shadow: var(--hud-hairline), var(--hud-drop), 0 0 26px rgba(18, 64, 160, 0.28);
-  backdrop-filter: blur(7px) saturate(1.25);
   animation: sb-hud-drop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .sb-scoreboard::before,
@@ -2515,7 +2518,6 @@
   border-color: var(--hud-glass-edge);
   border-radius: 0;
   box-shadow: var(--hud-hairline), 0 8px 22px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(6px);
 }
 .sb-speed-seg {
   min-width: 42px;
@@ -2534,7 +2536,6 @@
   border-color: var(--hud-glass-edge);
   border-radius: 0;
   box-shadow: var(--hud-hairline), 0 8px 22px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(6px);
 }
 .sb-timer-clock { text-shadow: 0 0 10px rgba(140, 195, 255, 0.5); }
 
@@ -2546,7 +2547,6 @@
   border-radius: 0;
   padding: 6px 12px;
   box-shadow: var(--hud-hairline), 0 6px 18px rgba(0, 0, 0, 0.38);
-  backdrop-filter: blur(6px);
 }
 .sb-restart-top:hover,
 .sb-sound:hover {
@@ -2633,6 +2633,7 @@
 
 /* bomber dispatch: the hero order — heavier plate, brighter pulse */
 .sb-dispatch-btn {
+  position: relative;
   padding: 11px 16px;
   border-width: 1px;
   border-radius: 1px;
@@ -2643,6 +2644,27 @@
   background-position: 135% 0, 0 0;
   box-shadow: inset 0 1px 0 rgba(185, 222, 255, 0.3);
 }
+/* the availability pulse rides a pseudo-element's opacity (compositor-only)
+   instead of animating box-shadow, which would repaint the button every frame */
+@keyframes sb-dispatch-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.012); }
+}
+.sb-dispatch-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 16px rgba(70, 145, 255, 0.55);
+  opacity: 0.4;
+  animation: sb-dispatch-glow 2.6s ease-in-out infinite;
+}
+@keyframes sb-dispatch-glow {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+.sb-dispatch-btn--sent::after { display: none; }
 .sb-dispatch-btn:hover {
   background-position: -55% 0, 0 0;
   transition: background-position 0.5s ease, border-color 0.15s, box-shadow 0.15s, color 0.15s;
@@ -2659,10 +2681,9 @@
 /* ── Kill feed: glass chips, the oldest entries falling away ────────────── */
 .sb-kill {
   padding: 4px 10px;
-  background: linear-gradient(270deg, rgba(10, 21, 44, 0.78), rgba(4, 9, 20, 0.42));
+  background: linear-gradient(270deg, rgba(10, 21, 44, 0.85), rgba(4, 9, 20, 0.5));
   border-right-width: 2px;
   border-right-color: rgba(96, 148, 228, 0.55);
-  backdrop-filter: blur(3px);
   box-shadow: inset 0 1px 0 rgba(150, 200, 255, 0.06);
 }
 .sb-kill:nth-last-child(n+5) { opacity: 0.72; }
@@ -2671,12 +2692,12 @@
 /* ── Capital nameplates projected over the flagships ────────────────────── */
 .sb-cap-label {
   padding: 4px 12px 5px;
-  background: rgba(3, 8, 19, 0.7);
+  background: rgba(3, 8, 19, 0.78);
   border: 1px solid rgba(90, 140, 220, 0.32);
   border-bottom-width: 2px;
   border-radius: 1px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(150, 200, 255, 0.08);
-  backdrop-filter: blur(4px);
+  will-change: transform, opacity;   /* repositioned every frame by the render loop */
 }
 .sb-cap-label--blue { border-bottom-color: var(--c-scarlet); }
 .sb-cap-label--red  { border-bottom-color: var(--c-bad); }
@@ -2684,9 +2705,8 @@
 /* ── Tracking banner + hull readout ─────────────────────────────────────── */
 .sb-follow-label {
   padding: 4px 14px;
-  background: rgba(3, 8, 19, 0.62);
+  background: rgba(3, 8, 19, 0.7);
   border: 1px solid rgba(90, 140, 220, 0.3);
-  backdrop-filter: blur(4px);
 }
 .sb-track-hpbar {
   height: 6px;
@@ -2703,8 +2723,9 @@
      tall) — reserve that band so the reward row / CONTINUE never sit under it */
   padding-bottom: clamp(120px, 17vh, 168px);
   justify-content: safe center;   /* on very short windows, overflow down (toward the reserved band), not off the top */
-  background: radial-gradient(ellipse at center, rgba(3, 8, 20, 0.38) 0%, rgba(1, 2, 6, 0.92) 82%);
-  backdrop-filter: blur(2px);
+  /* no backdrop blur: the sim keeps rendering beneath this screen indefinitely,
+     and a full-viewport per-frame blur is the single costliest overlay effect */
+  background: radial-gradient(ellipse at center, rgba(3, 8, 20, 0.45) 0%, rgba(1, 2, 6, 0.92) 82%);
 }
 .sb-victory-sub {
   display: flex;
@@ -2883,8 +2904,7 @@
 
 /* the instructions key + field manual pick up the same glass material */
 .sb-brief-instr {
-  background: rgba(4, 9, 20, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(4, 9, 20, 0.55);
 }
 .sb-instr-box {
   background:
@@ -2895,9 +2915,8 @@
 
 /* ── Comms broadcast: transmission glass ────────────────────────────────── */
 .sb-comms {
-  background: linear-gradient(172deg, rgba(9, 18, 38, 0.9), rgba(2, 5, 13, 0.95));
+  background: linear-gradient(172deg, rgba(9, 18, 38, 0.94), rgba(2, 5, 13, 0.97));
   border-color: rgba(84, 132, 212, 0.4);
   border-radius: 0;
   box-shadow: var(--hud-hairline), 0 16px 40px rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(6px);
 }

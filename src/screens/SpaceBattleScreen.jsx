@@ -59,6 +59,32 @@ const operatorEliteSkill = (name) => {
   return m ? m.skill : null
 }
 
+// The comms broadcast types itself out a character every 42ms; keeping the
+// typewriter state in its own component scopes those re-renders to this small
+// box instead of re-rendering the entire battle screen ~24×/s while it types.
+function CommsBox({ comms }) {
+  const [shown, setShown] = useState(0)
+  useEffect(() => {   // keyed by comms.id — a new line remounts and restarts the typer
+    const typer = setInterval(() => {
+      setShown(i => {
+        const next = i + 1
+        if (next >= comms.text.length) clearInterval(typer)
+        return next
+      })
+    }, 42)
+    return () => clearInterval(typer)
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className={`sb-comms sb-comms--${comms.team}`}>
+      <img className="sb-comms-portrait" src={comms.portrait} alt="" />
+      <div className="sb-comms-body">
+        <div className="sb-comms-name">{comms.name}</div>
+        <div className="sb-comms-text">{renderCommsBody(comms.segments || [{ text: comms.text }], shown)}<span className="sb-comms-cursor">▋</span></div>
+      </div>
+    </div>
+  )
+}
+
 // `campaign` (optional) turns this into a campaign engagement: both fleets are
 // locked (built in the shipyard beforehand), the flagship/enemy names are the
 // persistent campaign ones, the battle auto-starts, and resolving it reports the
@@ -113,7 +139,6 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
     return { ...c, [team]: next }
   })
   const [comms, setComms]   = useState(null)    // active capital broadcast { id, team, name, portrait, text, persist }
-  const [commsText, setCommsText] = useState('')// progressively-typed body
   const commsSeq   = useRef(0)
   const commsQueue = useRef([])                 // pending broadcasts waiting their turn
   const commsBusy  = useRef(false)              // a broadcast is currently on screen
@@ -210,25 +235,18 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
     setComms(item)
   }
 
-  // ── Capital comms broadcast: chirp, type the line out, then show the next ──
+  // ── Capital comms broadcast: chirp on arrival, hold, then show the next ──
+  // (the typewriter itself lives in CommsBox, keyed per broadcast)
   useEffect(() => {
-    if (!comms) { setCommsText(''); return }
+    if (!comms) return
     audioRef.current?.playComms()                          // chirp each time a box appears
-    setCommsText('')
-    let i = 0
-    const full = comms.text
-    const typer = setInterval(() => {
-      i++
-      setCommsText(full.slice(0, i))
-      if (i >= full.length) clearInterval(typer)
-    }, 42)
-    if (comms.persist) return () => clearInterval(typer)   // victory line stays until restart
+    if (comms.persist) return                              // victory line stays until restart
     const hide = setTimeout(() => {
       const next = commsQueue.current.shift()
       if (next) setComms(next)                             // advance the queue
       else { commsBusy.current = false; setComms(null) }
     }, 2800)                                               // visible for a couple of seconds
-    return () => { clearInterval(typer); clearTimeout(hide) }
+    return () => clearTimeout(hide)
   }, [comms?.id])
 
   // ── Procedural audio engine (synthesised — no asset files) ─────────────────
@@ -476,7 +494,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       const PIP_W = 300, PIP_H = 190, PIP_RIGHT = 24   // css px
       const pipCam = new THREE.PerspectiveCamera(34, PIP_W / PIP_H, 0.1, 600)
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
       renderer.setSize(w, h)
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       mount.appendChild(renderer.domElement)
@@ -536,7 +554,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3))
       starGeo.setAttribute('color', new THREE.BufferAttribute(starCol, 3))
       const starMat = new THREE.PointsMaterial({ size: 0.75, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.9 })
-      scene.add(new THREE.Points(starGeo, starMat))
+      const stars = new THREE.Points(starGeo, starMat)
+      stars.matrixAutoUpdate = false   // static field — skip its per-frame matrix recompose
+      scene.add(stars)
       disposables.push(starGeo, starMat)
 
       // ── Shared geometry ──────────────────────────────────────────────────────
@@ -582,6 +602,10 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         if (smooth == null) mesh.quaternion.copy(_q)
         else mesh.quaternion.slerp(_q, smooth)
       }
+      // A ship's sub-meshes (hull, engine glows, hull fires, shield) never move in
+      // local space — only visibility/opacity change. Freeze their local matrices
+      // so the per-frame matrix pass recomposes just the group, not every child.
+      const freezeChildren = (group) => group.traverse(o => { if (o !== group) { o.matrixAutoUpdate = false; o.updateMatrix() } })
 
       // ── Spawn the two fleets (loose cloud on each flank, charging inward) ─────
       const reserveLeft = { blue: 0, red: 0 }   // fighters held off-field, fed in as reinforcements
@@ -615,6 +639,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           mesh.position.copy(pos)
           orient(mesh, vel)
           mesh.visible = !reserve
+          freezeChildren(mesh)
           scene.add(mesh)
           const fHp = SHIP_HP + (fm ? fm.hp : 0)
           ships.push({
@@ -647,6 +672,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           mesh.position.copy(pos)
           orient(mesh, vel)
           mesh.scale.setScalar(CRUISER_SCALE)
+          freezeChildren(mesh)
           scene.add(mesh)
           ships.push({
             mesh, mat, team, hp: CRUISER_HP, alive: true, pos, vel,
@@ -723,6 +749,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         const vel = new THREE.Vector3(-Math.sin(startAngle) * sgn, 0, Math.cos(startAngle) * sgn)
         mesh.position.copy(pos)
         orient(mesh, vel)
+        freezeChildren(mesh)
         scene.add(mesh)
         const cm = team === 'blue' ? blueMods?.flagship : redMods?.flagship
         const capHp = (team === 'blue' ? blueCapHp : redCapHp) + (cm ? cm.hp : 0)
@@ -766,6 +793,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           mesh.position.copy(home)
           mesh.scale.setScalar(BOMBER_SCALE)
           mesh.visible = false
+          freezeChildren(mesh)
           scene.add(mesh)
           ships.push({
             mesh, mat, team, hp: BOMBER_HP, alive: false, pos: home.clone(), vel: new THREE.Vector3(),
@@ -816,19 +844,30 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       const bolts = []
       const blasts = []
       const embers = []
+      const emberPool = []   // retired ember meshes, reused — sparks spawn far too often to allocate each one
       const wrecks = []
       const DEATH_DUR = 1.8
       const _e = new THREE.Vector3()
       // a random world point within an oriented box around a capital's hull
       const hullPoint = (sh) => _e.set((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 18)
         .applyQuaternion(sh.mesh.quaternion).add(sh.pos)
+      const acquireEmber = (color, opacity) => {
+        let e = emberPool.pop()
+        if (!e) {
+          const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false })
+          e = { mesh: new THREE.Mesh(blastGeo, mat), mat, vel: new THREE.Vector3() }
+        }
+        e.mat.color.set(color)
+        e.mat.opacity = opacity
+        return e
+      }
       const spawnEmber = (pos, color) => {
-        const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
-        const m = new THREE.Mesh(blastGeo, mat)
-        m.position.copy(pos)
-        m.scale.setScalar(0.3 + Math.random() * 0.4)
-        scene.add(m)
-        embers.push({ mesh: m, mat, vel: new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5 + 0.4, (Math.random() - 0.5) * 2.5), life: 0, max: 0.6 + Math.random() * 0.5 })
+        const e = acquireEmber(color, 0.9)
+        e.mesh.position.copy(pos)
+        e.mesh.scale.setScalar(0.3 + Math.random() * 0.4)
+        e.vel.set((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5 + 0.4, (Math.random() - 0.5) * 2.5)
+        scene.add(e.mesh)
+        embers.push({ mesh: e.mesh, mat: e.mat, vel: e.vel, life: 0, max: 0.6 + Math.random() * 0.5 })
       }
 
       // ── Flares: balls of flame a ship ejects to decoy missiles ────────────────
@@ -872,15 +911,19 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         }
       }
 
-      // grey smoke puffs that trail behind a bomb and expand/fade
+      // grey smoke puffs that trail behind a bomb and expand/fade. Every bomb and
+      // missile in flight sheds ~30 puffs a second, so retired puffs are pooled
+      // and reused rather than allocated (mesh + cloned material) per puff.
       const puffs = []
+      const puffPool = []
       const spawnSmoke = (pos, big = false) => {
-        const mat = smokeMatProto.clone()
-        const m = new THREE.Mesh(blastGeo, mat)
-        m.position.copy(pos)
-        m.scale.setScalar((0.22 + Math.random() * 0.16) * (big ? 1.6 : 1))
-        scene.add(m)
-        puffs.push({ mesh: m, mat, life: 0, max: 0.5 + Math.random() * 0.3, peak: big ? 0.78 : 0.5 })
+        let pf = puffPool.pop()
+        if (!pf) { const mat = smokeMatProto.clone(); pf = { mesh: new THREE.Mesh(blastGeo, mat), mat } }
+        pf.mesh.position.copy(pos)
+        pf.mesh.scale.setScalar((0.22 + Math.random() * 0.16) * (big ? 1.6 : 1))
+        pf.mat.opacity = big ? 0.78 : 0.5
+        scene.add(pf.mesh)
+        puffs.push({ mesh: pf.mesh, mat: pf.mat, life: 0, max: 0.5 + Math.random() * 0.3, peak: big ? 0.78 : 0.5 })
       }
 
       const fireBolt = (shooter, target, big = false, bomb = !!shooter.isBomber) => {
@@ -1006,10 +1049,20 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       let gameOver = false
       let retreatTeam = null, retreatTime = 0, retreatWarped = false   // bombers-only "break and retreat" sequence
       let reinforceAt = REINFORCE_INTERVAL                              // next reserve-reinforcement check (sim seconds)
-      const counts = () => ({
-        blue: ships.filter(s => s.team === 'blue' && s.alive).length,
-        red:  ships.filter(s => s.team === 'red'  && s.alive).length,
-      })
+      const _counts = { blue: 0, red: 0 }
+      const counts = () => {
+        _counts.blue = 0; _counts.red = 0
+        for (const s of ships) if (s.alive) _counts[s.team]++
+        return _counts
+      }
+      // write-through DOM setters — most HUD readouts hold the same value for many
+      // frames, so skip the write (and its style/paint invalidation) when unchanged
+      const setText = (el, v) => { if (el && el.__pv !== v) { el.__pv = v; el.textContent = v } }
+      const setStyle = (el, prop, v) => {
+        if (!el) return
+        const c = el.__ps || (el.__ps = {})
+        if (c[prop] !== v) { c[prop] = v; el.style[prop] = v }
+      }
 
       // ── Third-person camera: click a ship to follow it ────────────────────────
       const TAC_POS = new THREE.Vector3(0, 25, 60)   // the default tactical view
@@ -1093,11 +1146,11 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       const clearLanceFX = () => { for (const f of lanceFX) { scene.remove(f.mesh); f.mat.dispose && f.mat.dispose() } lanceFX.length = 0; lanceOrb = null }
       // a bright spark drawn inward toward the muzzle while the lance charges
       const spawnLanceSpark = (from, to) => {
-        const mat = new THREE.MeshBasicMaterial({ color: lance.team === 'red' ? 0xffb09a : 0x9fd4ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
-        const m = new THREE.Mesh(blastGeo, mat)
-        m.position.copy(from); m.scale.setScalar(0.16 + Math.random() * 0.18)
-        scene.add(m)
-        embers.push({ mesh: m, mat, vel: _tmp.subVectors(to, from).multiplyScalar(2.4 + Math.random() * 1.4).clone(), life: 0, max: 0.3 + Math.random() * 0.2 })
+        const e = acquireEmber(lance.team === 'red' ? 0xffb09a : 0x9fd4ff, 0.95)
+        e.mesh.position.copy(from); e.mesh.scale.setScalar(0.16 + Math.random() * 0.18)
+        e.vel.subVectors(to, from).multiplyScalar(2.4 + Math.random() * 1.4)
+        scene.add(e.mesh)
+        embers.push({ mesh: e.mesh, mat: e.mat, vel: e.vel, life: 0, max: 0.3 + Math.random() * 0.2 })
       }
       // span the beam cylinders from the muzzle to the target each frame
       const positionLanceBeam = (mz, tgt) => {
@@ -1212,6 +1265,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         const jumpFrom = home.clone().addScaledVector(jumpAxis.blue, 95)
         const baseScale = 1.3
         mesh.position.copy(jumpFrom); mesh.scale.setScalar(baseScale)
+        freezeChildren(mesh)
         scene.add(mesh)
         const ace = {
           mesh, mat, team: 'blue', hp: SHIP_HP * 2, maxHp: SHIP_HP * 2, alive: true, pos: jumpFrom.clone(), vel: new THREE.Vector3(),
@@ -1370,9 +1424,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           }
           if (l.cross) {
             _proj.copy(l.lastPos).project(camera)
-            if (_proj.z > 1) l.cross.el.style.display = 'none'
+            if (_proj.z > 1) setStyle(l.cross.el, 'display', 'none')
             else {
-              l.cross.el.style.display = ''
+              setStyle(l.cross.el, 'display', '')
               l.cross.el.style.transform = `translate(-50%, -50%) translate(${(_proj.x * 0.5 + 0.5) * cw}px, ${(-_proj.y * 0.5 + 0.5) * ch}px)`
             }
           }
@@ -1430,7 +1484,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         const t  = simT
         // realtime battle clock — ticks while the fight is live and not paused
         if (!gameOver) battleSimT += dt   // sim-time elapsed (dt is 0 when paused), so the clock matches time-based events
-        if (timerRef.current) timerRef.current.textContent = fmtTime(battleSimT)
+        setText(timerRef.current, fmtTime(battleSimT))
         introT += dt
         const intro = introT < INTRO_TOTAL
 
@@ -1458,7 +1512,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           const hasBlueBombers = compRef.current.blue.bombers > 0
           if (hasBlueBombers && !blueBombersLaunched && !callBombersRef.current) {
             const left = Math.max(0, Math.ceil(BOMBER_AUTO_DISPATCH - battleSimT))
-            if (bomberCountdownRef.current) bomberCountdownRef.current.textContent = `Bombers auto dispatched in ${left} second${left === 1 ? '' : 's'}`
+            setText(bomberCountdownRef.current, `Bombers auto dispatched in ${left} second${left === 1 ? '' : 's'}`)
             if (battleSimT >= BOMBER_AUTO_DISPATCH) { callBombersRef.current = true; setBombersCalled(true) }
           }
           if (!blueBombersLaunched && callBombersRef.current) { blueBombersLaunched = true; launchBombers('blue') }
@@ -1876,7 +1930,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           em.mesh.position.addScaledVector(em.vel, dt)
           em.mesh.scale.multiplyScalar(0.986)
           em.mat.opacity = Math.max(0, 0.9 * (1 - em.life / em.max))
-          if (em.life >= em.max) { scene.remove(em.mesh); em.mat.dispose(); embers.splice(i, 1) }
+          if (em.life >= em.max) { scene.remove(em.mesh); emberPool.push({ mesh: em.mesh, mat: em.mat, vel: em.vel }); embers.splice(i, 1) }
         }
 
         // ── Flares: ejected balls of flame burst outward, drift, and cool ───────
@@ -1904,7 +1958,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           p.life += dt
           p.mesh.scale.multiplyScalar(1 + dt * 1.6)
           p.mat.opacity = Math.max(0, (p.peak ?? 0.5) * (1 - p.life / p.max))
-          if (p.life >= p.max) { scene.remove(p.mesh); p.mat.dispose(); puffs.splice(i, 1) }
+          if (p.life >= p.max) { scene.remove(p.mesh); puffPool.push({ mesh: p.mesh, mat: p.mat }); puffs.splice(i, 1) }
         }
 
         // ── Capital ship labels (name + shield %), projected above each hull ────
@@ -1915,30 +1969,30 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           : null
         for (const s of ships) {
           if (!s.labelEl) continue
-          if (!s.alive || intro) { s.labelEl.style.opacity = '0'; continue }
+          if (!s.alive || intro) { setStyle(s.labelEl, 'opacity', '0'); continue }
           _proj.copy(s.pos); _proj.y += 7
           _proj.project(camera)
-          if (_proj.z > 1) { s.labelEl.style.opacity = '0'; continue }
+          if (_proj.z > 1) { setStyle(s.labelEl, 'opacity', '0'); continue }
           const lx = (_proj.x * 0.5 + 0.5) * cw
           const ly = (-_proj.y * 0.5 + 0.5) * ch
           // label is anchored bottom-centre at (lx, ly); suppress if its box overlaps the PiP
           if (pipBox && lx + 140 > pipBox.l && lx - 140 < pipBox.r && ly > pipBox.t && ly - 56 < pipBox.b) {
-            s.labelEl.style.opacity = '0'; continue
+            setStyle(s.labelEl, 'opacity', '0'); continue
           }
-          s.labelEl.style.opacity = '1'
-          s.labelEl.style.transform = `translate(-50%, -100%) translate(${lx}px, ${ly}px)`
-          if (s.shieldEl) s.shieldEl.textContent = Math.max(0, Math.round(s.hp / s.maxHp * 100))
+          setStyle(s.labelEl, 'opacity', '1')
+          s.labelEl.style.transform = `translate(-50%, -100%) translate(${lx}px, ${ly}px)`   // genuinely new every frame
+          if (s.shieldEl) setText(s.shieldEl, Math.max(0, Math.round(s.hp / s.maxHp * 100)))
           if (s.reserveEl) {
             const r = reserveLeft[s.team]
-            if (r > 0) { s.reserveEl.style.display = ''; s.reserveEl.textContent = `RESERVE FIGHTERS: ${r}` }
-            else s.reserveEl.style.display = 'none'
+            if (r > 0) { setStyle(s.reserveEl, 'display', ''); setText(s.reserveEl, `RESERVE FIGHTERS: ${r}`) }
+            else setStyle(s.reserveEl, 'display', 'none')
           }
         }
 
         // ── Scoreboard + victory check ─────────────────────────────────────────
         const c = counts()
-        if (blueCountRef.current) blueCountRef.current.textContent = c.blue
-        if (redCountRef.current)  redCountRef.current.textContent  = c.red
+        setText(blueCountRef.current, c.blue)
+        setText(redCountRef.current, c.red)
         // Fleet strength /1000: every ship that isn't destroyed or warped out still
         // counts (reserves and unarrived bombers included), so it only falls on real losses.
         // The flagship's contribution scales with its remaining hull — full PTS_FLAGSHIP
@@ -1947,11 +2001,11 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         // below PTS_FLAGSHIP_MIN, though (its guns and morale keep it worth something).
         const strength = { blue: 0, red: 0 }
         for (const s of ships) if (!s.lost) strength[s.team] += s.isCapital ? Math.max(PTS_FLAGSHIP_MIN, PTS_FLAGSHIP * Math.max(0, s.hp) / s.maxHp) : s.isBomber ? PTS_BOMBER : s.isCruiser ? PTS_CRUISER : PTS_FIGHTER
-        if (blueStrengthRef.current) blueStrengthRef.current.textContent = Math.round(strength.blue)
-        if (redStrengthRef.current)  redStrengthRef.current.textContent  = Math.round(strength.red)
+        setText(blueStrengthRef.current, Math.round(strength.blue))
+        setText(redStrengthRef.current, Math.round(strength.red))
         if (powerBarRef.current) {                                   // ratio bar: blue's share of total strength
           const tot = strength.blue + strength.red
-          powerBarRef.current.style.width = (tot > 0 ? strength.blue / tot * 100 : 50) + '%'
+          setStyle(powerBarRef.current, 'width', (tot > 0 ? strength.blue / tot * 100 : 50) + '%')
         }
         // Flagship-loss morale: a fleet that has lost its capital breaks at a higher
         // strength threshold, flagged by a "morale broken" banner beside the scoreboard.
@@ -1959,8 +2013,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           blue: !ships.some(s => s.isCapital && s.team === 'blue' && s.alive),
           red:  !ships.some(s => s.isCapital && s.team === 'red'  && s.alive),
         }
-        if (blueMoraleRef.current) blueMoraleRef.current.style.display = flagshipDead.blue ? '' : 'none'
-        if (redMoraleRef.current)  redMoraleRef.current.style.display  = flagshipDead.red  ? '' : 'none'
+        setStyle(blueMoraleRef.current, 'display', flagshipDead.blue ? '' : 'none')
+        setStyle(redMoraleRef.current, 'display', flagshipDead.red ? '' : 'none')
         // Reinforcements: on a fixed cadence, top each team's on-field fighters back up
         // to the cap from its reserve stockpile, warping the fresh wave in from the flank.
         if (!gameOver && t >= reinforceAt) {
@@ -2037,8 +2091,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           // live hull readout under screen-centre for the tracked ship
           const maxHp = follow.maxHp ?? (follow.isCapital ? CAP_HP : follow.isBomber ? BOMBER_HP : follow.isCruiser ? CRUISER_HP : SHIP_HP)
           const hp = Math.max(0, follow.hp)
-          if (followHpRef.current) followHpRef.current.textContent = `${Math.ceil(hp)} / ${maxHp}`
-          if (followBarRef.current) followBarRef.current.style.width = (hp / maxHp * 100) + '%'
+          setText(followHpRef.current, `${Math.ceil(hp)} / ${maxHp}`)
+          setStyle(followBarRef.current, 'width', (hp / maxHp * 100) + '%')
           // target readout + a dashed line to each foe the tracked ship is engaging
           const foes = ships.filter(e => e.alive && e.team !== follow.team)
           let tgts = []
@@ -2068,9 +2122,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
             if (tgts.length) {
               const c = {}; tgts.forEach(t => (c[t.name] = (c[t.name] || 0) + 1))
               const str = Object.entries(c).map(([n, k]) => k > 1 ? `${n} ×${k}` : n).join(', ')
-              followTargetRef.current.textContent = `${tgts.length > 1 ? 'TARGETS' : 'TARGET'}: ${str}`
-              followTargetRef.current.style.visibility = 'visible'
-            } else followTargetRef.current.style.visibility = 'hidden'
+              setText(followTargetRef.current, `${tgts.length > 1 ? 'TARGETS' : 'TARGET'}: ${str}`)
+              setStyle(followTargetRef.current, 'visibility', 'visible')
+            } else setStyle(followTargetRef.current, 'visibility', 'hidden')
           }
         } else {
           hideTargetLines()
@@ -2108,7 +2162,17 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       composer = new EffectComposer(renderer)
       composer.addPass(new RenderPass(scene, camera))
       bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 0.9, 0.6, 0.2)
-      composer.addPass(bloomPass)
+      // Hi-DPI: build the bloom mip chain from CSS resolution, not device
+      // resolution. Bloom is a low-frequency glow — on a 2× display this quarters
+      // its fill cost and is visually indistinguishable; 1× displays are unchanged.
+      {
+        const pr = renderer.getPixelRatio()
+        if (pr > 1) {
+          const fullSetSize = bloomPass.setSize.bind(bloomPass)
+          bloomPass.setSize = (bw, bh) => fullSetSize(Math.round(bw / pr), Math.round(bh / pr))
+        }
+      }
+      composer.addPass(bloomPass)   // addPass sizes the pass through the patched setSize
 
       frame()
 
@@ -2142,8 +2206,10 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         disposables.forEach(d => d.dispose && d.dispose())
         blasts.forEach(x => { x.fmat.dispose(); x.rmat.dispose() })
         embers.forEach(e => e.mat.dispose())
+        emberPool.forEach(e => e.mat.dispose())
         flameFX.forEach(f => f.mat.dispose())
         puffs.forEach(p => p.mat.dispose())
+        puffPool.forEach(p => p.mat.dispose())
         trails.forEach(tr => tr.mat.dispose())
         composer.dispose && composer.dispose()
         renderer.dispose()
@@ -2330,15 +2396,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           ))}
         </div>
 
-        {comms && (
-          <div className={`sb-comms sb-comms--${comms.team}`} key={comms.id}>
-            <img className="sb-comms-portrait" src={comms.portrait} alt="" />
-            <div className="sb-comms-body">
-              <div className="sb-comms-name">{comms.name}</div>
-              <div className="sb-comms-text">{renderCommsBody(comms.segments || [{ text: comms.text }], commsText.length)}<span className="sb-comms-cursor">▋</span></div>
-            </div>
-          </div>
-        )}
+        {comms && <CommsBox key={comms.id} comms={comms} />}
 
         <div className="sb-tactics">
           <div className="sb-tac-title">⬢ TACTICAL COMMAND // BLUE FLEET</div>

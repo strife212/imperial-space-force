@@ -28,6 +28,8 @@ function makeBackdrop(scene) {
     },
     side: THREE.BackSide, depthWrite: false, depthTest: false,
   })
+  // NOTE: the dome and starfield must keep matrixAutoUpdate — scenes may move
+  // them (Singularity carries the whole sky with the camera on the crossing).
   const neb = new THREE.Mesh(nebGeo, nebMat); neb.renderOrder = -10; scene.add(neb)
   disposables.push(nebGeo, nebMat)
   const n = 1200, sp = new Float32Array(n * 3)
@@ -50,7 +52,7 @@ export function createStage(mount, sceneDef, hooks) {
   const scene = new THREE.Scene()
   const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 900)
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' })
   renderer.setSize(w, h); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   mount.appendChild(renderer.domElement)
 
@@ -80,7 +82,18 @@ export function createStage(mount, sceneDef, hooks) {
 
   const composer = new EffectComposer(renderer)
   composer.addPass(new RenderPass(scene, camera))
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(w, h), sceneDef.bloom ?? 0.7, 0.5, 0.25))
+  const bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), sceneDef.bloom ?? 0.7, 0.5, 0.25)
+  // Hi-DPI: build the bloom mip chain from CSS resolution, not device resolution.
+  // Bloom is a low-frequency glow — on a 2× display this quarters its fill cost
+  // and is visually indistinguishable; 1× displays are unchanged.
+  {
+    const pr = renderer.getPixelRatio()
+    if (pr > 1) {
+      const fullSetSize = bloomPass.setSize.bind(bloomPass)
+      bloomPass.setSize = (bw, bh) => fullSetSize(Math.round(bw / pr), Math.round(bh / pr))
+    }
+  }
+  composer.addPass(bloomPass)   // addPass sizes the pass through the patched setSize
 
   const clock = new THREE.Clock()
   let raf

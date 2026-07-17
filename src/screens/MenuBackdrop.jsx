@@ -66,6 +66,9 @@ export default function MenuBackdrop() {
           }
           group.position.set(startX, y, z)
           orient(group, _v.set(dir, 0, 0))
+          // ships hold formation — only the group root moves, so freeze every
+          // child's local matrix and spare the per-frame recompose
+          group.traverse(o => { if (o !== group) { o.matrixAutoUpdate = false; o.updateMatrix() } })
           scene.add(group)
           formations.push({ group, dir, speed, killX: -startX, bobP: Math.random() * Math.PI * 2 })
         }
