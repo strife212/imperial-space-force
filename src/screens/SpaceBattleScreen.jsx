@@ -159,6 +159,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   const barrageLayerRef = useRef(null)   // DOM layer for macro-barrage crosshairs
   const blueCapRef = useRef(null), blueShieldRef = useRef(null), blueReserveRef = useRef(null)
   const redCapRef  = useRef(null), redShieldRef  = useRef(null), redReserveRef  = useRef(null)
+  const blueHealCapRef = useRef(null), redHealCapRef = useRef(null)   // "repair nanites expended" banner lines
 
   // ── Player tactics (blue fleet only) ──────────────────────────────────────
   const [capTactic,     setCapTactic]     = useState('hold')      // 'hold' | 'engage'
@@ -486,6 +487,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
     callBombersRef.current = false; setBombersCalled(false); setBlueBomberAlive(Array(compRef.current.blue.bombers).fill(true))  // bomber wing in reserve
     simSpeedRef.current = 1; setSimSpeed(1)                               // every battle starts running at 1×
     pipRef.current = null; setPipCaption(null)                           // no event highlight yet
+    for (const el of [blueHealCapRef.current, redHealCapRef.current]) if (el) el.style.display = 'none'   // fresh repair budget each battle
     // arm the first-battle tutorial nudges — campaign only, once per campaign
     tutorialRef.current = null; setTutorial(null)
     tutSkillPendingRef.current  = isCampaign && campaignSkillIdxs.length > 0 && !getFlag('tutSkillSeen')
@@ -1345,13 +1347,32 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         }
         nano.items.length = 0
       }
+      // Flagship healing cap: once a flagship has been repaired for 100% of its
+      // max hull in one battle, the per-second regen stops and the nameplate
+      // says so. The Nano Repair admiral ability is a special case — it still
+      // heals through the cap (its healing counts toward the tally regardless).
+      const trackCapitalHeal = (s, healed) => {
+        if (!s.isCapital || healed <= 0) return
+        s.healedTotal = (s.healedTotal || 0) + healed
+        if (!s.healCapped && s.healedTotal >= s.maxHp) {
+          s.healCapped = true
+          const el = (s.team === 'blue' ? blueHealCapRef : redHealCapRef).current
+          if (el) el.style.display = ''
+        }
+      }
+
       const startNano = (team = 'blue') => {
         if (nano.active || gameOver) return false
         if (introT < INTRO_TOTAL) return false
         const fleet = ships.filter(s => s.alive && s.team === team)
         if (!fleet.length) return false
-        // heal first (capped at each ship's max hull)
-        for (const s of fleet) { const heal = s.isCapital ? 20 : 1; s.hp = Math.min(shipMaxHp(s), s.hp + heal) }
+        // heal first (capped at each ship's max hull) — the admiral's nanites
+        // work even on a healing-capped flagship
+        for (const s of fleet) {
+          const before = s.hp
+          s.hp = Math.min(shipMaxHp(s), s.hp + (s.isCapital ? 20 : 1))
+          trackCapitalHeal(s, s.hp - before)
+        }
         // then the green nanite glow + orbiting motes
         nano.active = true; nano.t = 0
         for (const s of fleet) {
@@ -1583,7 +1604,11 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         // ── Ships: steer (seek nearest enemy + separation + bounds), then fire ──
         for (const s of ships) {
           if (!s.alive) continue
-          if (s.regen && !gameOver && s.hp > 0) s.hp = Math.min(shipMaxHp(s), s.hp + s.regen * dt)   // flagship auto-repair upgrade
+          if (s.regen && !gameOver && s.hp > 0 && !s.healCapped) {   // flagship auto-repair upgrade (until the healing cap)
+            const before = s.hp
+            s.hp = Math.min(shipMaxHp(s), s.hp + s.regen * dt)
+            trackCapitalHeal(s, s.hp - before)
+          }
           const lancing = lance.active && s === lance.caster   // mid spinal-lance special
 
           // retreat: streak away in a hyperspace jump, then vanish from the field
@@ -2337,11 +2362,13 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           <div className="sb-cap-name">{splitCapName(blueCapName).name}</div>
           <div className="sb-cap-shield">SHIELD <span ref={blueShieldRef}>100</span>%</div>
           <div className="sb-cap-reserve" ref={blueReserveRef} style={{ display: 'none' }}></div>
+          <div className="sb-cap-healcap" ref={blueHealCapRef} style={{ display: 'none' }}>HEALING PAUSED: REPAIR NANITES EXPENDED</div>
         </div>
         <div className="sb-cap-label sb-cap-label--red" ref={redCapRef}>
           <div className="sb-cap-name">{splitCapName(redCapName).name}</div>
           <div className="sb-cap-shield">SHIELD <span ref={redShieldRef}>100</span>%</div>
           <div className="sb-cap-reserve" ref={redReserveRef} style={{ display: 'none' }}></div>
+          <div className="sb-cap-healcap" ref={redHealCapRef} style={{ display: 'none' }}>HEALING PAUSED: REPAIR NANITES EXPENDED</div>
         </div>
 
         <div className="sb-scoreboard">

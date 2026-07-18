@@ -3014,3 +3014,12 @@
   letter-spacing: 0.18em;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
+
+/* flagship healing-cap notice — hangs at the foot of the capital nameplate */
+.sb-cap-healcap {
+  margin-top: 3px;
+  font-size: 8px;
+  letter-spacing: 0.07em;
+  color: #ffb35a;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
