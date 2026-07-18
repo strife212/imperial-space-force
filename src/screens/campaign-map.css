@@ -504,3 +504,148 @@
   color: #fff;
   box-shadow: 0 0 18px rgba(220, 80, 60, 0.45);
 }
+
+/* ── Endless challenge mode ─────────────────────────────────────────────────
+   The invitation under the ORDER RESTORED banner, and the fullscreen epitaph
+   shown when a run ends. Gold like the banner it hangs from. */
+.cmap-challenge {
+  pointer-events: auto;      /* the banner itself is pointer-events: none */
+  margin-top: 12px;
+  padding: 9px 20px;
+  background: linear-gradient(180deg, rgba(80, 52, 12, 0.5), rgba(38, 22, 4, 0.62));
+  border: 1px solid rgba(255, 200, 90, 0.6);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #ffd98f;
+  text-shadow: 0 0 10px rgba(255, 190, 70, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 225, 160, 0.18), 0 0 16px rgba(255, 180, 60, 0.18);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+.cmap-challenge:hover {
+  background: linear-gradient(180deg, rgba(120, 78, 18, 0.55), rgba(56, 32, 6, 0.68));
+  border-color: rgba(255, 224, 140, 0.95);
+  color: #fff2d8;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 180, 0.3), 0 0 24px rgba(255, 190, 70, 0.4);
+}
+
+#challenge-over {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 42%, #131a2e 0%, #05070f 72%);
+  font-family: var(--font-mono);
+  animation: chov-in 0.7s ease both;
+}
+@keyframes chov-in { from { opacity: 0; } to { opacity: 1; } }
+.chov-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  padding: 0 24px;
+}
+.chov-sub {
+  font-size: 12px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(255, 212, 120, 0.9);
+}
+.chov-title {
+  font-size: clamp(30px, 5.4vw, 52px);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: #ff9a86;
+  text-shadow: 0 0 26px rgba(255, 90, 60, 0.5);
+  animation: chov-title-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+@keyframes chov-title-in {
+  from { opacity: 0; letter-spacing: 0.45em; }
+  to   { opacity: 1; letter-spacing: 0.22em; }
+}
+.chov-rounds {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+.chov-rounds-num {
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+  color: #ffd24a;
+  text-shadow: 0 0 30px rgba(255, 200, 80, 0.55);
+}
+.chov-rounds-label {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: rgba(230, 210, 160, 0.85);
+}
+.chov-text {
+  max-width: 460px;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.75;
+  letter-spacing: 0.06em;
+  color: #9fb0d4;
+}
+.chov-btn {
+  margin-top: 18px;
+  padding: 10px 22px;
+  background: rgba(2, 6, 18, 0.6);
+  border: 1px solid rgba(120, 170, 255, 0.5);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #cfe0ff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.chov-btn:hover {
+  background: rgba(26, 100, 255, 0.18);
+  border-color: rgba(150, 205, 255, 0.9);
+  box-shadow: 0 0 14px rgba(40, 110, 230, 0.4);
+}
+
+/* intro variant: the gate into the mode, dressed like the epitaph */
+.chov-title--gold {
+  color: #ffd24a;
+  text-shadow: 0 0 26px rgba(255, 200, 80, 0.55);
+}
+.chov-start {
+  margin-top: 16px;
+  padding: 12px 44px;
+  background: linear-gradient(180deg, rgba(80, 52, 12, 0.55), rgba(38, 22, 4, 0.68));
+  border: 1px solid rgba(255, 200, 90, 0.7);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #ffe4ad;
+  text-shadow: 0 0 10px rgba(255, 190, 70, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 225, 160, 0.2), 0 0 18px rgba(255, 180, 60, 0.22);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+.chov-start:hover {
+  background: linear-gradient(180deg, rgba(120, 78, 18, 0.6), rgba(56, 32, 6, 0.72));
+  border-color: rgba(255, 228, 150, 1);
+  color: #fff6e0;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 180, 0.32), 0 0 28px rgba(255, 190, 70, 0.45);
+}
+.chov-btn--ghost {
+  margin-top: 4px;
+  background: transparent;
+  border-color: rgba(120, 170, 255, 0.28);
+  color: #8fa4c8;
+}

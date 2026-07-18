@@ -454,7 +454,25 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   useEffect(() => {
     if (!isCampaign || !winner || campResult) return
     setCampResult(campaign.onResolve(winner === 'BLUE'))
+    // endless challenge: defeat skips the battle's loss screen entirely and
+    // jumps straight to the run report
+    if (campaign.challengeRound && winner !== 'BLUE') campaign.onExit()
   }, [winner])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Endless challenge: the NEXT round's enemy cards, fetched as soon as the
+  // round is won (the parent caches the roll, so this is what actually spawns —
+  // and the buff count can sit under the preview button before it's opened)
+  const [nextCards, setNextCards] = useState(null)
+  const [nextGain, setNextGain] = useState(null)
+  const [showNextCards, setShowNextCards] = useState(false)
+  useEffect(() => {
+    if (winner === 'BLUE' && isCampaign && campaign.challengeRound && !nextCards) {
+      setNextCards(campaign.previewNextCards?.() || [])
+      setNextGain(campaign.previewNextGain?.() || null)
+    }
+  }, [winner])   // eslint-disable-line react-hooks/exhaustive-deps
+  const nextBuffCount = nextCards ? nextCards.reduce((s, c) => s + (c.level || 1), 0) : 0
+  const toggleNextCards = () => setShowNextCards(v => !v)
 
   useEffect(() => {
     if (!started) return   // hold on the briefing until the player starts
@@ -2371,6 +2389,37 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
 
         {winner && isCampaign && (() => {
           const won = winner === 'BLUE'
+          const chal = campaign.challengeRound
+          if (chal && !won) return null   // endless defeat: the run report takes over immediately
+          if (chal) return (
+            // endless mode gets its own clean round-complete card — no stats, no
+            // rewards, just the round and the road on (with a scout of what's next)
+            <div className="sb-victory sb-chalwin">
+              <div className="sb-chalwin-title">ROUND {chal} COMPLETE</div>
+              {showNextCards && nextCards && (
+                <div className="sb-chalwin-preview">
+                  <div className="sb-chalwin-preview-title">ROUND {chal + 1} · ENEMY AUGMENTS</div>
+                  <div className="sb-chalwin-cards">
+                    {nextCards.map(c => (
+                      <div key={c.id} className={`sb-chalwin-card sb-chalwin-card--${c.rarity}`}>
+                        {c.name}{c.level > 1 ? ` ×${c.level}` : ''}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="sb-victory-btns sb-chalwin-btns">
+                <div className="sb-chalwin-prevwrap">
+                  <button className="sb-restart sb-restart--ghost" onClick={toggleNextCards}>
+                    {showNextCards ? '▴ HIDE PREVIEW' : '▾ PREVIEW NEXT ROUND'}
+                  </button>
+                  <div className="sb-chalwin-count">{nextBuffCount} ENEMY BUFF{nextBuffCount === 1 ? '' : 'S'}</div>
+                  {nextGain && <div className={`sb-chalwin-gain sb-chalwin-card--${nextGain.rarity}`}>ENEMY GAINS: {nextGain.name}</div>}
+                </div>
+                <button className="sb-restart" onClick={() => campaign.onContinue(campResult)}>ROUND {chal + 1} ▶</button>
+              </div>
+            </div>
+          )
           return (
             <div className="sb-victory">
               <div className="sb-victory-sub">{won ? 'SECTOR SECURED' : 'ENGAGEMENT LOST'}</div>

@@ -55,7 +55,7 @@ export const NAV_GRID_FRAG = /* glsl */`
   }
 `
 
-export default function CampaignStarMap({ onExit, onPlay, onReviewFleet, onCards, onDrawTest, onToggleView }) {
+export default function CampaignStarMap({ onExit, onPlay, onReviewFleet, onCards, onDrawTest, onToggleView, onChallenge }) {
   const mountRef = useRef(null)
   const labelRefs = useRef([])
   const scaleLineRef = useRef(null)
@@ -489,6 +489,7 @@ export default function CampaignStarMap({ onExit, onPlay, onReviewFleet, onCards
             <div className="cmap-complete-sub">✦ Campaign Complete ✦</div>
             <div className="cmap-complete-title">ORDER RESTORED</div>
             <div className="cmap-complete-motto">Caelum canit, illa audit</div>
+            <button className="cmap-challenge" onClick={onChallenge}>⚔ ATTEMPT ENDLESS CHALLENGE MODE</button>
           </div>
         )}
 

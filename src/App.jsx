@@ -26,15 +26,16 @@ import CampaignStarMap from './screens/CampaignStarMap'
 import ShipyardScreen from './screens/ShipyardScreen'
 import CharacterSelect from './screens/CharacterSelect'
 import FleetReview from './screens/FleetReview'
-import UpgradeScreen from './screens/UpgradeScreen'
+import UpgradeScreen, { UPGRADE_CARDS } from './screens/UpgradeScreen'
 import CardVaultScreen from './screens/CardVaultScreen'
 import DrawTestScreen from './screens/DrawTestScreen'
 import FleetBoot from './screens/FleetBoot'
 import CreditsScreen from './screens/CreditsScreen'
 import DialogueScreen from './screens/DialogueScreen'
 import TrailerScreen from './screens/TrailerScreen'
-import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, hasMacroMissile, getCombatMods, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
-import { getEnemyBattleExtras } from './lib/enemyCards'
+import ChallengeOver, { ChallengeIntro } from './screens/ChallengeOver'
+import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, hasMacroMissile, getCombatMods, aggregateCombatMods, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
+import { getEnemyBattleExtras, getEnemyUpgrades, rollEnemyCards } from './lib/enemyCards'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
 import UrgentMessageOverlay from './components/UrgentMessageOverlay'
@@ -86,6 +87,8 @@ export default function App() {
   const [cutsceneId,        setCutsceneId]        = useState('firstContact')   // which cutscene is showing
   const [cutsceneChain,     setCutsceneChain]     = useState(false)            // advance through STORY on complete
   const [campaignNode,      setCampaignNode]      = useState(null)             // active campaign node: cutscene → shipyard → battle (null = not in campaign flow)
+  const [challenge,         setChallenge]         = useState(null)             // endless-challenge round config (null = not in challenge mode)
+  const [challengeOver,     setChallengeOver]     = useState(null)             // { round } → the fallen-run report screen
   const [fleetReviewSource, setFleetReviewSource] = useState('campaign-map')   // where the Fleet Review screen returns to
   const [mapStyle,          setMapStyle]          = useState(() => getFlag('campaignMapStyle') || 'stellar')  // campaign map: 'stellar' (default) | 'sector'
   const [bhOutput,          setBhOutput]          = useState(0)
@@ -202,6 +205,59 @@ export default function App() {
       if (result && result.firstClear) setScreen('upgrade'); else exitCampaign()
     },
   } }
+  // ── Endless challenge mode (post-campaign) ────────────────────────────────
+  // The final node's battle, escalating without end: round N fields the node's
+  // own buffs plus N extra random enemy cards, rerolled fresh every round. The
+  // config is built once per round (state, not render) so the roll is stable,
+  // and nothing is ever saved — no Requisition, no progress, no card rolls;
+  // defeat just reports how far the run got and hands back to the map.
+  const RARITY_RANK = { legendary: 4, epic: 3, rare: 2, uncommon: 1, basic: 0 }
+  const enemyCardList = (u) => Object.entries(u)
+    .map(([id, level]) => ({ id, level, name: UPGRADE_CARDS[id]?.title || id, rarity: UPGRADE_CARDS[id]?.rarity || 'basic' }))
+    .sort((a, b) => (RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity]) || a.name.localeCompare(b.name))
+  const buildChallengeRound = (round, prevExtras = null) => {
+    const i = NODE_BATTLES.length - 1
+    const node = NODE_BATTLES[i]
+    // the extra cards persist through the session: each round keeps everything
+    // the previous rounds accumulated and adds exactly one newly rolled card
+    const extras = { ...(prevExtras || {}) }
+    let gained = null   // the one card THIS round added — surfaced by the previous round's preview
+    for (const [id, lvl] of Object.entries(rollEnemyCards(1, node.enemy))) { extras[id] = (extras[id] || 0) + lvl; gained = id }
+    const u = { ...getEnemyUpgrades(i) }
+    for (const [id, lvl] of Object.entries(extras)) u[id] = (u[id] || 0) + lvl
+    // the NEXT round is rolled once and cached, so the post-battle preview shows
+    // exactly the buffs the player will then face — never a fresh reroll
+    let next = null
+    const peekNext = () => next || (next = buildChallengeRound(round + 1, extras))
+    return {
+      nodeIndex:  i,
+      nodeTitle:  `ENDLESS CHALLENGE · ROUND ${round}`,
+      enemyName:  node.enemyName,
+      enemyComp:  { ...node.enemy, fighters: node.enemy.fighters + (u.unsellableFighter || 0) },
+      sky:        node.sky,
+      playerComp: getDeployFleet(),
+      capMaxHp:   getCapMaxHp(),
+      capMissile: hasCapMissile(),
+      macroMissile: hasMacroMissile(),
+      mods:       getCombatMods(),
+      redMods:       aggregateCombatMods(u),
+      redCapHpBonus: 5 * (u.capHp || 0),
+      redCapMissile: (u.capMissile || 0) > 0,
+      flagshipName: getFlagshipName(),
+      reward:     0,
+      challengeRound: round,
+      enemyCards: enemyCardList(u),                                       // this round's full enemy card list
+      gainedCard: gained ? { id: gained, name: UPGRADE_CARDS[gained]?.title || gained, rarity: UPGRADE_CARDS[gained]?.rarity || 'basic' } : null,
+      previewNextCards: () => peekNext().enemyCards,                      // what the NEXT round will field
+      previewNextGain:  () => peekNext().gainedCard,                      // the one card it gains over this round
+      onResolve:  (won) => ({ award: 0, won, firstClear: false }),        // banks nothing
+      onContinue: () => setChallenge(peekNext()),                         // victory → escalate (same roll the preview showed)
+      onExit:     () => { setChallenge(null); setChallengeOver({ round }); setScreen('challenge-over') },
+      onRetry:    () => {},                                               // no re-deploy in the gauntlet
+    }
+  }
+  const startChallenge = () => { setChallenge(buildChallengeRound(1)); setScreen('battle') }
+
   // Where a finished cutscene goes next: campaign → muster the fleet (shipyard);
   // the victory scene → its banked continue path; a debug playthrough → the
   // next story beat; a single scene → back to source.
@@ -257,7 +313,7 @@ export default function App() {
         // two campaign-map styles: the classic sector map and the rotatable
         // 3D stellar chart; the choice persists across sessions
         const MapView = mapStyle === 'stellar' ? CampaignStarMap : CampaignMap
-        return <MapView onExit={() => setScreen('home')} onPlay={playCampaignNode} onReviewFleet={() => { setFleetReviewSource('campaign-map'); setScreen('fleet-review') }} onCards={() => setScreen('card-vault')} onDrawTest={() => setScreen('draw-test')} onToggleView={toggleMapStyle} />
+        return <MapView onExit={() => setScreen('home')} onPlay={playCampaignNode} onReviewFleet={() => { setFleetReviewSource('campaign-map'); setScreen('fleet-review') }} onCards={() => setScreen('card-vault')} onDrawTest={() => setScreen('draw-test')} onToggleView={toggleMapStyle} onChallenge={() => setScreen('challenge-intro')} />
       })()}
       {screen === 'card-vault'   && <CardVaultScreen onBack={() => setScreen('campaign-map')} />}
       {screen === 'draw-test'    && <DrawTestScreen onBack={() => setScreen('campaign-map')} />}
@@ -279,9 +335,17 @@ export default function App() {
       {screen === 'antenna'         && <AntennaAlignmentScreen onBack={() => setScreen('main')} onAlignComplete={() => { setAntennaAligned(true); triggerFlag('antennaAligned') }} {...mailProps} />}
       {screen === 'launch-sequence' && <LaunchSequenceScreen onReturn={() => setScreen('debug')} />}
       {screen === 'blackhole'       && <BlackHoleScreen onReturn={() => setScreen(blackholeSource)} initialYield={bhYield} onPower={(out, yld) => { setBhOutput(out); setBhYield(yld); if (out > 1) triggerFlag('penroseActivated') }} {...mailProps} />}
-      {screen === 'battle'          && (campaignNode !== null
-        ? <SpaceBattleScreen key={`camp-${campaignNode}`} campaign={campaignBattle(campaignNode)} onReturn={exitCampaign} />
-        : <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />)}
+      {screen === 'battle'          && (challenge
+        ? <SpaceBattleScreen key={`chal-${challenge.challengeRound}`} campaign={challenge} onReturn={() => { setChallenge(null); exitCampaign() }} />
+        : campaignNode !== null
+          ? <SpaceBattleScreen key={`camp-${campaignNode}`} campaign={campaignBattle(campaignNode)} onReturn={exitCampaign} />
+          : <SpaceBattleScreen onReturn={() => setScreen(battleSource)} {...mailProps} />)}
+      {screen === 'challenge-intro' && (
+        <ChallengeIntro onStart={startChallenge} onBack={() => setScreen('campaign-map')} />
+      )}
+      {screen === 'challenge-over' && challengeOver && (
+        <ChallengeOver round={challengeOver.round} onReturn={() => { setChallengeOver(null); setScreen('campaign-map') }} />
+      )}
       {screen === 'vistest'         && <VisualTestScreen onReturn={() => setScreen('debug')} />}
       {screen === 'cosmogony'       && <Cutscene key="cosmogony-standalone" scene={SCENES.cosmogony} standalone canSkip={false} onReturn={() => setScreen('home')} />}
       {screen === 'cosmogony2'      && <MontageScreen onReturn={() => setScreen('home')} />}
