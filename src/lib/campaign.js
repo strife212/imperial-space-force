@@ -92,6 +92,9 @@ export const UPGRADE_INFO = {
   fighterHp:         { name: 'Veteran Squadrons',       category: 'fleet' },
   fighterRof:        { name: 'Targeting Uplink',        category: 'fleet' },
   praetorianWing:    { name: 'Praetorian Wing',         category: 'fleet' },
+  bomberSpeed:       { name: 'Overcharged Bomber Drives', category: 'fleet' },
+  cruiserDmg:        { name: 'Hammerfall Warheads',      category: 'fleet' },
+  shrikeWarheads:    { name: 'Shrike Warheads',          category: 'fleet' },
 }
 export function getUpgrades() { return getFlag('upgrades') || {} }
 export function addUpgrade(id) { const u = { ...getUpgrades() }; u[id] = (u[id] || 0) + 1; setFlag('upgrades', u) }
@@ -121,6 +124,13 @@ export function aggregateCombatMods(u) {
       armor:   6 * L('fighterArmor') + 10 * L('praetorianWing'),               // +% bolt deflect
       fireMul: Math.pow(0.82, L('fighterRof')),                                // each level fires 18% faster
     },
+    bomber: {
+      speedMul: Math.pow(1.15, L('bomberSpeed')),                              // each level flies 15% faster
+    },
+    cruiser: {
+      missileDmg: 1 * L('cruiserDmg'),                                         // extra damage per salvo missile
+      shrike:     L('shrikeWarheads'),                                         // >0 → cruiser missiles ignore flares
+    },
   }
 }
 export function getCombatMods() { return aggregateCombatMods(getUpgrades()) }
@@ -143,6 +153,9 @@ export function upgradeStatLines(u) {
   if (mods.fighter.hp) t.push({ text: `+${mods.fighter.hp} HP PER FIGHTER` })
   if (mods.fighter.armor) t.push({ text: `+${mods.fighter.armor}% FIGHTER ARMOUR` })
   if (mods.fighter.fireMul < 1) t.push({ text: `+${Math.round((1 - mods.fighter.fireMul) * 100)}% FIGHTER FIRE RATE` })
+  if (mods.bomber.speedMul > 1) t.push({ text: `+${Math.round((mods.bomber.speedMul - 1) * 100)}% BOMBER SPEED` })
+  if (mods.cruiser.missileDmg) t.push({ text: `+${mods.cruiser.missileDmg} CRUISER MISSILE DAMAGE` })
+  if (mods.cruiser.shrike) t.push({ text: 'CRUISER MISSILES IGNORE FLARES' })
   if (u.unsellableFighter) t.push({ text: `+${u.unsellableFighter} PERMANENT FIGHTER${u.unsellableFighter > 1 ? 'S' : ''}` })
   return t
 }

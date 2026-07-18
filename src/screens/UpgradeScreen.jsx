@@ -142,6 +142,41 @@ function WingIcon() {
     </svg>
   )
 }
+// Overcharged bomber drives — a bomber dart riding hot exhaust dashes
+function BomberDriveIcon() {
+  return (
+    <svg viewBox="0 0 64 64" className="up-svg" aria-hidden="true">
+      <path d="M32 5 L50 38 L32 30 L14 38 Z" />
+      <path d="M22 44 v7 M32 42 v13 M42 44 v7" fill="none" strokeWidth="4" strokeLinecap="round" className="up-svg-flame" />
+      <path d="M10 47 l-4 8 M54 47 l4 8" fill="none" strokeWidth="2.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+// Hammerfall warheads — a heavy missile stamped with a damage cross
+function HammerfallIcon() {
+  return (
+    <svg viewBox="0 0 64 64" className="up-svg" aria-hidden="true">
+      <path d="M27 8 C33 15 34 21 34 28 V40 H20 V28 C20 21 21 15 27 8 Z" />
+      <path d="M20 32 L12 43 L20 39 Z" />
+      <path d="M34 32 L42 43 L34 39 Z" />
+      <path d="M23 40 H31 L29 53 L27 48 L25 53 Z" className="up-svg-flame" />
+      <path d="M44 13 h6 v6 h6 v6 h-6 v6 h-6 v-6 h-6 v-6 h6 Z" className="up-svg-plus" />
+    </svg>
+  )
+}
+// Shrike warheads — a missile slipping untouched between struck-out flares
+function ShrikeIcon() {
+  return (
+    <svg viewBox="0 0 64 64" className="up-svg" aria-hidden="true">
+      <path d="M32 6 C38 13 39 19 39 26 V38 H25 V26 C25 19 26 13 32 6 Z" />
+      <path d="M25 30 L17 41 L25 37 Z" />
+      <path d="M39 30 L47 41 L39 37 Z" />
+      <path d="M28 38 H36 L34 51 L32 46 L30 51 Z" className="up-svg-flame" />
+      <path d="M11 47 l3 -3 m0 3 l-3 -3 M14 52 v-2 M9 50 h-2" fill="none" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M53 47 l-3 -3 m0 3 l3 -3 M50 52 v-2 M55 50 h2" fill="none" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  )
+}
 // Throne-forged aegis — a radiant crowned shield (legendary)
 function AegisIcon() {
   return (
@@ -163,23 +198,26 @@ export const RARITY_LABEL = { legendary: 'LEGENDARY', epic: 'EPIC', rare: 'RARE'
 // rolls each slot's rarity, then picks a random card of that rarity from here.
 export const UPGRADE_CARDS = {
   capMissile:        { rarity: 'epic',      tag: 'FLAGSHIP', title: 'SPINAL MISSILE BATTERY', desc: 'Mount a homing-missile launcher on your flagship — it lobs a guided missile at the enemy throughout the battle.', stats: ['HOMING MISSILES'], Icon: MissileIcon },
-  unsellableFighter: { rarity: 'uncommon',  tag: 'FLEET',    title: 'VOLUNTEER WING',         desc: 'A permanent interceptor joins your fleet. It deploys every battle and can never be decommissioned.', stats: ['+1 FIGHTER', 'PERMANENT'], Icon: LockFighterIcon },
+  unsellableFighter: { rarity: 'uncommon',  tag: 'INTERCEPTORS',title: 'VOLUNTEER WING',         desc: 'A permanent interceptor joins your fleet. It deploys every battle and can never be decommissioned.', stats: ['+1 FIGHTER', 'PERMANENT'], Icon: LockFighterIcon },
   capHp:             { rarity: 'basic',     tag: 'FLAGSHIP', title: 'REINFORCED HULL',        desc: 'Plate the flagship with extra armour — +5 maximum hull integrity, permanently.', stats: ['+5 HP'], Icon: HullIcon },
   macroMissile:      { rarity: 'legendary', tag: 'FLAGSHIP', title: 'MACRO-MISSILE BARRAGE',  desc: 'A second admiral skill: lock onto 10 random targets, then loose a missile at each in one fanning barrage.', stats: ['NEW SKILL', '10 MISSILES'], Icon: BarrageIcon },
   // ── Combat-stat cards (drawn into the post-battle pick by rarity) ──
   // basic (white) — minor single-stat bumps
   capArmor:          { rarity: 'basic',     tag: 'FLAGSHIP', title: 'ABLATIVE PLATING',       desc: 'Bolt-deflecting plates layer the flagship hull, raising its armour so more fighter fire glances off.', stats: ['+8% ARMOUR'], Icon: PlatingIcon },
-  fighterArmor:      { rarity: 'basic',     tag: 'FLEET',    title: 'HARDENED HULLS',         desc: 'Reinforced plating across the whole interceptor wing — each fighter deflects a slice of incoming fire.', stats: ['+6% ARMOUR'], Icon: HardenIcon },
+  fighterArmor:      { rarity: 'basic',     tag: 'INTERCEPTORS',title: 'HARDENED HULLS',         desc: 'Reinforced plating across the whole interceptor wing — each fighter deflects a slice of incoming fire.', stats: ['+6% ARMOUR'], Icon: HardenIcon },
   capFlares:         { rarity: 'basic',     tag: 'FLAGSHIP', title: 'DECOY LAUNCHERS',        desc: 'Extra countermeasure racks for the flagship: more flares to spoof incoming missiles before they connect.', stats: ['+5 FLARES'], Icon: FlareIcon },
   // uncommon (green) — moderate
-  fighterHp:         { rarity: 'uncommon',  tag: 'FLEET',    title: 'VETERAN SQUADRONS',      desc: 'Battle-hardened crews fly tougher hulls — every interceptor gains integrity and lasts longer in the brawl.', stats: ['+1 HP EACH'], Icon: VeteranIcon },
+  fighterHp:         { rarity: 'uncommon',  tag: 'INTERCEPTORS',title: 'VETERAN SQUADRONS',      desc: 'Battle-hardened crews fly tougher hulls — every interceptor gains integrity and lasts longer in the brawl.', stats: ['+1 HP EACH'], Icon: VeteranIcon },
   capWeapons:        { rarity: 'uncommon',  tag: 'FLAGSHIP', title: 'FORWARD BATTERIES',      desc: 'An extra gun joins each flagship broadside, putting one more bolt on a fresh target every volley.', stats: ['+1 GUN'], Icon: CannonIcon },
   // rare (blue) — strong
-  fighterRof:        { rarity: 'rare',      tag: 'FLEET',    title: 'TARGETING UPLINK',       desc: 'A fleet-wide fire-control net: your interceptors acquire and fire markedly faster for the whole battle.', stats: ['+18% FIRE RATE'], Icon: RateIcon },
+  fighterRof:        { rarity: 'rare',      tag: 'INTERCEPTORS',title: 'TARGETING UPLINK',       desc: 'A fleet-wide fire-control net: your interceptors acquire and fire markedly faster for the whole battle.', stats: ['+18% FIRE RATE'], Icon: RateIcon },
   capRegen:          { rarity: 'rare',      tag: 'FLAGSHIP', title: 'AUTO-REPAIR BAYS',       desc: 'Damage-control drones knit the hull back together, repairing the flagship steadily throughout the fight.', stats: ['+1 HP / 2 SEC'], Icon: RepairIcon },
+  bomberSpeed:       { rarity: 'rare',      tag: 'BOMBERS',  title: 'OVERCHARGED BOMBER DRIVES', desc: 'Engine housings run past their safe line for the whole sortie — the wing crosses the gauntlet faster and settles its bombing orbit sooner.', stats: ['+15% SPEED'], Icon: BomberDriveIcon },
+  cruiserDmg:        { rarity: 'rare',      tag: 'CRUISERS', title: 'HAMMERFALL WARHEADS',    desc: 'Heavier payloads for the cruiser line: every missile in every salvo strikes harder when it connects.', stats: ['+1 MISSILE DAMAGE'], Icon: HammerfallIcon },
   // epic (purple) — powerful packages
   bastionHull:       { rarity: 'epic',      tag: 'FLAGSHIP', title: 'BASTION BULWARK',        desc: 'A fortress refit — a major hull increase plus heavier armour and extra flares turn the flagship into a wall.', stats: ['+30 HP', '+15% ARMOUR', '+8 FLARES'], Icon: BastionIcon },
-  praetorianWing:    { rarity: 'epic',      tag: 'FLEET',    title: 'PRAETORIAN WING',        desc: 'Elite doctrine for the entire wing: every interceptor gains substantial hull and armour — a hardened vanguard.', stats: ['+3 HP EACH', '+10% ARMOUR'], Icon: WingIcon },
+  praetorianWing:    { rarity: 'epic',      tag: 'INTERCEPTORS',title: 'PRAETORIAN WING',        desc: 'Elite doctrine for the entire wing: every interceptor gains substantial hull and armour — a hardened vanguard.', stats: ['+3 HP EACH', '+10% ARMOUR'], Icon: WingIcon },
+  shrikeWarheads:    { rarity: 'epic',      tag: 'CRUISERS', title: 'SHRIKE WARHEADS',        desc: 'Cold-seeker heads that refuse the bait — your cruiser missiles fly straight through enemy flares and stay locked on.', stats: ['IGNORES FLARES'], Icon: ShrikeIcon },
   // legendary (orange) — apotheosis
   throneAegis:       { rarity: 'legendary', tag: 'FLAGSHIP', title: 'THRONE-FORGED AEGIS',    desc: 'The flagship ascends: vast hull and armour, more flares, an added broadside gun, and a hull that repairs itself.', stats: ['+50 HP', '+25% ARMOUR', '+15 FLARES', '+2 GUNS', '+2 HP/SEC'], Icon: AegisIcon },
 }

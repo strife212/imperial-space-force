@@ -23,6 +23,7 @@ import { Briefing, ShipSprite, renderCommsBody } from './battle/RosterUI'
 import { getFlag, setFlag } from '../lib/store'
 import { registerAudioContext } from '../lib/audioUnlock'
 import { playLanceCharge, preloadLanceSfx } from '../lib/lanceSfx'
+import { playAceWarp } from '../lib/aceSfx'
 import './battle/battle.css'
 
 // Player special skills — one-shot battle abilities. In the skirmish all three
@@ -386,7 +387,6 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       og.gain.linearRampToValueAtTime(0.13, now + 0.4); og.gain.exponentialRampToValueAtTime(0.0001, now + 0.9)
       o.connect(olp); olp.connect(og); og.connect(dry); o.start(now); o.stop(now + 0.95)
     }
-
     const playVictory = (winner) => {
       if (mutedLocal) return
       const now = ctx.currentTime
@@ -794,6 +794,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       const spawnBombers = (team) => {
         const sx = team === 'blue' ? -28 : 28
         const axis = new THREE.Vector3(team === 'blue' ? -1 : 1, 0.05, -0.3).normalize()
+        const bm = team === 'blue' ? blueMods?.bomber : redMods?.bomber   // Overcharged Bomber Drives
+        const spdMul = bm ? bm.speedMul : 1
         for (let i = 0; i < compRef.current[team].bombers; i++) {
           const mat = new THREE.MeshStandardMaterial({
             color: TEAMS[team].color, emissive: TEAMS[team].color,
@@ -816,7 +818,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
             name: `${team === 'blue' ? 'Blue' : 'Red'} Bomber ${i + 1}`, bIndex: i,
             fireCd: 1 + Math.random() * 1.5, pdCd: 0.5 + Math.random() * 1.5, flash: 0,
             isCapital: false, isBomber: true, kills: 0, weapons: 1, armor: ARMOR_BOMBER,
-            maxSpeed: BOMBER_SPEED, minSpeed: BOMBER_MIN, radius: 1.2, turn: TURN_RATE * 0.7,
+            maxSpeed: BOMBER_SPEED * spdMul, minSpeed: BOMBER_MIN * spdMul, radius: 1.2, turn: TURN_RATE * 0.7,
             standoff: STANDOFF, bound: BOUND_R, baseScale: BOMBER_SCALE, flares: FLARES_BOMBER,
             home, jumpFrom, warpDur: 0.85, warping: false, entered: false, warpT: 0,
           })
@@ -973,6 +975,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       // laying a smoke trail. Subject to armour like a normal hit (not a bomb).
       const fireMissile = (shooter, target) => {
         const willHit = Math.random() > MISSILE_MISS_CHANCE
+        // cruiser-card mods (Hammerfall / Shrike Warheads) apply to the cruiser
+        // line's own salvos only — the flagship's spinal battery is unaffected
+        const cwm = shooter.isCruiser ? (shooter.team === 'blue' ? blueMods?.cruiser : redMods?.cruiser) : null
         const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(shooter.mesh.quaternion).normalize()
         const down = new THREE.Vector3(0, -1, 0).applyQuaternion(shooter.mesh.quaternion).normalize()
         const start = shooter.pos.clone().addScaledVector(down, 0.5).addScaledVector(fwd, 0.3)
@@ -982,7 +987,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         scene.add(mesh)
         bolts.push({
           mesh, dir: fwd.clone(), target, willHit, life: 0, shooter,
-          dmg: MISSILE_DMG, bomb: false, missile: true, homing: MISSILE_HOMING,
+          dmg: MISSILE_DMG + (cwm ? cwm.missileDmg : 0), shrike: !!(cwm && cwm.shrike), bomb: false, missile: true, homing: MISSILE_HOMING,
           speed: MISSILE_SPEED, maxLife: MISSILE_LIFE, smokeCd: 0,
           phase: 'drop', dropT: 0, dropDur: 0.32, dropDist: 1.7, dropDir: down, dropStart: start.clone(), fwd,
         })
@@ -1040,7 +1045,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
               ship.warpOut = true; ship.warpT = 0; ship.warpDur = 0.85; ship.hp = 1
               ship.warpFrom = ship.pos.clone()
               ship.warpTo = ship.pos.clone().addScaledVector(jumpAxis.blue, 95)
-              audioRef.current?.playJump()
+              playAceWarp('out', { muted: mutedRef.current })
               showComms('blue', 'Hull breached — breaking off! Gold Ace, warping out.', false, 'GOLD ACE')
               if (!gameOver) showPip('blue', 'GOLD ACE — WITHDRAWING', () => ship.pos, new THREE.Vector3(0.5, 0.3, 0.8), 18, 6, 2.4)
             }
@@ -1266,7 +1271,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
       }
       lanceStrikeRef.current = () => startLance('blue')
       // dev probe — fire either team's lance and inspect the fleet
-      if (import.meta.env.DEV) window.__battleLance = Object.assign((t) => startLance(t), { caps: () => ({ blue: blueCapital, red: redCapital }), ships: () => ships })
+      if (import.meta.env.DEV) window.__battleLance = Object.assign((t) => startLance(t), { caps: () => ({ blue: blueCapital, red: redCapital }), ships: () => ships, bolts: () => bolts })
 
       // ── "Fighter Ace" — once-per-battle elite reinforcement special ───────────
       // Warps a single gold fighter onto the blue flank: double HP, 1.5× speed,
@@ -1299,7 +1304,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           home, jumpFrom, warping: true, entered: false, warpT: 0, warpDur: 0.7,
         }
         ships.push(ace)
-        audioRef.current?.playJump()
+        playAceWarp('in', { muted: mutedRef.current })
         showComms('blue', 'Ace on station — clear the lane.')
         if (!gameOver) showPip('blue', 'FIGHTER ACE — INBOUND', () => ace.pos, new THREE.Vector3(0.5, 0.3, 0.8), 16, 5, 3.4)
         return true
@@ -1860,8 +1865,9 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           } else if (b.willHit && b.target.alive) {
             _tmp.subVectors(b.target.pos, b.mesh.position)
             const d = _tmp.length()
-            if (b.missile && b.target.flares > 0 && d < 12) {
+            if (b.missile && !b.shrike && b.target.flares > 0 && d < 12) {
               // the ship pops a flare — missile is thrown off (no damage), flies past
+              // (Shrike Warheads missiles refuse the bait and keep their lock)
               b.target.flares--
               b.decoyed = true
               b.fuse = 0.45 + Math.random() * 0.45

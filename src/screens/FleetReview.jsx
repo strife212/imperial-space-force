@@ -8,6 +8,7 @@ import { TEAMS } from './battle/constants'
 import { SHIP_COST, getFleet, setFleet as storeSetFleet, getCredits, spendCredits, addCredits, getFlagshipName, getUnsellableFighters, getUpgrades, hasMacroMissile, upgradeStatLines, UPGRADE_INFO } from '../lib/campaign'
 import { getFlag } from '../lib/store'
 import { playLanceCharge, preloadLanceSfx, playExplosion } from '../lib/lanceSfx'
+import { playAceWarp } from '../lib/aceSfx'
 import { UPGRADE_CARDS, RARITY_LABEL } from './UpgradeScreen'
 import './fleet-review.css'
 
@@ -200,6 +201,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
           const outTo = home.clone().add(new THREE.Vector3(-30, 30, 150))
           mesh.position.copy(inFrom)
           trackMesh(mesh); trackDisp(geo, mat, glowMat)
+          playAceWarp('in', { muted: getFlag('soundMuted') })
           skillFX.kind = 'ace'; skillFX.t = 0; skillFX.dur = 6.7
           skillFX.state = { mesh, home, inFrom, outTo, exitFrom: null, trailIn: fx.makeTrail(0xffd56a, 7), trailOut: fx.makeTrail(0xffd56a, 7) }
         }
@@ -338,7 +340,7 @@ export default function FleetReview({ onExit, backLabel = '◂ RETURN TO MAP', t
               orient(m, _b.subVectors(_a, m.position), 0.3)
               m.position.copy(_a); m.scale.set(1.3, 1.3, 1.3)
             } else {
-              if (!st.exitFrom) st.exitFrom = m.position.clone()
+              if (!st.exitFrom) { st.exitFrom = m.position.clone(); playAceWarp('out', { muted: getFlag('soundMuted') }) }
               const p = Math.min(1, (t - 5.7) / 0.7), e = Math.pow(p, 3)
               m.position.lerpVectors(st.exitFrom, st.outTo, e)
               orient(m, _a.subVectors(st.outTo, st.exitFrom))

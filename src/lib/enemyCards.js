@@ -5,7 +5,7 @@
 // campaign and is saved, so that node fields the same buffs for the whole run;
 // resetCampaign() wipes the saves and the next run rerolls.
 import { getFlag, setFlag } from './store'
-import { aggregateCombatMods, getUpgrades } from './campaign'
+import { aggregateCombatMods, getUpgrades, NODE_BATTLES } from './campaign'
 import { UPGRADE_CARDS } from '../screens/UpgradeScreen'
 
 // How many card buffs each node fields (index = nodeIndex, battle 1 = index 0).
@@ -20,13 +20,21 @@ const rollRarity = () => {
   return 'basic'
 }
 
+// Class-specific cards (tagged BOMBERS / CRUISERS) are dead weight to a fleet
+// that doesn't field the class, so the enemy only draws them when its node's
+// composition has the ships. The player's own draw is not gated — they pick one
+// of three and can always rebuild their fleet around a card.
+const usableBy = (card, comp) =>
+  !comp || (card.tag === 'BOMBERS' ? comp.bombers > 0 : card.tag === 'CRUISERS' ? comp.cruisers > 0 : true)
+
 // Roll n buffs into an { id: level } map with the player's draw rules: each
 // slot rolls a rarity then a random card of that tier; epics are one-per-fleet
 // (no repeats), lesser tiers stack just like the player's owned cards do.
-export function rollEnemyCards(n) {
+// `comp` (the rolling fleet's composition) gates the class-specific cards.
+export function rollEnemyCards(n, comp = null) {
   const rolled = {}
   const pool = (rarity) => Object.entries(UPGRADE_CARDS)
-    .filter(([id, c]) => c.rarity === rarity && !(rarity === 'epic' && rolled[id]))
+    .filter(([id, c]) => c.rarity === rarity && !(rarity === 'epic' && rolled[id]) && usableBy(c, comp))
     .map(([id]) => id)
   for (let i = 0; i < n; i++) {
     let bucket = pool(rollRarity())
@@ -51,7 +59,7 @@ function rolledEnemyUpgrades(nodeIndex) {
   if (!n) return {}
   const saved = getFlag('enemyUpgrades') || {}
   if (saved[nodeIndex]) return saved[nodeIndex]
-  const rolled = rollEnemyCards(n)
+  const rolled = rollEnemyCards(n, NODE_BATTLES[nodeIndex]?.enemy)
   setFlag('enemyUpgrades', { ...saved, [nodeIndex]: rolled })
   return rolled
 }
@@ -85,7 +93,7 @@ const bonusCache = {}
 function bonusRoll(nodeIndex, count) {
   const c = bonusCache[nodeIndex]
   if (c && c.count === count) return c.cards
-  const cards = rollEnemyCards(count)
+  const cards = rollEnemyCards(count, NODE_BATTLES[nodeIndex]?.enemy)
   bonusCache[nodeIndex] = { count, cards }
   return cards
 }
