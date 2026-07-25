@@ -669,7 +669,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 11px;
   margin: 2px 0 4px;
   font-family: var(--font-mono);
 }
@@ -680,8 +680,9 @@
   gap: 8px 18px;
 }
 .sb-stat-val {
-  font-size: 26px;
+  font-size: 23px;
   font-weight: 700;
+  line-height: 1.15;
 }
 .sb-stats-grid .sb-stat--blue { text-align: right; }
 .sb-stats-grid .sb-stat--red  { text-align: left; }
@@ -693,6 +694,41 @@
   color: var(--c-ash-dim);
   text-transform: uppercase;
   text-align: center;
+}
+/* per-class damage ledger — same blue | label | red columns as the headline
+   stats, at a smaller weight so the two totals above stay the loudest thing */
+.sb-stat-dmg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding-top: 9px;
+  border-top: 1px solid var(--c-line-2);
+}
+.sb-stat-dmg-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--c-ash-dim);
+}
+.sb-stat-dmg-head::before,
+.sb-stat-dmg-head::after {
+  content: '';
+  height: 1px;
+  width: 34px;
+  background: linear-gradient(90deg, transparent, rgba(140, 190, 255, 0.4));
+}
+.sb-stat-dmg-head::after { background: linear-gradient(270deg, transparent, rgba(140, 190, 255, 0.4)); }
+.sb-stats-grid--dmg { gap: 3px 18px; }
+.sb-stats-grid--dmg .sb-stat-mid { font-size: 9.5px; letter-spacing: 0.18em; }
+.sb-stat-dval {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
 }
 .sb-stat-caps {
   display: flex;
@@ -2731,10 +2767,11 @@
 
 /* ── Victory / defeat: cinematic smash-in ───────────────────────────────── */
 .sb-victory {
-  gap: 20px;
-  /* the comms broadcast rides the bottom of the stage (bottom: 40px, ~140px
-     tall) — reserve that band so the reward row / CONTINUE never sit under it */
-  padding-bottom: clamp(120px, 17vh, 168px);
+  gap: 16px;
+  /* the comms broadcast rides the bottom of the stage (bottom: 40px, up to
+     ~120px tall) — reserve that whole band so the reward row / CONTINUE never
+     sit under it, with room for a three-line broadcast */
+  padding-bottom: clamp(166px, 22vh, 200px);
   justify-content: safe center;   /* on very short windows, overflow down (toward the reserved band), not off the top */
   /* no backdrop blur: the sim keeps rendering beneath this screen indefinitely,
      and a full-viewport per-frame blur is the single costliest overlay effect */
@@ -2762,7 +2799,7 @@
   to   { opacity: 1; letter-spacing: 0.14em; filter: blur(0); }
 }
 .sb-stats {
-  padding: 16px 30px 18px;
+  padding: 13px 28px 14px;
   background: var(--hud-glass);
   border: 1px solid var(--hud-glass-edge);
   box-shadow: var(--hud-hairline), var(--hud-drop);
@@ -2800,6 +2837,32 @@
   background-position: 135% 0, 0 0;
 }
 .sb-restart--ghost:hover { background-position: -55% 0, 0 0; }
+/* short windows: the after-action panel still has to clear the comms band at
+   the bottom of the stage, so tighten the whole stack rather than let the
+   reward row slide under the broadcast */
+@media (max-height: 820px) {
+  .sb-victory { gap: 11px; }
+  .sb-victory-title { font-size: clamp(26px, 5.4vw, 42px); }
+  .sb-stats { gap: 8px; padding: 10px 24px 11px; }
+  .sb-stats-grid { gap: 4px 16px; }
+  .sb-stat-val { font-size: 20px; }
+  .sb-stat-dmg { gap: 5px; padding-top: 7px; }
+  .sb-stat-dval { font-size: 13.5px; }
+  .sb-stat-caps { padding-top: 8px; gap: 4px; }
+}
+/* very short windows (small panes): squeeze to the bone, still clearing comms */
+@media (max-height: 660px) {
+  .sb-victory { gap: 8px; }
+  .sb-victory-title { font-size: 23px; }
+  .sb-stats { gap: 6px; padding: 8px 20px 9px; }
+  .sb-stats-grid { gap: 2px 14px; }
+  .sb-stat-val { font-size: 17px; }
+  .sb-stat-mid { font-size: 9px; }
+  .sb-stat-dval { font-size: 12.5px; }
+  .sb-stat-dmg { gap: 4px; padding-top: 6px; }
+  .sb-stat-caps { padding-top: 6px; gap: 3px; }
+  .sb-stat-cap { font-size: 10px; }
+}
 
 /* ── Pre-battle briefing: war-room table ────────────────────────────────── */
 .sb-briefing {

@@ -1043,6 +1043,12 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         setPipCaption({ team, text, crosshair })
       }
 
+      // per-class damage ledger for the after-action report: hull actually taken
+      // off, credited to the shooter's class. Deflected hits never reach here, and
+      // overkill on the killing blow isn't counted (the Ace's warp-out included).
+      const dmgDealt = { blue: { cap: 0, fighter: 0, bomber: 0, cruiser: 0 }, red: { cap: 0, fighter: 0, bomber: 0, cruiser: 0 } }
+      const dmgClass = (s) => s.isCapital ? 'cap' : s.isBomber ? 'bomber' : s.isCruiser ? 'cruiser' : 'fighter'
+
       const SHIELD_FLASH_TIME = 0.45   // seconds the flagship shield stays lit after catching a bolt
       const damage = (ship, killer, amount = 1, bomb = false) => {
         if (!bomb && !killer?.isCapital && Math.random() * 100 < ship.armor) {
@@ -1050,6 +1056,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
           if (ship.isCapital) ship.shieldFlash = SHIELD_FLASH_TIME   // shield catches the deflected bolt → flash
           return
         }
+        if (killer) dmgDealt[killer.team][dmgClass(killer)] += Math.max(0, Math.min(amount, ship.hp))
         ship.hp -= amount
         ship.flash = 0.12
         // capital crosses 25% shield → critical-damage broadcast (once per ship)
@@ -2142,6 +2149,7 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
             blueKills: sumKills('blue'), redKills: sumKills('red'),
             blueLeft: c.blue, redLeft: c.red,
             blueCap: cap('blue'), redCap: cap('red'),
+            blueDmg: { ...dmgDealt.blue }, redDmg: { ...dmgDealt.red },
           })
         }
 
@@ -2306,6 +2314,8 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
   }
 
   // shared post-battle breakdown (used by both the skirmish and campaign result panels)
+  // damage rows, in the fleet's own order of battle
+  const DMG_ROWS = [['cap', 'FLAGSHIP'], ['fighter', 'INTERCEPTORS'], ['bomber', 'BOMBERS'], ['cruiser', 'MISSILE CRUISERS']]
   const statsBlock = stats && (
     <div className="sb-stats">
       <div className="sb-stats-grid">
@@ -2315,6 +2325,16 @@ export default function SpaceBattleScreen({ onReturn, campaign = null }) {
         <span className="sb-stat-val sb-stat--blue">{stats.blueLeft}</span>
         <span className="sb-stat-mid">SHIPS REMAINING</span>
         <span className="sb-stat-val sb-stat--red">{stats.redLeft}</span>
+      </div>
+      <div className="sb-stat-dmg">
+        <div className="sb-stat-dmg-head">HULL DAMAGE DEALT</div>
+        <div className="sb-stats-grid sb-stats-grid--dmg">
+          {DMG_ROWS.map(([k, label]) => ([
+            <span key={k + 'b'} className="sb-stat-dval sb-stat--blue">{Math.round(stats.blueDmg[k])}</span>,
+            <span key={k + 'm'} className="sb-stat-mid">{label}</span>,
+            <span key={k + 'r'} className="sb-stat-dval sb-stat--red">{Math.round(stats.redDmg[k])}</span>,
+          ]))}
+        </div>
       </div>
       <div className="sb-stat-caps">
         <div className="sb-stat-cap">
