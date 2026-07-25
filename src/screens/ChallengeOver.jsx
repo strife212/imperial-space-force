@@ -3,12 +3,14 @@ import * as THREE from 'three'
 import { createStage } from './cutscene/stage'
 import { buildRedModel, buildRedBomber, buildRedCruiser } from './battle/geometry'
 import { TEAMS } from './battle/constants'
+import { getChallengeBest } from '../lib/campaign'
 import './campaign-map.css'
 
 // Endless-challenge gate: a live war-sky — ember nebula, enemy formations that
 // never stop coming — under a glass plate stating the terms of the gauntlet.
 export function ChallengeIntro({ onStart, onBack }) {
   const mountRef = useRef(null)
+  const best = getChallengeBest()
 
   useEffect(() => {
     const mount = mountRef.current
@@ -105,6 +107,12 @@ export function ChallengeIntro({ onStart, onBack }) {
           <div className="chin-line"><span className="chin-line-key">THE SPIRAL</span><span>Every round the enemy keeps everything it had, and gains one more buff card.</span></div>
           <div className="chin-line"><span className="chin-line-key">THE STAKES</span><span>The run ends when your fleet falls. Nothing is banked, nothing is lost.</span></div>
         </div>
+        <div className="chin-record chin-rise" style={{ '--d': '0.46s' }}>
+          <span className="chin-record-key">STANDING RECORD</span>
+          {best > 0
+            ? <span className="chin-record-val"><b>{best}</b> ROUND{best === 1 ? '' : 'S'} CLEARED</span>
+            : <span className="chin-record-val chin-record-none">NO RUN ON RECORD</span>}
+        </div>
         <button className="chin-start chin-rise" style={{ '--d': '0.52s' }} onClick={onStart}>▶ START</button>
         <button className="chov-btn chov-btn--ghost chin-rise" style={{ '--d': '0.62s' }} onClick={onBack}>◂ RETURN TO THE CAMPAIGN MAP</button>
       </div>
@@ -114,7 +122,7 @@ export function ChallengeIntro({ onStart, onBack }) {
 
 // Endless-challenge epitaph: a fullscreen record of how far the run got before
 // the fleet broke. Nothing is saved anywhere — this screen IS the result.
-export default function ChallengeOver({ round, onReturn }) {
+export default function ChallengeOver({ round, best = 0, record = false, onReturn }) {
   const cleared = round - 1
   return (
     <div id="challenge-over">
@@ -125,6 +133,9 @@ export default function ChallengeOver({ round, onReturn }) {
           <span className="chov-rounds-num">{cleared}</span>
           <span className="chov-rounds-label">ROUND{cleared === 1 ? '' : 'S'} CLEARED</span>
         </div>
+        {record
+          ? <div className="chov-record chov-record--new">★ NEW RECORD ★</div>
+          : best > 0 && <div className="chov-record">STANDING RECORD · {best} ROUND{best === 1 ? '' : 'S'}</div>}
         <div className="chov-text">
           {cleared === 0
             ? 'The Hush closed over the fleet in the first engagement.'

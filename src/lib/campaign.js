@@ -201,6 +201,17 @@ export function recordBattle(nodeIndex, won) {
   return { award, won, firstClear, progress: getProgress() }
 }
 
+// Endless-challenge personal best: the only thing a gauntlet run ever writes.
+// A run banks no Requisition, progress or card rolls — just how far it got, and
+// only when it beats the standing record.
+export function getChallengeBest() { return getFlag('challengeBest') || 0 }
+export function recordChallengeRun(cleared) {
+  const best = getChallengeBest()
+  if (cleared <= best) return { best, record: false }
+  setFlag('challengeBest', cleared)
+  return { best: cleared, record: true }
+}
+
 export function resetCampaign() {
   setFlag('cosmogonySeen', false)   // erasing the save replays the Cosmogony intro
   setFlag('campaignProgress', 0)
@@ -214,6 +225,7 @@ export function resetCampaign() {
   setFlag('enemyUpgrades', {})      // enemy nodes reroll their buffs next campaign
   setFlag('tutSkillSeen', false)    // first-battle tutorial nudges re-arm
   setFlag('tutBomberSeen', false)
+  // challengeBest deliberately survives: it's a personal record, not progress
 }
 
 // Selectable operators, in carousel order. Mirrors the roster in CharacterSelect

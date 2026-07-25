@@ -34,7 +34,7 @@ import CreditsScreen from './screens/CreditsScreen'
 import DialogueScreen from './screens/DialogueScreen'
 import TrailerScreen from './screens/TrailerScreen'
 import ChallengeOver, { ChallengeIntro } from './screens/ChallengeOver'
-import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, hasMacroMissile, getCombatMods, aggregateCombatMods, addUpgrade, recordBattle, resetCampaign } from './lib/campaign'
+import { NODE_BATTLES, getFleet, getDeployFleet, getFlagshipName, getCapMaxHp, hasCapMissile, hasMacroMissile, getCombatMods, aggregateCombatMods, addUpgrade, recordBattle, resetCampaign, recordChallengeRun } from './lib/campaign'
 import { getEnemyBattleExtras, getEnemyUpgrades, rollEnemyCards } from './lib/enemyCards'
 import AntennaAlignmentScreen from './screens/legacy/AntennaAlignmentScreen'
 import MailOverlay from './components/MailOverlay'
@@ -209,8 +209,8 @@ export default function App() {
   // The final node's battle, escalating without end: round N fields the node's
   // own buffs plus N extra random enemy cards, rerolled fresh every round. The
   // config is built once per round (state, not render) so the roll is stable,
-  // and nothing is ever saved — no Requisition, no progress, no card rolls;
-  // defeat just reports how far the run got and hands back to the map.
+  // and nothing is saved but the personal best — no Requisition, no progress,
+  // no card rolls; defeat just reports how far the run got and hands back.
   const RARITY_RANK = { legendary: 4, epic: 3, rare: 2, uncommon: 1, basic: 0 }
   const enemyCardList = (u) => Object.entries(u)
     .map(([id, level]) => ({ id, level, name: UPGRADE_CARDS[id]?.title || id, rarity: UPGRADE_CARDS[id]?.rarity || 'basic' }))
@@ -252,7 +252,10 @@ export default function App() {
       previewNextGain:  () => peekNext().gainedCard,                      // the one card it gains over this round
       onResolve:  (won) => ({ award: 0, won, firstClear: false }),        // banks nothing
       onContinue: () => setChallenge(peekNext()),                         // victory → escalate (same roll the preview showed)
-      onExit:     () => { setChallenge(null); setChallengeOver({ round }); setScreen('challenge-over') },
+      onExit:     () => {                                                 // defeat → bank the record (the only thing a run saves), then report
+        const { best, record } = recordChallengeRun(round - 1)
+        setChallenge(null); setChallengeOver({ round, best, record }); setScreen('challenge-over')
+      },
       onRetry:    () => {},                                               // no re-deploy in the gauntlet
     }
   }
@@ -344,7 +347,7 @@ export default function App() {
         <ChallengeIntro onStart={startChallenge} onBack={() => setScreen('campaign-map')} />
       )}
       {screen === 'challenge-over' && challengeOver && (
-        <ChallengeOver round={challengeOver.round} onReturn={() => { setChallengeOver(null); setScreen('campaign-map') }} />
+        <ChallengeOver round={challengeOver.round} best={challengeOver.best} record={challengeOver.record} onReturn={() => { setChallengeOver(null); setScreen('campaign-map') }} />
       )}
       {screen === 'vistest'         && <VisualTestScreen onReturn={() => setScreen('debug')} />}
       {screen === 'cosmogony'       && <Cutscene key="cosmogony-standalone" scene={SCENES.cosmogony} standalone canSkip={false} onReturn={() => setScreen('home')} />}

@@ -14,6 +14,7 @@ const DEFAULTS = {
   credits:              0,     // persistent requisition currency, spent in the shipyard
   campaignFleet:        null,  // persistent player fleet { fighters, bombers, cruisers }; null → starting fleet
   campaignFlagship:     '',    // persistent player flagship name; '' → rolled on first muster
+  challengeBest:        0,     // endless-challenge personal best — most rounds cleared in one run
   tutSkillSeen:         false, // set in SpaceBattleScreen.jsx — admiral-skill tutorial shown, or a skill used (campaign)
   tutBomberSeen:        false, // set in SpaceBattleScreen.jsx — bomber tutorial shown, or bombers dispatched (campaign)
 }
