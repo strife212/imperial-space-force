@@ -616,32 +616,124 @@
   box-shadow: 0 0 14px rgba(40, 110, 230, 0.4);
 }
 
-/* intro variant: the gate into the mode, dressed like the epitaph */
-.chov-title--gold {
-  color: #ffd24a;
-  text-shadow: 0 0 26px rgba(255, 200, 80, 0.55);
+/* ── Endless challenge intro: live war-sky + glass terms plate ───────────── */
+#challenge-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #05070f;
+  font-family: var(--font-mono);
 }
-.chov-start {
-  margin-top: 16px;
-  padding: 12px 44px;
-  background: linear-gradient(180deg, rgba(80, 52, 12, 0.55), rgba(38, 22, 4, 0.68));
-  border: 1px solid rgba(255, 200, 90, 0.7);
-  border-radius: 2px;
+.chin-canvas { position: absolute; inset: 0; }
+.chin-canvas canvas { width: 100%; height: 100%; display: block; }
+.chin-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 38%, rgba(3, 3, 8, 0.5) 80%, rgba(3, 3, 8, 0.78) 100%),
+    linear-gradient(180deg, rgba(3, 3, 8, 0.55) 0%, transparent 22%, transparent 78%, rgba(3, 3, 8, 0.6) 100%);
+}
+.chin-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 600px;
+  margin: 0 20px;
+  padding: 34px 46px 30px;
+  background: linear-gradient(168deg, rgba(32, 19, 9, 0.6), rgba(9, 5, 3, 0.72));
+  border: 1px solid rgba(255, 195, 95, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 222, 155, 0.1), 0 22px 50px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+/* gold [ ] corner brackets */
+.chin-box::before, .chin-box::after {
+  content: '';
+  position: absolute;
+  top: -1px; bottom: -1px;
+  width: 16px;
+  border: 2px solid rgba(255, 205, 100, 0.75);
+  pointer-events: none;
+}
+.chin-box::before { left: -1px; border-right: none; }
+.chin-box::after  { right: -1px; border-left: none; }
+.chin-title {
+  font-size: clamp(26px, 4.2vw, 42px);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #ffd24a;
+  text-shadow: 0 0 26px rgba(255, 200, 80, 0.6);
+  animation: chin-title-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+}
+@keyframes chin-title-in {
+  from { opacity: 0; letter-spacing: 0.36em; }
+  to   { opacity: 1; letter-spacing: 0.18em; }
+}
+.chin-rule {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 205, 110, 0.5), transparent);
+}
+.chin-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  text-align: left;
+}
+.chin-line {
+  display: flex;
+  align-items: baseline;
+  font-size: 11.5px;
+  line-height: 1.6;
+  letter-spacing: 0.05em;
+  color: #cdb9a0;
+}
+.chin-line-key {
+  flex: 0 0 96px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: rgba(255, 212, 120, 0.9);
+}
+/* chamfered gold hero button, cut from the menu's primary recipe */
+.chin-start {
+  margin-top: 10px;
+  padding: 13px 58px;
+  border: none;
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  background:
+    linear-gradient(115deg, transparent 42%, rgba(255, 236, 185, 0.24) 50%, transparent 58%) no-repeat,
+    linear-gradient(180deg, rgba(255, 208, 105, 0.28) 0, rgba(255, 208, 105, 0.28) 1px, transparent 1px) no-repeat,
+    linear-gradient(180deg, rgba(146, 94, 24, 0.82), rgba(64, 36, 8, 0.9));
+  background-size: 300% 100%, 100% 100%, 100% 100%;
+  background-position: 135% 0, 0 0, 0 0;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.22em;
-  color: #ffe4ad;
-  text-shadow: 0 0 10px rgba(255, 190, 70, 0.5);
-  box-shadow: inset 0 1px 0 rgba(255, 225, 160, 0.2), 0 0 18px rgba(255, 180, 60, 0.22);
+  letter-spacing: 0.26em;
+  color: #ffedc8;
+  text-shadow: 0 0 10px rgba(255, 195, 80, 0.55);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+  filter: drop-shadow(0 0 13px rgba(255, 180, 60, 0.32));
+  transition: background-position 0.5s ease, filter 0.2s, color 0.2s;
 }
-.chov-start:hover {
-  background: linear-gradient(180deg, rgba(120, 78, 18, 0.6), rgba(56, 32, 6, 0.72));
-  border-color: rgba(255, 228, 150, 1);
-  color: #fff6e0;
-  box-shadow: inset 0 1px 0 rgba(255, 235, 180, 0.32), 0 0 28px rgba(255, 190, 70, 0.45);
+.chin-start:hover {
+  background-position: -55% 0, 0 0, 0 0;
+  color: #fff8e8;
+  filter: drop-shadow(0 0 22px rgba(255, 200, 85, 0.6));
+}
+.chin-rise {
+  opacity: 0;
+  animation: chin-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s) both;
+}
+@keyframes chin-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
 }
 .chov-btn--ghost {
   margin-top: 4px;
