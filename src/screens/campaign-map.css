@@ -657,8 +657,9 @@
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  max-width: 600px;
-  margin: 0 20px;
+  /* fixed from the first frame — never sized by its contents, so nothing in the
+     entry animation can resize or re-centre the plate */
+  width: min(600px, calc(100vw - 40px));
   padding: 34px 46px 30px;
   background: linear-gradient(168deg, rgba(32, 19, 9, 0.6), rgba(9, 5, 3, 0.72));
   border: 1px solid rgba(255, 195, 95, 0.26);
@@ -678,12 +679,16 @@
 .chin-box::after  { right: -1px; border-left: none; }
 .chin-title {
   font-size: clamp(26px, 4.2vw, 42px);
+  line-height: 1.35;
   font-weight: 800;
   letter-spacing: 0.18em;
   color: #ffd24a;
   text-shadow: 0 0 26px rgba(255, 200, 80, 0.6);
   animation: chin-title-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
 }
+/* two hand-broken lines that never re-wrap: the block's width breathes with the
+   letter-spacing smash-in, its height does not */
+.chin-title > div { white-space: nowrap; }
 @keyframes chin-title-in {
   from { opacity: 0; letter-spacing: 0.36em; }
   to   { opacity: 1; letter-spacing: 0.18em; }
@@ -780,6 +785,12 @@
 @keyframes chin-rise {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: none; }
+}
+/* narrow screens: the title can't wrap any more, so buy it room instead */
+@media (max-width: 540px) {
+  .chin-box { padding: 26px 22px 24px; gap: 13px; }
+  .chin-title { font-size: clamp(19px, 6.4vw, 30px); }
+  .chin-line-key { flex-basis: 74px; }
 }
 .chov-btn--ghost {
   margin-top: 4px;

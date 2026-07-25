@@ -100,7 +100,9 @@ export function ChallengeIntro({ onStart, onBack }) {
       <div className="chin-vignette" />
       <div className="chin-box">
         <div className="chov-sub chin-rise" style={{ '--d': '0.10s' }}>✦ Post-Campaign ✦</div>
-        <div className="chin-title">ENDLESS CHALLENGE MODE</div>
+        {/* line-broken by hand: the smash-in animates letter-spacing, and free
+            wrapping would reflow the plate's height mid-animation */}
+        <div className="chin-title"><div>ENDLESS</div><div>CHALLENGE MODE</div></div>
         <div className="chin-rule chin-rise" style={{ '--d': '0.30s' }} />
         <div className="chin-lines chin-rise" style={{ '--d': '0.38s' }}>
           <div className="chin-line"><span className="chin-line-key">THE FOE</span><span>An enemy fleet of escalating strength — the final blockade, returned.</span></div>
