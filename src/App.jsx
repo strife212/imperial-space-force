@@ -17,6 +17,7 @@ import PowerManagementScreen from './screens/legacy/PowerManagementScreen'
 import SpaceBattleScreen from './screens/SpaceBattleScreen'
 import VisualTestScreen from './screens/VisualTestScreen'
 import Cutscene from './screens/cutscene/Cutscene'
+import ImperiumMap from './screens/cutscene/ImperiumMap'
 import StoryReel from './screens/cutscene/StoryReel'
 import MontageScreen from './screens/MontageScreen'
 import Cosmogony3 from './screens/Cosmogony3'
@@ -351,6 +352,7 @@ export default function App() {
       )}
       {screen === 'vistest'         && <VisualTestScreen onReturn={() => setScreen('debug')} />}
       {screen === 'cosmogony'       && <Cutscene key="cosmogony-standalone" scene={SCENES.cosmogony} standalone canSkip={false} onReturn={() => setScreen('home')} />}
+      {screen === 'imperium-map'    && <ImperiumMap onReturn={() => setScreen('debug')} />}
       {screen === 'cosmogony2'      && <MontageScreen onReturn={() => setScreen('home')} />}
       {screen === 'cosmogony3'      && <Cosmogony3 />}
       {screen === 'credits'         && <CreditsScreen onComplete={() => setScreen('campaign-map')} />}

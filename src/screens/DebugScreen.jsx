@@ -39,6 +39,7 @@ const CUTSCENES = [
   { key: 'cut:theEschaton',      label: '10 · Eschaton'  },
   { key: 'cut:theOrderRestored', label: '✦ · Anastasis (victory)'  },
   { key: 'cut:cosmogony',        label: 'Ω · Cosmogony'        },
+  { key: 'imperium-map',         label: '✧ · Sacrum Imperium (chart)' },
 ]
 
 // ── LEGACY: the 2D UI narrative game ─────────────────────────────────────────
