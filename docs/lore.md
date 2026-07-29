@@ -177,7 +177,7 @@ offices. Representative names:
 
 ---
 
-## 4 · The Throneworld — Novarya
+## 4 · The Throneworld — Novaraya
 
 The **Novarayan Throneworld**, home to the towering Cathedra and around it the
 greatest city there ever was or ever will be. The world is older than any
@@ -190,12 +190,12 @@ toward the horizon without seeing the seat of the audition at the visual center
 of every street. The arrangement is liturgical, and by long intention impossible
 to forget.
 
-The city is called **Novarya**, though formally it is *Civitas Audientiae*, the
+The city is called **Novaraya**, though formally it is *Civitas Audientiae*, the
 **City of the Hearing**. It holds just under two thousand million subjects and
 houses every institution of central government: the Synod, the high courts, the
 great archives, the schools, the embassies of the unaffiliated polities, the
 offices of the Classis. Visitors remark, generation after generation, that
-Novarya is the only city in which no one seems to be hurrying — the great traffic
+Novaraya is the only city in which no one seems to be hurrying — the great traffic
 of two billion somehow moves at the pace of a procession. The doctrine for this
 is plain: the city stands beneath the throne, and the throne hears; to hurry
 would suggest the order of things were not already in hand.
