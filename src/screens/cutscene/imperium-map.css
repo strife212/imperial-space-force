@@ -12,6 +12,8 @@
      or slides when the dialogue comes and goes. */
   --imap-band: clamp(132px, 18vh, 176px);
   background:
+    radial-gradient(58% 44% at 70% 24%, rgba(26, 56, 118, 0.16), transparent 70%),
+    radial-gradient(46% 38% at 22% 78%, rgba(52, 26, 96, 0.12), transparent 72%),
     radial-gradient(ellipse at 50% 46%, #071433 0%, #030718 46%, #01020a 78%, #000 100%);
   font-family: var(--font-mono);
 }
@@ -30,11 +32,33 @@
 }
 .imap-stage.is-on { opacity: 1; transform: none; }
 
-.imap-chart {
+.imap-chartbox {
+  position: relative;
   width: min(calc(96vh - var(--imap-band)), 94vw);
   height: min(calc(96vh - var(--imap-band)), 94vw);
-  overflow: visible;
 }
+.imap-chart { width: 100%; height: 100%; overflow: visible; }
+
+/* The chart draws itself in layers — space, then the graticule, then the shell,
+   then the territories, then their captions — the way a plotter would lay it
+   down. Chrome rises last. Replay drops .is-on and everything falls away
+   together (the base transition carries no delay). */
+.imap-stage .imap-space,
+.imap-stage .imap-grid,
+.imap-stage .imap-shell,
+.imap-stage .imap-terrs,
+.imap-stage .imap-labels { opacity: 0; transition: opacity 0.9s ease; }
+.imap-stage .imap-head,
+.imap-stage .imap-legend,
+.imap-stage .imap-corner { opacity: 0; transform: translateY(6px); transition: opacity 0.8s ease, transform 0.8s ease; }
+.imap-stage.is-on .imap-space  { opacity: 1; transition-delay: 0.05s; }
+.imap-stage.is-on .imap-grid   { opacity: 1; transition-delay: 0.25s; }
+.imap-stage.is-on .imap-shell  { opacity: 1; transition-delay: 0.5s; }
+.imap-stage.is-on .imap-terrs  { opacity: 1; transition-delay: 0.7s; }
+.imap-stage.is-on .imap-labels { opacity: 1; transition-delay: 1s; }
+.imap-stage.is-on .imap-head,
+.imap-stage.is-on .imap-legend,
+.imap-stage.is-on .imap-corner { opacity: 1; transform: none; transition-delay: 1.2s; }
 
 /* ── the historian, in the game's own comms box ──────────────────────────── */
 #imperium-map .sb-comms { width: min(580px, 92%); bottom: 22px; z-index: 8300; }
@@ -53,34 +77,64 @@
 /* Weights below are in design units: the chart draws 1200 units into roughly
    680 CSS px, so a stroke reads at a bit over half its authored width. */
 
+/* the space beyond the audition */
+.imap-space circle { fill: #cfe0ff; }
+
 /* graticule — surveyor's rings and bearings, under the territories */
 .imap-grid circle { fill: none; stroke: rgba(110, 160, 232, 0.18); stroke-width: 1.6; stroke-dasharray: 4 10; }
-.imap-grid line   { stroke: rgba(110, 160, 232, 0.13); stroke-width: 1.6; }
+.imap-grid line   { stroke: rgba(110, 160, 232, 0.12); stroke-width: 1.6; }
+.imap-grid .imap-tick        { stroke: rgba(150, 195, 245, 0.3); stroke-width: 1.7; stroke-dasharray: none; }
+.imap-grid .imap-tick--long  { stroke: rgba(175, 210, 250, 0.5); stroke-width: 2.2; }
+.imap-bearing {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  fill: rgba(140, 176, 226, 0.55);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
 
 /* the surveyed limit: the edge of the audition */
+.imap-limit-halo { fill: none; stroke: rgba(96, 156, 236, 0.13); stroke-width: 16; }
 .imap-limit {
   fill: none;
-  stroke: rgba(198, 222, 255, 0.72);
-  stroke-width: 3;
-}
-/* the throne-core: nothing is charted inside it, and nothing needs to be */
-.imap-core-ring {
-  fill: none;
-  stroke: rgba(180, 212, 255, 0.62);
+  stroke: rgba(198, 222, 255, 0.78);
   stroke-width: 2.6;
 }
+.imap-limit-inner {
+  fill: none;
+  stroke: rgba(140, 185, 245, 0.22);
+  stroke-width: 1.4;
+  stroke-dasharray: 1 9;
+  stroke-linecap: round;
+}
+/* the throne-core: nothing is charted inside it — only the chart's own origin,
+   etched rings and a gold survey datum at the exact centre */
+.imap-core-ring {
+  fill: none;
+  stroke: rgba(188, 216, 255, 0.7);
+  stroke-width: 2.4;
+  filter: drop-shadow(0 0 9px rgba(90, 150, 235, 0.4));
+}
+.imap-core-etch { fill: none; stroke: rgba(120, 170, 240, 0.15); stroke-width: 1.2; stroke-dasharray: 2 7; }
+.imap-core-cross { stroke: rgba(150, 195, 255, 0.3); stroke-width: 1.2; }
+.imap-core-dot { fill: #ffd24a; opacity: 0.95; filter: drop-shadow(0 0 7px rgba(255, 200, 80, 0.8)); }
 
 /* ── territories ─────────────────────────────────────────────────────────── */
 .imap-terr {
-  fill: rgba(26, 84, 184, 0.34);
   stroke: rgba(138, 190, 255, 0.92);
   stroke-width: 3;
   stroke-linejoin: round;
   transition: fill 1s ease, stroke 1s ease;
 }
+/* the realm brightens toward the throne — depth, ring by ring */
+.imap-terr--r0 { fill: rgba(32, 96, 200, 0.42); }
+.imap-terr--r1 { fill: rgba(26, 84, 184, 0.33); }
+.imap-terr--r2 { fill: rgba(21, 70, 160, 0.26); }
 .imap-terr.is-fallen {
   fill: rgba(158, 30, 22, 0.44);
   stroke: rgba(255, 108, 82, 0.95);
+  filter: drop-shadow(0 0 7px rgba(255, 80, 50, 0.28));
   animation: imap-fall 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 /* the flash of the loss, settling into the held red */
@@ -88,11 +142,25 @@
   0%   { fill: rgba(255, 150, 108, 0.72); stroke: #ffe4d8; stroke-width: 6; }
   100% { fill: rgba(158, 30, 22, 0.44);   stroke: rgba(255, 108, 82, 0.95); stroke-width: 3; }
 }
+/* hatching rides in a beat after the flash, once the red has settled */
+.imap-hatchp {
+  fill: url(#imap-hatch);
+  stroke: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s ease 0.25s;
+}
+.imap-hatchp.is-fallen { opacity: 1; }
 
 /* ── territory captions ──────────────────────────────────────────────────── */
+/* Every caption sits on a dark halo (paint-order stroke) so it stays readable
+   where it crosses a border, a grid ring, or the hatching. */
 .imap-labels text {
   text-anchor: middle;
   pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(3, 9, 22, 0.85);
+  stroke-linejoin: round;
   transition: fill 1s ease, opacity 0.8s ease;
 }
 /* Sized against the chart, which the dialogue band shrinks — these keep the
@@ -101,17 +169,20 @@
   font-size: 23px;
   font-weight: 700;
   letter-spacing: 2.8px;
+  stroke-width: 3.4px;
   fill: rgba(226, 238, 255, 0.98);
 }
 .imap-sub {
   font-size: 14.5px;
   letter-spacing: 2px;
+  stroke-width: 2.6px;
   fill: rgba(162, 196, 240, 0.82);
 }
 .imap-star {
   font-size: 15.5px;
   font-style: italic;
   letter-spacing: 1.4px;
+  stroke-width: 2.6px;
   fill: rgba(206, 228, 255, 0.9);
 }
 /* the caption swaps as the territory goes silent — both lines share a baseline,
@@ -130,8 +201,12 @@
 .imap-head {
   position: absolute;
   left: 34px; top: 26px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
   pointer-events: none;
 }
+.imap-head-seal { width: 38px; height: 38px; opacity: 0.95; }
 /* the empire's own name always carries the imperial gold, here and on the card */
 .imap-head-title {
   font-size: 15px;
@@ -149,13 +224,44 @@
   color: rgba(146, 178, 224, 0.62);
 }
 
+/* the legend rides on a glass plate with the game's [ ] bracket corners */
 .imap-legend {
   position: absolute;
   left: 34px; bottom: 30px;
   display: flex;
   flex-direction: column;
   gap: 9px;
+  padding: 12px 16px 13px;
+  background: linear-gradient(170deg, rgba(10, 20, 44, 0.72), rgba(3, 7, 18, 0.85));
+  border: 1px solid rgba(105, 155, 230, 0.26);
+  box-shadow: inset 0 1px 0 rgba(160, 205, 255, 0.09), 0 12px 28px rgba(0, 0, 0, 0.45);
   pointer-events: none;
+}
+.imap-legend::before, .imap-legend::after {
+  content: '';
+  position: absolute;
+  top: -1px; bottom: -1px;
+  width: 9px;
+  border: 1px solid rgba(150, 200, 255, 0.55);
+  pointer-events: none;
+}
+.imap-legend::before { left: -1px; border-right: none; }
+.imap-legend::after  { right: -1px; border-left: none; }
+/* one tick per territory — the count, made visible */
+.imap-key-bar {
+  display: flex;
+  gap: 2px;
+  margin-top: 3px;
+}
+.imap-key-bar i {
+  width: 9px; height: 4px;
+  background: rgba(96, 152, 235, 0.8);
+  box-shadow: 0 0 4px rgba(40, 110, 220, 0.35);
+  transition: background 0.45s ease, box-shadow 0.45s ease;
+}
+.imap-key-bar i.is-red {
+  background: rgba(255, 96, 70, 0.9);
+  box-shadow: 0 0 6px rgba(255, 80, 50, 0.5);
 }
 .imap-key {
   display: flex;
@@ -173,7 +279,8 @@
 }
 .imap-swatch--hush {
   border-color: rgba(255, 96, 72, 0.78);
-  background: rgba(148, 26, 20, 0.38);
+  /* hatched, matching the lost territories on the chart */
+  background: repeating-linear-gradient(45deg, rgba(255, 116, 88, 0.5) 0 2px, rgba(120, 22, 16, 0.4) 2px 5px);
 }
 .imap-key-label {
   min-width: 132px;
@@ -188,6 +295,18 @@
   color: rgba(224, 236, 255, 0.92);
 }
 .imap-key--hush .imap-key-val { color: #ffcabf; }
+
+/* corner brackets framing the whole plotting table */
+.imap-corner {
+  position: absolute;
+  width: 30px; height: 30px;
+  pointer-events: none;
+  z-index: 6;
+}
+.imap-corner--tl { top: 16px;    left: 16px;  border-top: 1px solid rgba(140, 190, 255, 0.4); border-left: 1px solid rgba(140, 190, 255, 0.4); }
+.imap-corner--tr { top: 16px;    right: 16px; border-top: 1px solid rgba(140, 190, 255, 0.4); border-right: 1px solid rgba(140, 190, 255, 0.4); }
+.imap-corner--bl { bottom: 16px; left: 16px;  border-bottom: 1px solid rgba(140, 190, 255, 0.4); border-left: 1px solid rgba(140, 190, 255, 0.4); }
+.imap-corner--br { bottom: 16px; right: 16px; border-bottom: 1px solid rgba(140, 190, 255, 0.4); border-right: 1px solid rgba(140, 190, 255, 0.4); }
 
 /* ── the title card: the empire names itself ─────────────────────────────── */
 .imap-card {
@@ -283,9 +402,11 @@
 
 /* short viewports: the chart keeps its square, the chrome tightens */
 @media (max-height: 700px) {
-  .imap-head { left: 20px; top: 16px; }
+  .imap-head { left: 20px; top: 16px; gap: 10px; }
+  .imap-head-seal { width: 30px; height: 30px; }
   .imap-head-title { font-size: 12.5px; }
-  .imap-legend { left: 20px; bottom: 20px; gap: 7px; }
+  .imap-legend { left: 20px; bottom: 20px; gap: 7px; padding: 9px 12px 10px; }
   .imap-key-label { min-width: 116px; font-size: 9px; }
   .imap-key-val { font-size: 14px; }
+  .imap-corner { width: 22px; height: 22px; }
 }

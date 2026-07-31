@@ -218,6 +218,28 @@ const T_TAIL = 1600       // the last territory settles before the epilogue
 const GRID_RINGS = [185, 265, 345, 425, 500]
 const SPOKES = Array.from({ length: 24 }, (_, i) => (TAU * i) / 24)
 
+// Bearing ticks around the surveyed limit — every 5°, longer on the half-hours
+// — and the four cardinal readouts. Bearing 000 is chart-north (up).
+const TICKS = Array.from({ length: 72 }, (_, i) => {
+  const a = (TAU * i) / 72, long = i % 6 === 0
+  return { a, r1: LIMIT + 4, r2: LIMIT + (long ? 17 : 9), long }
+})
+const BEARINGS = [['000', -90], ['090', 0], ['180', 90], ['270', 180]].map(([t, deg]) => ({
+  t, x: CX + Math.cos((deg * Math.PI) / 180) * (LIMIT + 34), y: CY + Math.sin((deg * Math.PI) / 180) * (LIMIT + 34),
+}))
+
+// The space beyond the audition: a deterministic scatter, kept outside the
+// limit so the charted realm stays clean.
+const STARS = (() => {
+  const out = []
+  for (let i = 0; i < 150; i++) {
+    const x = hash(i * 3 + 11) * 1200, y = hash(i * 7 + 29) * 1200
+    if (Math.hypot(x - CX, y - CY) < LIMIT + 16) continue
+    out.push({ x: x.toFixed(0), y: y.toFixed(0), r: (0.7 + hash(i * 13 + 5) * 1.3).toFixed(1), o: (0.1 + hash(i * 17 + 3) * 0.45).toFixed(2) })
+  }
+  return out
+})()
+
 // Standalone chart cutscene: the empire names itself, then the chart comes up
 // whole and imperial, and the Hush takes half of it a sector at a time.
 export default function ImperiumMap({ onReturn }) {
@@ -299,56 +321,88 @@ export default function ImperiumMap({ onReturn }) {
   return (
     <div id="imperium-map">
       <div className={`imap-stage${mapOn ? ' is-on' : ''}`}>
-        <svg className="imap-chart" viewBox="0 0 1200 1200" role="img" aria-label="Strategic chart of the Holy Novarayan Empire">
-          <defs>
-            <radialGradient id="imap-core-g">
-              <stop offset="0%" stopColor="#b9d6ff" stopOpacity="0.5" />
-              <stop offset="26%" stopColor="#1d4a90" stopOpacity="0.32" />
-              <stop offset="100%" stopColor="#01040c" stopOpacity="0.95" />
-            </radialGradient>
-            <radialGradient id="imap-haze-g">
-              <stop offset="40%" stopColor="#0a1e42" stopOpacity="0.42" />
-              <stop offset="100%" stopColor="#01030a" stopOpacity="0" />
-            </radialGradient>
-          </defs>
+        <div className="imap-chartbox">
+          <svg className="imap-chart" viewBox="0 0 1200 1200" role="img" aria-label="Strategic chart of the Holy Novarayan Empire">
+            <defs>
+              <radialGradient id="imap-core-g">
+                <stop offset="0%" stopColor="#cfe2ff" stopOpacity="0.55" />
+                <stop offset="24%" stopColor="#1d4a90" stopOpacity="0.34" />
+                <stop offset="100%" stopColor="#01040c" stopOpacity="0.95" />
+              </radialGradient>
+              <radialGradient id="imap-haze-g">
+                <stop offset="34%" stopColor="#0c2350" stopOpacity="0.5" />
+                <stop offset="78%" stopColor="#050e26" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#01030a" stopOpacity="0" />
+              </radialGradient>
+              {/* the surveyor's mark for lost ground: hatching over the fill */}
+              <pattern id="imap-hatch" width="13" height="13" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <line x1="1.5" y1="0" x2="1.5" y2="13" stroke="rgba(255, 126, 96, 0.17)" strokeWidth="4" />
+              </pattern>
+            </defs>
 
-          <circle className="imap-haze" cx={CX} cy={CY} r={LIMIT + 40} fill="url(#imap-haze-g)" />
+            <circle className="imap-haze" cx={CX} cy={CY} r={LIMIT + 40} fill="url(#imap-haze-g)" />
 
-          <g className="imap-grid">
-            {GRID_RINGS.map((r) => <circle key={r} cx={CX} cy={CY} r={r} />)}
-            {SPOKES.map((a, i) => (
-              <line key={i} x1={CX + Math.cos(a) * BOUNDS[0]} y1={CY + Math.sin(a) * BOUNDS[0]}
-                    x2={CX + Math.cos(a) * LIMIT} y2={CY + Math.sin(a) * LIMIT} />
-            ))}
-          </g>
+            <g className="imap-space">
+              {STARS.map((s, i) => <circle key={i} cx={s.x} cy={s.y} r={s.r} opacity={s.o} />)}
+            </g>
 
-          <g className="imap-terrs">{CHART.map((s) => <path key={s.id} className={`${cls(s)} imap-terr`} d={s.d} />)}</g>
+            <g className="imap-grid">
+              {GRID_RINGS.map((r) => <circle key={r} cx={CX} cy={CY} r={r} />)}
+              {SPOKES.map((a, i) => (
+                <line key={i} x1={CX + Math.cos(a) * BOUNDS[0]} y1={CY + Math.sin(a) * BOUNDS[0]}
+                      x2={CX + Math.cos(a) * LIMIT} y2={CY + Math.sin(a) * LIMIT} />
+              ))}
+              {TICKS.map((t, i) => (
+                <line key={`t${i}`} className={`imap-tick${t.long ? ' imap-tick--long' : ''}`}
+                      x1={CX + Math.cos(t.a) * t.r1} y1={CY + Math.sin(t.a) * t.r1}
+                      x2={CX + Math.cos(t.a) * t.r2} y2={CY + Math.sin(t.a) * t.r2} />
+              ))}
+              {BEARINGS.map((b) => <text key={b.t} className="imap-bearing" x={b.x} y={b.y}>{b.t}</text>)}
+            </g>
 
-          <circle className="imap-limit" cx={CX} cy={CY} r={LIMIT} />
-          <circle className="imap-core" cx={CX} cy={CY} r={BOUNDS[0]} fill="url(#imap-core-g)" />
-          <circle className="imap-core-ring" cx={CX} cy={CY} r={BOUNDS[0]} />
+            <g className="imap-terrs">
+              {CHART.map((s) => <path key={s.id} className={`${cls(s)} imap-terr imap-terr--r${s.ri}`} d={s.d} />)}
+              {CHART.map((s) => <path key={`h${s.id}`} className={`${cls(s)} imap-hatchp`} d={s.d} />)}
+            </g>
 
-          <g className="imap-labels">
-            {CHART.map((s) => {
-              const off = (s.n.length - 1) * 15
-              const p = LABELS.get(s.id)
-              return (
-                <g key={s.id} className={cls(s)} transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`}>
-                  {s.n.map((line, i) => <text key={line} className="imap-name" y={i * 30 - off}>{line}</text>)}
-                  <text className="imap-sub imap-sub--imp" y={off + 25}>{s.sub}</text>
-                  <text className="imap-sub imap-sub--hush" y={off + 25}>{HUSH_SUB[s.id % HUSH_SUB.length]}</text>
-                  {s.stars.map((t, i) => (
-                    <text key={t} className={`imap-star${s.seat && i === 0 ? ' imap-star--seat' : ''}`} y={off + 53 + i * 26}>✦ {t}</text>
-                  ))}
-                </g>
-              )
-            })}
-          </g>
-        </svg>
+            <g className="imap-shell">
+              <circle className="imap-limit-halo" cx={CX} cy={CY} r={LIMIT} />
+              <circle className="imap-limit" cx={CX} cy={CY} r={LIMIT} />
+              <circle className="imap-limit-inner" cx={CX} cy={CY} r={LIMIT - 12} />
+              <circle className="imap-core" cx={CX} cy={CY} r={BOUNDS[0]} fill="url(#imap-core-g)" />
+              <circle className="imap-core-ring" cx={CX} cy={CY} r={BOUNDS[0]} />
+              <circle className="imap-core-etch" cx={CX} cy={CY} r={92} />
+              <circle className="imap-core-etch" cx={CX} cy={CY} r={48} />
+              <line className="imap-core-cross" x1={CX - 26} y1={CY} x2={CX + 26} y2={CY} />
+              <line className="imap-core-cross" x1={CX} y1={CY - 26} x2={CX} y2={CY + 26} />
+              <circle className="imap-core-dot" cx={CX} cy={CY} r={3} />
+            </g>
+
+            <g className="imap-labels">
+              {CHART.map((s) => {
+                const off = (s.n.length - 1) * 15
+                const p = LABELS.get(s.id)
+                return (
+                  <g key={s.id} className={cls(s)} transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`}>
+                    {s.n.map((line, i) => <text key={line} className="imap-name" y={i * 30 - off}>{line}</text>)}
+                    <text className="imap-sub imap-sub--imp" y={off + 25}>{s.sub}</text>
+                    <text className="imap-sub imap-sub--hush" y={off + 25}>{HUSH_SUB[s.id % HUSH_SUB.length]}</text>
+                    {s.stars.map((t, i) => (
+                      <text key={t} className={`imap-star${s.seat && i === 0 ? ' imap-star--seat' : ''}`} y={off + 53 + i * 26}>✦ {t}</text>
+                    ))}
+                  </g>
+                )
+              })}
+            </g>
+          </svg>
+        </div>
 
         <div className="imap-head">
-          <div className="imap-head-title">SACRUM IMPERIUM NOVARAYUM</div>
-          <div className="imap-head-sub">CLASSIS STELLARIS · STRATEGIC CHART OF THE REALM</div>
+          <img className="imap-head-seal" src={`${BASE}imperial_empress_emblem.svg`} alt="" />
+          <div>
+            <div className="imap-head-title">SACRUM IMPERIUM NOVARAYUM</div>
+            <div className="imap-head-sub">CLASSIS STELLARIS · STRATEGIC CHART OF THE REALM</div>
+          </div>
         </div>
 
         <div className="imap-legend">
@@ -362,7 +416,16 @@ export default function ImperiumMap({ onReturn }) {
             <span className="imap-key-label">UNDER THE HUSH</span>
             <span className="imap-key-val">{String(fallen.length).padStart(2, '0')}</span>
           </div>
+          {/* one tick per territory; the silence eats the bar from the right */}
+          <div className="imap-key-bar">
+            {CHART.map((s, i) => <i key={s.id} className={i < held ? undefined : 'is-red'} />)}
+          </div>
         </div>
+
+        <div className="imap-corner imap-corner--tl" />
+        <div className="imap-corner imap-corner--tr" />
+        <div className="imap-corner imap-corner--bl" />
+        <div className="imap-corner imap-corner--br" />
       </div>
 
       {line && (
