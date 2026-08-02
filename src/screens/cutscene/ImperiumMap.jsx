@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { renderCommsBody } from '../battle/RosterUI'
 import { playTitleBoom, createCutsceneSfx } from './sfx'
 import '../battle/battle.css'
@@ -196,9 +196,13 @@ const say = (src) => {
   if (last < src.length) segments.push({ text: src.slice(last) })
   return { segments, len: segments.reduce((n, s) => n + s.text.length, 0) }
 }
-const BEFORE = [
+// Peacetime reads the realm as it was; wartime opens on the doubt and takes
+// half the chart with it.
+const PEACE_LINES = [
   say('For a thousand generations, the Empire has stood as a shining beacon of order, spreading harmony and technology under the watchful rule of its Empresses.'),
   say('As above, so below. The harmony of the macrocosmos was reflected in the administration of the empire, and this ideology was called the <blue>Universal Order</blue>.'),
+]
+const WAR_OPEN = [
   say('But with the discovery of the Aleph and the concept of the cycular aeons, many began to believe the Universal Order had gone astray.'),
 ]
 const AFTER = [
@@ -207,7 +211,14 @@ const AFTER = [
 ]
 
 // ── Beat sheet (ms) ──────────────────────────────────────────────────────────
-const T_TITLE = 2800      // the name of the empire holds on black
+// The card opens on the seal alone, full size at the centre of the screen; it
+// withdraws to its place in the layout, and only then does the empire name
+// itself. T_TITLE is the card's whole running time — downstream beats key off
+// it as before.
+const T_SEAL = 1700       // the seal, full size, alone on black
+const T_SEAL_MOVE = 1150  // …withdraws to its place in the card
+const T_TEXT_HOLD = 2800  // the name of the empire holds
+const T_TITLE = T_SEAL + T_SEAL_MOVE + T_TEXT_HOLD
 const T_TITLE_OUT = 1200  // …then dissolves to the chart
 const T_HOLD = 1800       // the realm entire, before the historian speaks
 const MS_PER_CHAR = 42    // typewriter speed, advanced by elapsed time
@@ -240,10 +251,14 @@ const STARS = (() => {
   return out
 })()
 
-// Standalone chart cutscene: the empire names itself, then the chart comes up
-// whole and imperial, and the Hush takes half of it a sector at a time.
-export default function ImperiumMap({ onReturn }) {
+// Standalone chart cutscene in two modes. Both open on the seal splash and the
+// chart whole and imperial. 'peace' is the explainer: two lines of lore, the
+// realm entire, no key. 'war' opens on the doubt, turns half the realm red a
+// province at a time, and keys the two Orders by colour.
+export default function ImperiumMap({ mode = 'war', onReturn }) {
   const [nonce, setNonce] = useState(0)
+  const [cardPhase, setCardPhase] = useState('seal')   // 'seal' → 'settle' → 'text'
+  const sealRef = useRef(null)
   const [titleOut, setTitleOut] = useState(false)
   const [titleDone, setTitleDone] = useState(false)
   const [mapOn, setMapOn] = useState(false)
@@ -258,7 +273,9 @@ export default function ImperiumMap({ onReturn }) {
     let sfx = null
     try { sfx = createCutsceneSfx() } catch { /* no audio */ }
 
-    playTitleBoom(0.7)
+    // the seal arrives in silence; the boom belongs to the name
+    at(T_SEAL, () => setCardPhase('settle'))
+    at(T_SEAL + T_SEAL_MOVE, () => { setCardPhase('text'); playTitleBoom(0.7) })
     at(T_TITLE, () => setTitleOut(true))
     at(T_TITLE + 250, () => setMapOn(true))            // the chart comes up under the card
     at(T_TITLE + T_TITLE_OUT, () => setTitleDone(true))
@@ -288,12 +305,17 @@ export default function ImperiumMap({ onReturn }) {
       at(T_STEP, () => step(i + 1))
     }
 
-    at(T_TITLE + T_TITLE_OUT + T_HOLD, () => read(BEFORE, 0, () => {
-      at(700, () => { sfx?.rumble(0.4, 2.6); at(900, () => step(0)) })   // the front arrives
-    }))
+    if (mode === 'peace') {
+      // the explainer holds on the whole imperial realm — nothing falls
+      at(T_TITLE + T_TITLE_OUT + T_HOLD, () => read(PEACE_LINES, 0, () => at(1400, () => setDone(true))))
+    } else {
+      at(T_TITLE + T_TITLE_OUT + T_HOLD, () => read(WAR_OPEN, 0, () => {
+        at(700, () => { sfx?.rumble(0.4, 2.6); at(900, () => step(0)) })   // the front arrives
+      }))
+    }
 
     return () => { timers.forEach(clearTimeout); sfx?.dispose() }
-  }, [nonce])
+  }, [nonce, mode])
 
   // Typewriter — the reveal is measured from the line's own start stamp rather
   // than counted in ticks, so a starved interval catches up to the right
@@ -310,8 +332,32 @@ export default function ImperiumMap({ onReturn }) {
     return () => clearInterval(iv)
   }, [line])
 
+  // The seal's opening move, FLIP-style: it is laid out in its final slot from
+  // the first frame, but carries a transform that centres it on the screen at
+  // full size. Releasing the transform (phase 'settle') lets one CSS transition
+  // glide it home — so "its place" is the layout's own truth, never a guess.
+  // Measured before paint; the slot is stable because the (invisible) title
+  // lines already occupy their space, and the seal's aspect-ratio is fixed in
+  // CSS so the maths hold even before the SVG finishes loading.
+  useLayoutEffect(() => {
+    const el = sealRef.current
+    if (!el) return
+    // measure the untransformed slot — under StrictMode this effect runs twice,
+    // and the second pass must not measure the transform the first one set
+    el.style.transform = ''
+    const r = el.getBoundingClientRect()
+    if (r.width < 4) return
+    const big = Math.min(window.innerHeight * 0.55, window.innerWidth * 0.42)
+    const dx = window.innerWidth / 2 - (r.left + r.width / 2)
+    const dy = window.innerHeight / 2 - (r.top + r.height / 2)
+    el.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${(big / r.width).toFixed(3)})`
+  }, [nonce])
+  useEffect(() => {
+    if (cardPhase !== 'seal' && sealRef.current) sealRef.current.style.transform = ''
+  }, [cardPhase])
+
   const replay = () => {
-    setTitleOut(false); setTitleDone(false); setMapOn(false)
+    setCardPhase('seal'); setTitleOut(false); setTitleDone(false); setMapOn(false)
     setFallen([]); setLine(null); setTyped({ id: 0, n: 0 }); setDone(false); setNonce((n) => n + 1)
   }
 
@@ -405,22 +451,24 @@ export default function ImperiumMap({ onReturn }) {
           </div>
         </div>
 
-        <div className="imap-legend">
-          <div className="imap-key">
-            <span className="imap-swatch imap-swatch--imp" />
-            <span className="imap-key-label">IMPERIAL SPACE</span>
-            <span className="imap-key-val">{String(held).padStart(2, '0')}</span>
+        {mode === 'war' && (
+          <div className="imap-legend">
+            <div className="imap-key">
+              <span className="imap-swatch imap-swatch--imp" />
+              <span className="imap-key-label">UNIVERSAL ORDER</span>
+              <span className="imap-key-val">{String(held).padStart(2, '0')}</span>
+            </div>
+            <div className={`imap-key imap-key--hush${fallen.length ? ' is-live' : ''}`}>
+              <span className="imap-swatch imap-swatch--hush" />
+              <span className="imap-key-label">CONTINUING ORDER</span>
+              <span className="imap-key-val">{String(fallen.length).padStart(2, '0')}</span>
+            </div>
+            {/* one tick per territory; the schism eats the bar from the right */}
+            <div className="imap-key-bar">
+              {CHART.map((s, i) => <i key={s.id} className={i < held ? undefined : 'is-red'} />)}
+            </div>
           </div>
-          <div className={`imap-key imap-key--hush${fallen.length ? ' is-live' : ''}`}>
-            <span className="imap-swatch imap-swatch--hush" />
-            <span className="imap-key-label">UNDER THE HUSH</span>
-            <span className="imap-key-val">{String(fallen.length).padStart(2, '0')}</span>
-          </div>
-          {/* one tick per territory; the silence eats the bar from the right */}
-          <div className="imap-key-bar">
-            {CHART.map((s, i) => <i key={s.id} className={i < held ? undefined : 'is-red'} />)}
-          </div>
-        </div>
+        )}
 
         <div className="imap-corner imap-corner--tl" />
         <div className="imap-corner imap-corner--tr" />
@@ -439,13 +487,13 @@ export default function ImperiumMap({ onReturn }) {
       )}
 
       {!titleDone && (
-        <div className={`imap-card${titleOut ? ' imap-card--out' : ''}`}>
+        <div key={nonce} className={`imap-card imap-card--${cardPhase}${titleOut ? ' imap-card--out' : ''}`}>
           <div className="imap-card-title">
             <span>SACRUM IMPERIUM</span>
             <span>NOVARAYUM</span>
           </div>
           <div className="imap-card-sub">Holy Novarayan Empire</div>
-          <img className="imap-card-seal" src={`${BASE}imperial_empress_emblem.svg`} alt="" />
+          <img ref={sealRef} className="imap-card-seal" src={`${BASE}imperial_empress_emblem.svg`} alt="" />
         </div>
       )}
 

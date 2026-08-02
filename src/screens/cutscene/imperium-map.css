@@ -322,6 +322,9 @@
   transition: opacity 1.1s ease;
 }
 .imap-card--out { opacity: 0; pointer-events: none; }
+/* The card opens on the seal alone — the title and subtitle keep their layout
+   space from the first frame (so the seal's slot never moves) but stay unseen
+   until the card enters its text phase. */
 .imap-card-title {
   display: flex;
   flex-direction: column;
@@ -336,8 +339,9 @@
   text-indent: 0.12em;   /* recentre: tracking trails the last glyph */
   color: #ffd24a;
   text-shadow: 0 0 40px rgba(255, 200, 80, 0.42);
-  animation: imap-slam 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  opacity: 0;
 }
+.imap-card--text .imap-card-title { animation: imap-slam 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .imap-card-title span { white-space: nowrap; }
 @keyframes imap-slam {
   from { transform: scale(1.14); opacity: 0; filter: blur(8px); }
@@ -349,13 +353,26 @@
   letter-spacing: 0.42em;
   text-indent: 0.42em;
   color: rgba(178, 200, 236, 0.72);
-  animation: imap-rise 0.9s ease 0.34s both;
+  opacity: 0;
 }
+.imap-card--text .imap-card-sub { animation: imap-rise 0.9s ease 0.3s both; }
+/* The seal is laid out in its slot from the start; the component's FLIP
+   transform holds it full-size at screen centre, and this transition carries
+   it home when the transform is released. Fixed aspect ratio so the slot's
+   height (and the measured centre) are right even before the SVG loads. */
 .imap-card-seal {
   width: clamp(88px, 9.5vw, 138px);
+  aspect-ratio: 1 / 1;
   height: auto;
   margin-top: clamp(20px, 2.8vw, 40px);
-  animation: imap-rise 1s ease 0.62s both;
+  animation: imap-seal-in 0.9s ease both;
+  will-change: transform;
+}
+.imap-card--settle .imap-card-seal,
+.imap-card--text .imap-card-seal { transition: transform 1.15s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes imap-seal-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 @keyframes imap-rise {
   from { opacity: 0; transform: translateY(9px); }
