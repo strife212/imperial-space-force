@@ -39,8 +39,14 @@ const CUTSCENES = [
   { key: 'cut:theEschaton',      label: '10 · Eschaton'  },
   { key: 'cut:theOrderRestored', label: '✦ · Anastasis (victory)'  },
   { key: 'cut:cosmogony',        label: 'Ω · Cosmogony'        },
-  { key: 'imperium-map',         label: '✧ · Sacrum Imperium (chart)' },
+  { key: 'imperium-map-peace',   label: '✧ · Sacrum Imperium (peace)' },
+  { key: 'imperium-map-war',     label: '✧ · Sacrum Imperium (war)' },
+  { key: 'proclamation',         label: '☩ · Proclamation (full)' },
+  { key: 'proclamation-brief',   label: '☩ · Proclamation (brief)' },
 ]
+// Split point for the debug page's two cutscene columns — the list outgrew one.
+const CUTSCENES_1 = CUTSCENES.slice(0, 8)
+const CUTSCENES_2 = CUTSCENES.slice(8)
 
 // ── LEGACY: the 2D UI narrative game ─────────────────────────────────────────
 const LEGACY_COL1 = [
@@ -101,8 +107,9 @@ export default function DebugScreen({ variant = 'new', onNavigate, onDebugMain, 
           <div className="debug-body">
             {/* Column 1 — battlesim + campaign screens */}
             <ul className="debug-list">{NEW_SCREENS.map(screenBtn)}</ul>
-            {/* Column 2 — story cutscenes */}
-            <ul className="debug-list">{CUTSCENES.map(screenBtn)}</ul>
+            {/* Columns 2–3 — story cutscenes, then extras/documents */}
+            <ul className="debug-list">{CUTSCENES_1.map(screenBtn)}</ul>
+            <ul className="debug-list">{CUTSCENES_2.map(screenBtn)}</ul>
           </div>
         )}
 

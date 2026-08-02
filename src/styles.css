@@ -3670,7 +3670,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* flex-start, not center: the inner scales down from its top edge, so a
+     centred layout box taller than the viewport would push the title (and the
+     top rows) off screen even though the scaled VISUAL would fit */
+  justify-content: flex-start;
+  padding-top: 12px;
   background: #010208;
   font-family: 'Cascadia Mono', Consolas, ui-monospace, Menlo, Monaco, monospace;
 }
@@ -3714,12 +3718,16 @@ body {
   font-family: inherit;
   font-size: 13px;
   letter-spacing: 0.1em;
-  padding: 10px 18px;
+  padding: 9px 16px;
   cursor: pointer;
   display: flex;
   gap: 12px;
   align-items: center;
-  width: 280px;
+  /* long unbreakable keys ([cut:theOrderRestored]) drop the label to its own
+     line instead of overflowing the key span into it */
+  flex-wrap: wrap;
+  row-gap: 2px;
+  width: 300px;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
@@ -3744,6 +3752,8 @@ body {
   color: rgba(106,173,245,0.5);
   font-size: 11px;
   min-width: 70px;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 /* large link to switch between the New and Legacy debug pages */
