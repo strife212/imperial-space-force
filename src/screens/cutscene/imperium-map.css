@@ -296,6 +296,50 @@
 }
 .imap-key--hush .imap-key-val { color: #ffcabf; }
 
+/* ── the standards of the two Orders ─────────────────────────────────────────
+   Raised once the schism has run: the imperial seal to port, the wheel of
+   aeons to starboard, each centred in the gutter between the chart and the
+   screen edge (the same min() as .imap-chartbox, so the centring holds at any
+   aspect). Level with the chart's centre, which the dialogue band lifts. */
+.imap-faction {
+  position: absolute;
+  top: calc((100% - var(--imap-band)) / 2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(14px, 2.4vh, 24px);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.92);
+  filter: blur(5px);
+  transition: opacity 1.3s ease, transform 1.8s cubic-bezier(0.16, 1, 0.3, 1), filter 1.3s ease;
+  pointer-events: none;
+}
+.imap-faction--uo { left: calc((100% - min(96vh - var(--imap-band), 94vw)) / 4); }
+.imap-faction--co {
+  left: calc(100% - (100% - min(96vh - var(--imap-band), 94vw)) / 4);
+  transition-delay: 0.45s;
+}
+.imap-faction.is-on { opacity: 1; transform: translate(-50%, -50%); filter: none; }
+.imap-faction-emblem { width: clamp(72px, 8.5vw, 126px); aspect-ratio: 1 / 1; height: auto; }
+.imap-faction-name {
+  font-size: clamp(15px, 1.5vw, 23px);
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;   /* recentre: tracking trails the last glyph */
+  line-height: 1.55;
+  text-align: center;
+}
+.imap-faction-name span { display: block; }
+.imap-faction--uo .imap-faction-name { color: #7ab5ff; text-shadow: 0 0 22px rgba(80, 145, 255, 0.5); }
+.imap-faction--co .imap-faction-name { color: #ff6a52; text-shadow: 0 0 22px rgba(255, 80, 50, 0.45); }
+/* the wheel is line art — give it the presence the painted seal carries itself */
+.imap-wheel { overflow: visible; filter: drop-shadow(0 0 14px rgba(255, 80, 50, 0.3)); }
+.imap-wheel-rim  { fill: none; stroke: rgba(255, 100, 72, 0.95); stroke-width: 4.5; }
+.imap-wheel-line { fill: none; stroke: rgba(255, 100, 72, 0.55); stroke-width: 2; }
+.imap-wheel-star { fill: #ffd24a; filter: drop-shadow(0 0 6px rgba(255, 200, 80, 0.8)); }
+/* squarish windows have no gutters to fly them in */
+@media (max-aspect-ratio: 4/3) { .imap-faction { display: none; } }
+
 /* corner brackets framing the whole plotting table */
 .imap-corner {
   position: absolute;

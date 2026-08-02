@@ -251,6 +251,25 @@ const STARS = (() => {
   return out
 })()
 
+// ── The standards of the two Orders ──────────────────────────────────────────
+// Once the schism has run its course, each half of the realm flies its colours
+// beside the chart. The Continuing Order's is the wheel of aeons, exactly as
+// its proclamation draws it: a red rim and eight spokes around a gold
+// four-point star, ported here to SVG.
+const WHEEL_R = 52
+const WHEEL_SPOKES = Array.from({ length: 8 }, (_, i) => {
+  const a = (TAU * i) / 8 + TAU / 16
+  return {
+    x1: +(60 + Math.cos(a) * WHEEL_R * 0.28).toFixed(1), y1: +(60 + Math.sin(a) * WHEEL_R * 0.28).toFixed(1),
+    x2: +(60 + Math.cos(a) * WHEEL_R * 0.8).toFixed(1),  y2: +(60 + Math.sin(a) * WHEEL_R * 0.8).toFixed(1),
+  }
+})
+const WHEEL_STAR = (() => {
+  const s = WHEEL_R * 0.17, k = s * 0.34
+  const p = (x, y) => `${(60 + x).toFixed(1)} ${(60 + y).toFixed(1)}`
+  return `M${p(0, -s)}L${p(k, -k)}L${p(s, 0)}L${p(k, k)}L${p(0, s)}L${p(-k, k)}L${p(-s, 0)}L${p(-k, -k)}Z`
+})()
+
 // Standalone chart cutscene in two modes. Both open on the seal splash and the
 // chart whole and imperial. 'peace' is the explainer: two lines of lore, the
 // realm entire, no key. 'war' opens on the doubt, turns half the realm red a
@@ -263,6 +282,7 @@ export default function ImperiumMap({ mode = 'war', onReturn }) {
   const [titleDone, setTitleDone] = useState(false)
   const [mapOn, setMapOn] = useState(false)
   const [fallen, setFallen] = useState([])
+  const [factionsOn, setFactionsOn] = useState(false)
   const [line, setLine] = useState(null)       // { segments, len, id, t0 } while the historian speaks
   const [typed, setTyped] = useState({ id: 0, n: 0 })
   const [done, setDone] = useState(false)
@@ -297,6 +317,7 @@ export default function ImperiumMap({ mode = 'war', onReturn }) {
     // it, and one-at-a-time is the whole beat.
     const step = (i) => {
       if (i >= FALL_ORDER.length) {
+        at(600, () => setFactionsOn(true))   // the colours go up as the last loss settles
         at(T_TAIL, () => read(AFTER, 0, () => at(1600, () => setDone(true))))
         return
       }
@@ -358,7 +379,7 @@ export default function ImperiumMap({ mode = 'war', onReturn }) {
 
   const replay = () => {
     setCardPhase('seal'); setTitleOut(false); setTitleDone(false); setMapOn(false)
-    setFallen([]); setLine(null); setTyped({ id: 0, n: 0 }); setDone(false); setNonce((n) => n + 1)
+    setFallen([]); setFactionsOn(false); setLine(null); setTyped({ id: 0, n: 0 }); setDone(false); setNonce((n) => n + 1)
   }
 
   const held = CHART.length - fallen.length
@@ -468,6 +489,25 @@ export default function ImperiumMap({ mode = 'war', onReturn }) {
               {CHART.map((s, i) => <i key={s.id} className={i < held ? undefined : 'is-red'} />)}
             </div>
           </div>
+        )}
+
+        {mode === 'war' && (
+          <>
+            <div className={`imap-faction imap-faction--uo${factionsOn ? ' is-on' : ''}`}>
+              <img className="imap-faction-emblem" src={`${BASE}imperial_empress_emblem.svg`} alt="" />
+              <div className="imap-faction-name">UNIVERSAL<span>ORDER</span></div>
+            </div>
+            <div className={`imap-faction imap-faction--co${factionsOn ? ' is-on' : ''}`}>
+              <svg className="imap-faction-emblem imap-wheel" viewBox="0 0 120 120" aria-hidden="true">
+                <circle className="imap-wheel-rim" cx="60" cy="60" r={WHEEL_R} />
+                <circle className="imap-wheel-line" cx="60" cy="60" r={WHEEL_R * 0.8} />
+                <circle className="imap-wheel-line" cx="60" cy="60" r={WHEEL_R * 0.28} />
+                {WHEEL_SPOKES.map((l, i) => <line key={i} className="imap-wheel-line" x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} />)}
+                <path className="imap-wheel-star" d={WHEEL_STAR} />
+              </svg>
+              <div className="imap-faction-name">CONTINUING<span>ORDER</span></div>
+            </div>
+          </>
         )}
 
         <div className="imap-corner imap-corner--tl" />
